@@ -4,9 +4,9 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
 
 - **Overlay pro OBS** — `/ext/erasto-league/overlay` — fundo transparente, placar bottom-center
   com logo da liga no medalhão central e **relógio de jogo**, atualiza sozinho via SSE.
-- **Controle pelo celular** — `/ext/erasto-league/control` — `+1 GOL` / `−1` por equipe, nomes,
-  etiqueta, **relógio** (iniciar/pausar/zerar/±1:00 + atalhos "Fim 1º"/"Fim de jogo"), nova
-  partida. Gateado por PIN.
+- **Controle pelo celular** — `/ext/erasto-league/control` — `+1 GOL` / `+0,5` / `−0,5` / `−1`
+  por equipe (o placar aceita **meio gol**), nomes, etiqueta, **relógio** (iniciar/pausar/zerar/
+  ±1:00 + atalhos "Fim 1º"/"Fim de jogo"), nova partida. Gateado por PIN.
 - **Admin** — `/admin/erasto-league` — configura PIN, nomes padrão, duração dos tempos, cor de
   destaque e a logo; atalhos pras telas. Link aparece na nav do admin ao instalar o plugin.
 - **Tempo real** — `EventSource` → `/api/erasto-league/events` (SSE). O servidor relê o banco a

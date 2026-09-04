@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import type { ClockCommand, MatchSide, MatchState } from "../../contracts/types";
 import { computeElapsedMs, formatClock } from "../../shared/clock";
+import { formatScore } from "../../shared/score";
 import { useMatchState, useTick } from "../../shared/use-match-state";
 import {
   bumpScoreAction,
@@ -67,14 +68,19 @@ const CSS = `
   .el-c-name:focus { border-color: #22c55e; }
   .el-c-score { font-size: 68px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
   .el-c-plus {
-    width: 100%; height: 76px; font-size: 34px; font-weight: 900; border: 0; border-radius: 14px;
+    width: 100%; height: 72px; font-size: 32px; font-weight: 900; border: 0; border-radius: 14px;
     background: #22c55e; color: #05230f; cursor: pointer;
   }
+  .el-c-half {
+    width: 100%; height: 50px; font-size: 20px; font-weight: 900; border-radius: 12px; cursor: pointer;
+    background: transparent; color: #22c55e; border: 1px solid rgba(34,197,94,0.5);
+  }
+  .el-c-minus-row { display: flex; gap: 8px; width: 100%; }
   .el-c-minus {
-    width: 100%; height: 46px; font-size: 20px; font-weight: 800; border-radius: 12px; cursor: pointer;
+    flex: 1; height: 44px; font-size: 18px; font-weight: 800; border-radius: 12px; cursor: pointer;
     background: transparent; color: rgba(255,255,255,0.75); border: 1px solid rgba(255,255,255,0.18);
   }
-  .el-c-plus:disabled, .el-c-minus:disabled, .el-c-chip:disabled, .el-c-reset:disabled,
+  .el-c-plus:disabled, .el-c-half:disabled, .el-c-minus:disabled, .el-c-chip:disabled, .el-c-reset:disabled,
   .el-c-startbtn:disabled, .el-c-tbtn:disabled, .el-c-new:disabled { opacity: 0.55; cursor: default; }
   .el-c-actions { display: flex; gap: 10px; }
   .el-c-reset {
@@ -245,7 +251,7 @@ export function Console({
                   if (e.key === "Enter") e.currentTarget.blur();
                 }}
               />
-              <div className="el-c-score">{state[side].score}</div>
+              <div className="el-c-score">{formatScore(state[side].score)}</div>
               <button
                 type="button"
                 className="el-c-plus"
@@ -256,12 +262,30 @@ export function Console({
               </button>
               <button
                 type="button"
-                className="el-c-minus"
-                disabled={pending || state[side].score === 0}
-                onClick={() => run(() => bumpScoreAction(side, -1))}
+                className="el-c-half"
+                disabled={pending}
+                onClick={() => run(() => bumpScoreAction(side, 0.5))}
               >
-                −1
+                +0,5
               </button>
+              <div className="el-c-minus-row">
+                <button
+                  type="button"
+                  className="el-c-minus"
+                  disabled={pending || state[side].score === 0}
+                  onClick={() => run(() => bumpScoreAction(side, -0.5))}
+                >
+                  −0,5
+                </button>
+                <button
+                  type="button"
+                  className="el-c-minus"
+                  disabled={pending || state[side].score === 0}
+                  onClick={() => run(() => bumpScoreAction(side, -1))}
+                >
+                  −1
+                </button>
+              </div>
             </div>
           ))}
         </div>

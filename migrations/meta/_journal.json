@@ -8,6 +8,13 @@
       "when": 1788482527566,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788525245675,
+      "tag": "0001_half_goals",
+      "breakpoints": true
     }
   ]
 }

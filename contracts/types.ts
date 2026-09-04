@@ -2,6 +2,7 @@ export type MatchSide = "home" | "away";
 
 export type Team = {
   name: string;
+  // Múltiplo de 0,5 — o placar aceita meio gol (+0,5). Ver shared/score.ts.
   score: number;
 };
 

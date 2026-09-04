@@ -1,0 +1,103 @@
+{
+  "id": "3297b983-e273-4fdd-9c5d-dff8bc92d7b3",
+  "prevId": "e706dc1e-6385-4817-9f81-f87d23588a18",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "erasto_league.match_state": {
+      "name": "match_state",
+      "schema": "erasto_league",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "'singleton'"
+        },
+        "home_name": {
+          "name": "home_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Casa'"
+        },
+        "home_score": {
+          "name": "home_score",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "away_name": {
+          "name": "away_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Visitante'"
+        },
+        "away_score": {
+          "name": "away_score",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "clock_running": {
+          "name": "clock_running",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "clock_anchor_ms": {
+          "name": "clock_anchor_ms",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "clock_accumulated_ms": {
+          "name": "clock_accumulated_ms",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {
+    "erasto_league": "erasto_league"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

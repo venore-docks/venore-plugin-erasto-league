@@ -1,4 +1,4 @@
-import { bigint, boolean, integer, pgSchema, text, timestamp } from "drizzle-orm/pg-core";
+import { bigint, boolean, pgSchema, real, text, timestamp } from "drizzle-orm/pg-core";
 
 // Schema próprio do plugin — aplicado no install pelo run-plugin-migrations.ts do core (nunca no
 // vercel-build). O nome bate com o default derivado da key ("erasto-league" → "erasto_league").
@@ -12,9 +12,10 @@ export const matchState = erastoLeagueSchema.table("match_state", {
   id: text("id").primaryKey().default("singleton"),
 
   homeName: text("home_name").notNull().default("Casa"),
-  homeScore: integer("home_score").notNull().default(0),
+  // real (não integer): o placar aceita meio ponto (+0,5). 0,5 / 1,5 / 2,5… são exatos em float4.
+  homeScore: real("home_score").notNull().default(0),
   awayName: text("away_name").notNull().default("Visitante"),
-  awayScore: integer("away_score").notNull().default(0),
+  awayScore: real("away_score").notNull().default(0),
 
   label: text("label").notNull().default(""),
 

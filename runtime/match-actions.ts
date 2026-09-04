@@ -1,5 +1,6 @@
 import type { ClockCommand, MatchSide, MatchState } from "../contracts/types";
 import { adjustClock, computeElapsedMs, pauseClock, setClock, startClock } from "../shared/clock";
+import { clampScore } from "../shared/score";
 import { readMatchRow, readMatchState, writeMatchState } from "./match-store";
 
 // Mutators do estado da partida — mesma API mental do antigo match-bus.ts, agora assíncrona e
@@ -11,10 +12,11 @@ export { readMatchState as getMatchState };
 const MAX_NAME = 40;
 const MAX_LABEL = 24;
 
+// delta é ±1 (gol) ou ±0,5 (meio gol). clampScore "snapa" pra múltiplo de 0,5 e não deixa negativar.
 export async function bumpScore(side: MatchSide, delta: number): Promise<MatchState> {
   const row = await readMatchRow();
   const current = side === "home" ? row.homeScore : row.awayScore;
-  const next = Math.max(0, current + delta);
+  const next = clampScore(current + delta);
   return writeMatchState(side === "home" ? { homeScore: next } : { awayScore: next });
 }
 

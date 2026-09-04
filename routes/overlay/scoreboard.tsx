@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from "react";
 import type { MatchState } from "../../contracts/types";
 import { computeElapsedMs, formatClock } from "../../shared/clock";
+import { formatScore } from "../../shared/score";
 import { useMatchState, useTick } from "../../shared/use-match-state";
 
 // Fora da shell/tema do site — nada de className shadcn aqui (as CSS vars de cor do tema não
@@ -72,7 +73,7 @@ const CSS = `
   }
   .el-num {
     font-size: 60px; font-weight: 900; line-height: 1;
-    min-width: 68px; text-align: center;
+    min-width: 108px; text-align: center;  /* cabe "2,5" sem pular o layout */
     font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1;
     text-shadow: 0 1px 0 rgba(255,255,255,0.32);
     animation: el-pop 280ms cubic-bezier(0.2, 0.9, 0.2, 1);
@@ -159,7 +160,7 @@ export function Scoreboard({
             <div className="el-name home">{state.home.name}</div>
             <div className="el-plate">
               <span className="el-num home" key={`h-${state.home.score}`}>
-                {state.home.score}
+                {formatScore(state.home.score)}
               </span>
               <div className="el-crest" aria-hidden="true">
                 {logoOk && logoUrl ? (
@@ -170,7 +171,7 @@ export function Scoreboard({
                 )}
               </div>
               <span className="el-num away" key={`a-${state.away.score}`}>
-                {state.away.score}
+                {formatScore(state.away.score)}
               </span>
             </div>
             <div className="el-name away">{state.away.name}</div>
