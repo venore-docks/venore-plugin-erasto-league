@@ -11,7 +11,7 @@ import { useMatchState, useTick } from "../../shared/use-match-state";
 //
 // Layout: barra do placar bottom-center com o BRASÃO no meio, alinhado verticalmente com a barra
 // (medalhão centralizado na altura da barra, entre os dois números). O RELÓGIO fica discreto,
-// solto no canto inferior direito da cena.
+// à direita da cena, alinhado verticalmente ao centro da barra do placar.
 const CSS = `
   html, body { background: transparent !important; margin: 0; }
 
@@ -22,6 +22,7 @@ const CSS = `
     --accent: #22c55e;
   }
 
+  /* a faixa tem a altura da barra — o relógio é filho absoluto dela e centra na mesma linha */
   .el-strip {
     position: absolute; left: 0; right: 0; bottom: 60px;
     display: flex; justify-content: center;
@@ -102,9 +103,9 @@ const CSS = `
   .el-logo { width: 82%; height: 82%; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.28)); }
   .el-monogram { font-size: 38px; font-weight: 900; letter-spacing: 1px; color: #0b7a37; }
 
-  /* relógio discreto no canto inferior direito */
+  /* relógio discreto à direita, na mesma linha vertical da barra */
   .el-clock-corner {
-    position: absolute; right: 40px; bottom: 40px;
+    position: absolute; right: 40px; top: 50%; transform: translateY(-50%);
     display: flex; align-items: center; gap: 9px;
     padding: 7px 14px; border-radius: 10px;
     background: rgba(10,13,18,0.80);
@@ -174,21 +175,21 @@ export function Scoreboard({
             </div>
             <div className="el-name away">{state.away.name}</div>
           </div>
-        </div>
 
-        {showCorner ? (
-          <div className="el-clock-corner">
-            <span className={`el-cc-dot ${!live ? "off" : state.clock.running ? "run" : ""}`} />
-            {!live ? (
-              <span className="el-cc-label">Sem sinal</span>
-            ) : (
-              <>
-                {showClock ? <span className="el-cc-time">{formatClock(elapsed)}</span> : null}
-                {state.label ? <span className="el-cc-label">{state.label}</span> : null}
-              </>
-            )}
-          </div>
-        ) : null}
+          {showCorner ? (
+            <div className="el-clock-corner">
+              <span className={`el-cc-dot ${!live ? "off" : state.clock.running ? "run" : ""}`} />
+              {!live ? (
+                <span className="el-cc-label">Sem sinal</span>
+              ) : (
+                <>
+                  {showClock ? <span className="el-cc-time">{formatClock(elapsed)}</span> : null}
+                  {state.label ? <span className="el-cc-label">{state.label}</span> : null}
+                </>
+              )}
+            </div>
+          ) : null}
+        </div>
       </div>
     </>
   );

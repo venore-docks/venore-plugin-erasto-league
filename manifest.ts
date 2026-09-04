@@ -13,7 +13,7 @@ export const erastoLeagueManifest: PluginManifest = {
   manifestVersion: "1.0.0",
   key: "erasto-league",
   name: "Erasto League",
-  version: "0.2.4",
+  version: "0.2.5",
   description:
     "Placar de futebol ao vivo: overlay pro OBS + controle pelo celular, com relógio de jogo e atualização em tempo real. Semente do site Erasto League.",
   compatibility: { coreVersion: ">=2.0.0 <3.0.0" },
