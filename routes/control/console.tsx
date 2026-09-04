@@ -146,14 +146,6 @@ export function Console({
   const elapsed = computeElapsedMs(state.clock, now);
   const fullMatchMs = periodMs * periodCount;
 
-  // Atalhos de relógio derivados das settings (jogos de 20min = 2 × 10). Só mostra os tempos que
-  // existem (periodCount) + o "Fim de jogo".
-  const quickSets: { label: string; ms: number }[] = [];
-  for (let p = 1; p <= periodCount; p += 1) {
-    quickSets.push({ label: p === periodCount ? "FIM DE JOGO" : `FIM ${p}º`, ms: periodMs * p });
-  }
-  if (periodCount > 1) quickSets.unshift({ label: "00:00", ms: 0 });
-
   return (
     <>
       <style>{CSS}</style>
@@ -195,19 +187,6 @@ export function Console({
             <button type="button" className="el-c-tbtn" disabled={pending} onClick={() => clock({ kind: "reset" })}>
               ↺ ZERAR
             </button>
-          </div>
-          <div className="el-c-clock-row">
-            {quickSets.map((q) => (
-              <button
-                key={q.label}
-                type="button"
-                className="el-c-tbtn"
-                disabled={pending}
-                onClick={() => clock({ kind: "set", ms: q.ms })}
-              >
-                {q.label} · {formatClock(q.ms)}
-              </button>
-            ))}
           </div>
         </div>
 
