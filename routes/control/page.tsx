@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { isPluginActive } from "@venore/plugin-sdk";
-import { getMatchState } from "../../runtime/match-bus";
-import { hasValidPin, pinIsDefault } from "../../shared/pin";
+import { getMatchState } from "../../runtime/match-actions";
+import { resolveErastoLeagueConfig, pinIsDefaultFor } from "../../shared/config";
+import { hasValidPin } from "../../shared/pin";
 import { PinForm } from "./pin-form";
 import { Console } from "./console";
 
@@ -11,9 +12,19 @@ export default async function ControlPage() {
     notFound();
   }
 
+  const config = await resolveErastoLeagueConfig();
+  const usingDefaultPin = pinIsDefaultFor(config);
+
   if (!(await hasValidPin())) {
-    return <PinForm usingDefaultPin={pinIsDefault()} />;
+    return <PinForm usingDefaultPin={usingDefaultPin} />;
   }
 
-  return <Console initialState={getMatchState()} usingDefaultPin={pinIsDefault()} />;
+  return (
+    <Console
+      initialState={await getMatchState()}
+      usingDefaultPin={usingDefaultPin}
+      periodMs={config.periodMs}
+      periodCount={config.periodCount}
+    />
+  );
 }

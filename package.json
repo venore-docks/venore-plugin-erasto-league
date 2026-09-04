@@ -1,18 +1,23 @@
 {
   "name": "@venore/plugin-erasto-league",
-  "version": "0.1.0",
-  "description": "Erasto League — placar de futebol ao vivo (overlay OBS + controle mobile) pro Venore Docks.",
+  "version": "0.2.0",
+  "description": "Erasto League — placar de futebol ao vivo (overlay OBS + controle mobile, relógio de jogo) pro Venore Docks.",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./index.ts",
     "./manifest": "./manifest.ts",
     "./route-table": "./routes/route-table.ts",
+    "./migrations/*": "./migrations/*",
     "./package.json": "./package.json"
   },
   "//": "@venore/plugin-sdk NÃO é peerDependency — resolve pelo alias de tsconfig do host (src/sdk), não pelo npm. Mesmo padrão do venore-plugin-broadcast.",
   "peerDependencies": {
+    "drizzle-orm": ">=0.45",
     "next": ">=16",
     "react": ">=19"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10"
   }
 }

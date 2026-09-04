@@ -1,54 +1,56 @@
 # @venore/plugin-erasto-league
 
-Placar de futebol ao vivo pro Venore Docks. **Spike** — semente do futuro site *Erasto League*.
+Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto League*.
 
-- **Overlay pro OBS** — `/ext/erasto-league/overlay` — fundo transparente, placar bottom-center,
-  atualiza sozinho via SSE.
-- **Controle pelo celular** — `/ext/erasto-league/control` — `+1 GOL` / `−1` por equipe, nome dos
-  times, etiqueta (1º tempo, intervalo…), zerar. Gateado por PIN.
-- Tempo real: `EventSource` → `/api/erasto-league/events` (SSE), pub/sub em memória
-  (`runtime/match-bus.ts`).
+- **Overlay pro OBS** — `/ext/erasto-league/overlay` — fundo transparente, placar bottom-center
+  com logo da liga no medalhão central e **relógio de jogo**, atualiza sozinho via SSE.
+- **Controle pelo celular** — `/ext/erasto-league/control` — `+1 GOL` / `−1` por equipe, nomes,
+  etiqueta, **relógio** (iniciar/pausar/zerar/±1:00 + atalhos "Fim 1º"/"Fim de jogo"), nova
+  partida. Gateado por PIN.
+- **Admin** — `/admin/erasto-league` — configura PIN, nomes padrão, duração dos tempos, cor de
+  destaque e a logo; atalhos pras telas. Link aparece na nav do admin ao instalar o plugin.
+- **Tempo real** — `EventSource` → `/api/erasto-league/events` (SSE). O servidor relê o banco a
+  cada 1s (catch-up multi-instância) e o client cai em polling de `/api/erasto-league/state`
+  quando o SSE está fora.
+- **Persistência** — `erasto_league.match_state` (linha única). Migrations próprias, aplicadas no
+  install. Sobrevive a restart e a multi-instância (era a causa do overlay "zerar" no F5).
 
 ## Rodar localmente contra o host (venore-docks)
-
-O plugin é um pacote `@venore/plugin-<key>`; o host descobre pelos `dependencies` do `package.json`
-dele. Pra dev, aponte por caminho — **mudança local, não commitar no `main` do venore-docks**
-(o deploy vanilla não leva plugin):
 
 ```bash
 # no repo do host (ex: c:/dev/venore/venore-claudinho)
 npm pkg set dependencies.@venore/plugin-erasto-league="file:../venore-plugin-erasto-league"
 npm install
-npm run gen:registries      # regenera src/plugins/*.generated.ts
+npm run gen:registries
 npm run dev
 ```
 
-Depois:
+Depois: `/admin/plugins` → **Instalar** em "Erasto League" (roda a migration, ~instantâneo) →
+o link "Erasto League" aparece na nav do admin.
 
-1. Abra `/admin/plugins` no host → **Instalar** em "Erasto League" (não tem migration, é instantâneo).
-2. OBS → *Fonte* → *Navegador* → `http://<ip-da-maquina>:3000/ext/erasto-league/overlay`
-   (largura/altura = a resolução da sua cena, ex 1920×1080; marque *fundo transparente*).
-3. Celular na mesma rede → `http://<ip-da-maquina>:3000/ext/erasto-league/control` → digite o PIN.
+## Configuração
 
-Pra desfazer o wiring de dev:
+Tudo em `/admin/erasto-league` (contexts/settings do host):
 
-```bash
-npm pkg delete dependencies.@venore/plugin-erasto-league
-npm install && npm run gen:registries
-```
+| Setting | Default | Pra quê |
+| --- | --- | --- |
+| `erasto-league.pin` | *(vazio)* | PIN do controle. Vazio = env `ERASTO_LEAGUE_PIN`, ou `1234`. |
+| `erasto-league.defaultHomeName` / `defaultAwayName` | Casa / Visitante | Nomes ao começar nova partida. |
+| `erasto-league.periodMinutes` | 10 | Duração de um tempo. |
+| `erasto-league.periodCount` | 2 | Número de tempos (10 × 2 = jogo de 20min). |
+| `erasto-league.accentColor` | `#22c55e` | Cor da placa/halo/relógio no overlay. |
+| `erasto-league.logoUrl` | `/erasto_league.png` | Logo no medalhão. Caminho no `public/` do host ou URL. Ausente → monograma "EL". |
 
-## PIN
+## Relógio
 
-`ERASTO_LEAGUE_PIN` no ambiente do host. Sem a env var, usa `1234` e as telas mostram um aviso.
+Contagem crescente. O overlay guarda só `{running, anchorMs, accumulatedMs}` e calcula o tempo
+decorrido localmente (`shared/clock.ts`), então corre suave mesmo durante uma reconexão do SSE.
+Usa o `Date.now()` do cliente — em máquinas sem NTP pode divergir alguns segundos do servidor.
 
-## Limites do spike (o que falta pro site "de verdade")
+## Limites (o que falta pro site "de verdade")
 
-- **Partida única, em memória.** Um placar global; reinício do servidor zera tudo. Multi-instância
-  não funciona (o barramento é `globalThis`, não Redis).
-- **Sem persistência / sem liga.** Nada de times cadastrados, rodadas, tabela de classificação,
-  histórico. Isso é schema Postgres + migrations + telas de admin (fase seguinte).
-- **SSE de leitura aberto.** Qualquer um na rede vê o placar em `/api/erasto-league/events`. O PIN
-  protege só a escrita.
-- **PIN simples.** Comparação direta, sem hash nem limite de tentativas (o `venore-plugin-broadcast`
-  faz scrypt + backoff — modelo pra copiar quando isso for pra banco).
-- **Sem item de navegação admin nem permission de RBAC.** Acesso por URL direta.
+- **Partida única.** Um `match_state` global; sem times cadastrados, rodadas, tabela, histórico.
+- **Latência na Vercel.** Gol propaga entre instâncias em até ~1s (o re-poll do SSE). Pra reação
+  instantânea, rodar como processo único (LAN / `next start`).
+- **SSE de leitura aberto.** Qualquer um na rede vê o placar. O PIN protege só a escrita.
+- **PIN simples.** Comparação direta, sem hash nem limite de tentativas.

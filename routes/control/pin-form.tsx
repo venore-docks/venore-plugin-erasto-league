@@ -61,8 +61,8 @@ export function PinForm({ usingDefaultPin }: { usingDefaultPin: boolean }) {
           </button>
           {usingDefaultPin ? (
             <p className="el-pin-hint">
-              Usando PIN padrão <strong>1234</strong>. Defina <code>ERASTO_LEAGUE_PIN</code> no
-              ambiente pra trocar.
+              Usando PIN padrão <strong>1234</strong>. Defina um PIN em{" "}
+              <code>/admin/erasto-league</code> (ou na env <code>ERASTO_LEAGUE_PIN</code>).
             </p>
           ) : null}
         </form>

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { isPluginActive } from "@venore/plugin-sdk";
-import { getMatchState } from "../../runtime/match-bus";
+import { getMatchState } from "../../runtime/match-actions";
+import { resolveErastoLeagueConfig } from "../../shared/config";
 import { Scoreboard } from "./scoreboard";
 
 // Overlay pro OBS: rota standalone (fora de (platform), sem header/nav/footer). Fundo transparente
@@ -10,5 +11,14 @@ export default async function OverlayPage() {
   if (!(await isPluginActive("erasto-league"))) {
     notFound();
   }
-  return <Scoreboard initialState={getMatchState()} />;
+
+  const [initialState, config] = await Promise.all([getMatchState(), resolveErastoLeagueConfig()]);
+
+  return (
+    <Scoreboard
+      initialState={initialState}
+      accentColor={config.accentColor}
+      logoUrl={config.logoUrl}
+    />
+  );
 }
