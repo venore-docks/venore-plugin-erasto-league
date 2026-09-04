@@ -13,6 +13,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const HEARTBEAT_INTERVAL_MS = 20_000;
+// Fecha o stream de propósito ANTES do teto da Vercel (300s) — assim o client vê um close limpo
+// e reconecta pelo `retry`, em vez de a plataforma matar a função e registrar um "Runtime Timeout
+// Error" a cada 5 min por conexão.
+const SOFT_CLOSE_MS = 270_000;
 // Multi-instância (Vercel): a escrita cai numa instância e o pub/sub em memória só alcança os SSE
 // DELA. Este re-poll do banco a cada 1s é o que faz a mudança chegar nas telas conectadas às
 // OUTRAS instâncias. Em processo único é só uma rede de segurança barata (um SELECT indexado/s).
@@ -29,6 +33,7 @@ export async function GET(): Promise<Response> {
   let unsubscribe: (() => void) | null = null;
   let heartbeat: ReturnType<typeof setInterval> | null = null;
   let dbPoll: ReturnType<typeof setInterval> | null = null;
+  let softClose: ReturnType<typeof setTimeout> | null = null;
   let lastSentUpdatedAt = -1;
   let closed = false;
 
@@ -36,8 +41,10 @@ export async function GET(): Promise<Response> {
     closed = true;
     if (heartbeat) clearInterval(heartbeat);
     if (dbPoll) clearInterval(dbPoll);
+    if (softClose) clearTimeout(softClose);
     unsubscribe?.();
     heartbeat = dbPoll = null;
+    softClose = null;
     unsubscribe = null;
   };
 
@@ -83,6 +90,16 @@ export async function GET(): Promise<Response> {
           cleanup();
         }
       }, HEARTBEAT_INTERVAL_MS);
+
+      // Fecha limpo antes do teto da Vercel — o EventSource reconecta pelo `retry`.
+      softClose = setTimeout(() => {
+        cleanup();
+        try {
+          controller.close();
+        } catch {
+          /* já fechado */
+        }
+      }, SOFT_CLOSE_MS);
     },
     cancel() {
       cleanup();
