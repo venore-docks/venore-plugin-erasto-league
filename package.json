@@ -1,6 +1,6 @@
 {
   "name": "@venore/plugin-erasto-league",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Erasto League — placar de futebol ao vivo (overlay OBS + controle mobile, relógio de jogo) pro Venore Docks.",
   "private": true,
   "type": "module",
