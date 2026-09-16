@@ -12,6 +12,7 @@ import {
   bumpScoreAction,
   cancelMatchAction,
   clockAction,
+  deleteBoostAction,
   finishMatchAction,
   listBoostsAction,
   listRosterAction,
@@ -115,9 +116,14 @@ const CSS = `
   }
   .el-c-boost-used { display: flex; flex-wrap: wrap; gap: 4px; }
   .el-c-boost-pill {
-    display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 7px; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 6px 0 8px; border-radius: 999px; border: 0; cursor: pointer;
     background: color-mix(in srgb, var(--accent, #22c55e) 20%, transparent); color: var(--accent, #22c55e); font-size: 10px; font-weight: 800;
   }
+  .el-c-boost-pill-x {
+    display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 999px;
+    background: color-mix(in srgb, var(--accent, #22c55e) 35%, transparent); font-size: 10px; line-height: 1;
+  }
+  .el-c-boost-pill:disabled { opacity: 0.5; cursor: default; }
 
   .el-c-plus:disabled, .el-c-half:disabled, .el-c-minus:disabled, .el-c-chip:disabled, .el-c-reset:disabled,
   .el-c-startbtn:disabled, .el-c-tbtn:disabled, .el-c-finish:disabled, .el-c-infra:disabled, .el-c-cancel:disabled { opacity: 0.5; cursor: default; }
@@ -245,6 +251,17 @@ export function Console({
       }
       setError(null);
       setBoosts((prev) => [...prev, result.boost]);
+    });
+  }
+
+  // "Coloquei por engano" — tira otimisticamente da lista e confirma no servidor.
+  function removeBoost(boostId: string) {
+    setBoosts((prev) => prev.filter((boost) => boost.id !== boostId));
+    startTransition(async () => {
+      const result = await deleteBoostAction(boostId);
+      if (!result.ok) {
+        setError(result.error ?? "Falha ao remover o boost.");
+      }
     });
   }
 
@@ -462,9 +479,17 @@ export function Console({
                       .map((boost) => {
                         const catalogEntry = POWER_BOOST_CATALOG.find((entry) => entry.key === boost.boostKey);
                         return (
-                          <span key={boost.id} className="el-c-boost-pill">
+                          <button
+                            key={boost.id}
+                            type="button"
+                            className="el-c-boost-pill"
+                            disabled={pending}
+                            title="Tirar (coloquei por engano)"
+                            onClick={() => removeBoost(boost.id)}
+                          >
                             {catalogEntry?.emoji} {catalogEntry?.label ?? boost.boostKey}
-                          </span>
+                            <span className="el-c-boost-pill-x">×</span>
+                          </button>
                         );
                       })}
                   </div>

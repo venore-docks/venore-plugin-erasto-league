@@ -14,7 +14,7 @@ import {
   startMatch,
 } from "../../runtime/match-actions";
 import { attributePlayer } from "../../runtime/match-events";
-import { listBoostsByMatch } from "../../runtime/match-boosts";
+import { deleteBoostUse, listBoostsByMatch } from "../../runtime/match-boosts";
 import { listPlayersByTeam } from "../../runtime/players";
 import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile, PowerBoostKey, PowerBoostUse } from "../../contracts/types";
 
@@ -122,6 +122,14 @@ export async function listBoostsAction(matchId: string): Promise<PowerBoostUse[]
   const denied = await requireGate();
   if (denied) return [];
   return listBoostsByMatch(matchId);
+}
+
+// "Coloquei por engano" — tira um boost já usado, sem precisar abrir a súmula depois.
+export async function deleteBoostAction(boostId: string): Promise<{ ok: boolean; error?: string }> {
+  const denied = await requireGate();
+  if (denied) return { ok: false, error: denied.error };
+  await deleteBoostUse(boostId);
+  return { ok: true };
 }
 
 export async function setLabelAction(label: string): Promise<ScoreActionResult> {

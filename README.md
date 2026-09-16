@@ -43,7 +43,8 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
 - **Power boosts** — catálogo MOCKADO de 5 exemplos (`shared/power-boosts.ts`, troca fácil pela
   lista real quando o campeonato mandar) — cada time pode usar um ou mais boosts durante a partida;
   registrado direto no controle ao vivo (`erasto_league.match_boosts`, um evento por uso, sem
-  limite de quantidade) e corrigível/completável na súmula.
+  limite de quantidade), **removível no próprio controle** (toca no selo do boost pra tirar — "usei
+  por engano") além de corrigível/completável na súmula.
 - **Classificação** — `runtime/standings.ts` agrega as partidas encerradas por time (V=3/E=1/D=0,
   saldo de gols), semeada com todo time cadastrado mesmo sem jogo ainda.
 - **Blocos de page-builder** — contribuídos via `contributions.ts` (`blocks/`), aparecem no
