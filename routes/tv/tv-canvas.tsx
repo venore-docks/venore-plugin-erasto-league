@@ -26,26 +26,36 @@ const CSS = `
   }
   .el-tv-head { display: flex; align-items: center; justify-content: space-between; padding: 40px 64px 0; }
   .el-tv-eyebrow { font-size: 20px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin: 0; }
-  .el-tv-page-title { font-size: 44px; font-weight: 900; margin: 6px 0 0; }
-  .el-tv-live { display: flex; align-items: center; gap: 10px; font-size: 18px; color: rgba(255,255,255,0.5); }
-  .el-tv-dot { width: 12px; height: 12px; border-radius: 999px; background: var(--accent, #22c55e);
-    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent, #22c55e) 22%, transparent); }
+  .el-tv-page-title { font-size: 52px; font-weight: 900; margin: 8px 0 0; }
+  .el-tv-title-bar { width: 84px; height: 6px; border-radius: 999px; background: var(--accent, #22c55e); margin-top: 14px; }
+  .el-tv-brand-plate {
+    display: flex; align-items: center; padding: 12px 24px; border-radius: 18px;
+    background: rgba(255,255,255,0.92); box-shadow: 0 12px 28px -10px rgba(0,0,0,0.5);
+  }
+  .el-tv-brand { height: 48px; max-width: 280px; width: auto; object-fit: contain; }
 
-  .el-tv-body { flex: 1; min-height: 0; padding: 24px 64px 0; display: flex; flex-direction: column; }
+  .el-tv-body { flex: 1; min-height: 0; padding: 24px 64px 40px; display: flex; flex-direction: column; justify-content: center; }
   .el-tv-empty { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 32px; color: rgba(255,255,255,0.4); }
 
+  .el-tv-table-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 28px; padding: 12px 0; overflow: hidden;
+    box-shadow: 0 40px 80px -30px rgba(0,0,0,0.65);
+  }
   .el-tv-table { width: 100%; border-collapse: collapse; }
-  .el-tv-table th { text-align: left; font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
-    color: rgba(255,255,255,0.45); padding: 10px 14px; border-bottom: 2px solid rgba(255,255,255,0.1); }
+  .el-tv-table th { text-align: left; font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.4); padding: 18px 36px; border-bottom: 2px solid rgba(255,255,255,0.1); }
   .el-tv-table th.center, .el-tv-table td.center { text-align: center; }
-  .el-tv-table td { font-size: 26px; font-weight: 700; padding: 14px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-  .el-tv-table tr.top td { background: color-mix(in srgb, var(--accent, #22c55e) 12%, transparent); }
-  .el-tv-table td.pos { color: rgba(255,255,255,0.4); width: 56px; }
+  .el-tv-table td { font-size: 40px; font-weight: 700; padding: 26px 36px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .el-tv-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  .el-tv-table tr.top td { background: color-mix(in srgb, var(--accent, #22c55e) 14%, transparent); }
+  .el-tv-table tr:last-child td { border-bottom: 0; }
+  .el-tv-table td.pos { color: rgba(255,255,255,0.4); width: 64px; font-size: 30px; }
   .el-tv-table td.pts { font-weight: 900; color: var(--accent, #22c55e); }
-  .el-tv-team { display: flex; align-items: center; gap: 14px; }
-  .el-tv-crest { width: 40px; height: 40px; border-radius: 999px; object-fit: cover; flex-shrink: 0; }
-  .el-tv-crest-mono { width: 40px; height: 40px; border-radius: 999px; background: rgba(255,255,255,0.08); flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; }
+  .el-tv-team { display: flex; align-items: center; gap: 20px; }
+  .el-tv-crest { width: 64px; height: 64px; border-radius: 999px; object-fit: cover; flex-shrink: 0; box-shadow: 0 8px 18px -6px rgba(0,0,0,0.5); }
+  .el-tv-crest-mono { width: 64px; height: 64px; border-radius: 999px; background: rgba(255,255,255,0.08); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; }
 
   .el-tv-knockout { flex: 1; display: flex; gap: 32px; min-height: 0; padding-bottom: 24px; }
   .el-tv-column { flex: 1; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
@@ -151,46 +161,50 @@ function NextGamePage({ nextGame }: { nextGame: NextGameView }) {
   );
 }
 
+const RANK_MEDAL: Record<number, string> = { 0: "🥇", 1: "🥈", 2: "🥉" };
+
 function StandingsTable({ standings }: { standings: TeamStanding[] }) {
   return (
-    <table className="el-tv-table">
-      <thead>
-        <tr>
-          <th></th>
-          <th>Time</th>
-          <th className="center">J</th>
-          <th className="center">V</th>
-          <th className="center">E</th>
-          <th className="center">D</th>
-          <th className="center">SG</th>
-          <th className="center">Pts</th>
-        </tr>
-      </thead>
-      <tbody>
-        {standings.map((row, index) => (
-          <tr key={row.teamId} className={index === 0 ? "top" : undefined}>
-            <td className="pos">{index + 1}</td>
-            <td>
-              <div className="el-tv-team">
-                {row.crestUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img className="el-tv-crest" src={row.crestUrl} alt="" />
-                ) : (
-                  <div className="el-tv-crest-mono">{row.name.slice(0, 2).toUpperCase()}</div>
-                )}
-                {row.name}
-              </div>
-            </td>
-            <td className="center">{row.played}</td>
-            <td className="center">{row.won}</td>
-            <td className="center">{row.drawn}</td>
-            <td className="center">{row.lost}</td>
-            <td className="center">{row.goalsFor - row.goalsAgainst}</td>
-            <td className="center pts">{row.points}</td>
+    <div className="el-tv-table-card">
+      <table className="el-tv-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Time</th>
+            <th className="center">J</th>
+            <th className="center">V</th>
+            <th className="center">E</th>
+            <th className="center">D</th>
+            <th className="center">SG</th>
+            <th className="center">Pts</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {standings.map((row, index) => (
+            <tr key={row.teamId} className={index === 0 ? "top" : undefined}>
+              <td className="pos">{RANK_MEDAL[index] ?? index + 1}</td>
+              <td>
+                <div className="el-tv-team">
+                  {row.crestUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className="el-tv-crest" src={row.crestUrl} alt="" />
+                  ) : (
+                    <div className="el-tv-crest-mono">{row.name.slice(0, 2).toUpperCase()}</div>
+                  )}
+                  {row.name}
+                </div>
+              </td>
+              <td className="center">{row.played}</td>
+              <td className="center">{row.won}</td>
+              <td className="center">{row.drawn}</td>
+              <td className="center">{row.lost}</td>
+              <td className="center">{row.goalsFor - row.goalsAgainst}</td>
+              <td className="center pts">{row.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -248,7 +262,15 @@ function useTvStageTransform(): TvStageTransform {
   return transform;
 }
 
-export function TvCanvas({ initialData, accentColor }: { initialData: TvData; accentColor: string }) {
+export function TvCanvas({
+  initialData,
+  accentColor,
+  brandLogoUrl,
+}: {
+  initialData: TvData;
+  accentColor: string;
+  brandLogoUrl: string | null;
+}) {
   const [data, setData] = useState(initialData);
 
   useEffect(() => {
@@ -300,10 +322,14 @@ export function TvCanvas({ initialData, accentColor }: { initialData: TvData; ac
             <div>
               <p className="el-tv-eyebrow">Erasto League</p>
               <h1 className="el-tv-page-title">{currentPage ? pageTitle(currentPage) : "Tabela de jogos"}</h1>
+              <div className="el-tv-title-bar" />
             </div>
-            <span className="el-tv-live">
-              <span className="el-tv-dot" /> ao vivo
-            </span>
+            {brandLogoUrl && (
+              <div className="el-tv-brand-plate">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className="el-tv-brand" src={brandLogoUrl} alt="" />
+              </div>
+            )}
           </div>
 
           <div className="el-tv-body">

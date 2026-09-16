@@ -5,8 +5,10 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
 - **View pra TV/projetor** — `/ext/erasto-league/tv` — tabelas do campeonato em tela cheia (mesma
   técnica de palco escalável do venore-plugin-scoreboard, `shared/tv-stage.ts`): uma página por
   grupo (ou classificação geral, se não houver fase de grupos) + eliminatórias, com rodízio
-  automático quando há mais de uma página. Sem PIN/sessão, mesma filosofia do overlay — feita pra
-  abrir em tela cheia numa TV do evento.
+  automático quando há mais de uma página. Design premium: cartão com sombra/gradiente pra tabela
+  (linhas grandes, medalha 🥇🥈🥉 pro top 3, listras sutis), logo da marca do site (`brand.logoUrl`,
+  `@venore/plugin-sdk/brand`) no canto do cabeçalho — sem indicador "ao vivo". Sem PIN/sessão, mesma
+  filosofia do overlay — feita pra abrir em tela cheia numa TV do evento.
 - **Overlay pro OBS** — `/ext/erasto-league/overlay` — fundo transparente, placar bottom-center
   com logo da liga no medalhão central e **relógio de jogo**, atualiza sozinho via SSE.
 - **Controle pelo celular** — `/ext/erasto-league/control` — escolhe os dois times cadastrados pra
