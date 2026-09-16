@@ -88,6 +88,8 @@ export type TeamStanding = {
   goalsFor: number;
   goalsAgainst: number;
   points: number;
+  yellowCards: number;
+  redCards: number;
 };
 
 // Ficha de uma partida (súmula/histórico) — Fases 3/5.

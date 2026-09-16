@@ -84,6 +84,12 @@ export async function ErastoLeagueBracketBlock({ block }: BlockRendererProps) {
                       <th className="pb-1 text-left font-medium">Time</th>
                       <th className="pb-1 text-center font-medium">J</th>
                       <th className="pb-1 text-center font-medium">SG</th>
+                      <th className="pb-1 text-center font-medium" title="Cartões amarelos">
+                        CA
+                      </th>
+                      <th className="pb-1 text-center font-medium" title="Cartões vermelhos">
+                        CV
+                      </th>
                       <th className="pb-1 text-center font-medium">Pts</th>
                     </tr>
                   </thead>
@@ -93,36 +99,14 @@ export async function ErastoLeagueBracketBlock({ block }: BlockRendererProps) {
                         <td className="max-w-0 truncate py-1 pr-2 text-foreground">{row.name}</td>
                         <td className="py-1 text-center text-muted-foreground">{row.played}</td>
                         <td className="py-1 text-center text-muted-foreground">{row.goalsFor - row.goalsAgainst}</td>
+                        <td className="py-1 text-center text-amber-500">{row.yellowCards}</td>
+                        <td className="py-1 text-center text-destructive">{row.redCards}</td>
                         <td className="py-1 text-center font-bold text-foreground">{row.points}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               )}
-
-              <div className="space-y-1.5 border-t border-border pt-2">
-                {group.fixtures.map((fixture) => (
-                  <div key={fixture.id} className="flex items-center justify-between gap-2 text-xs">
-                    <span className="flex min-w-0 items-center gap-1.5 truncate text-foreground">
-                      {fixture.roundLabel && (
-                        <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary">
-                          {fixture.roundLabel}
-                        </span>
-                      )}
-                      <span className="truncate">
-                        {fixture.homeName} <span className="text-muted-foreground">×</span> {fixture.awayName}
-                      </span>
-                    </span>
-                    {fixture.played ? (
-                      <span className="shrink-0 font-semibold text-foreground">
-                        {formatScore(fixture.homeScore ?? 0)}-{formatScore(fixture.awayScore ?? 0)}
-                      </span>
-                    ) : (
-                      <span className="shrink-0 text-muted-foreground">a jogar</span>
-                    )}
-                  </div>
-                ))}
-              </div>
             </div>
           ))}
         </div>

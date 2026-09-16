@@ -1,3 +1,6 @@
+import { and, eq, inArray } from "drizzle-orm";
+import { db } from "@venore/plugin-sdk";
+import { matchEvents as matchEventsTable, matches as matchesTable } from "../database/schema";
 import { clampScore } from "../shared/score";
 import { listFinishedMatches } from "./matches";
 import { listTeams } from "./teams";
@@ -6,7 +9,7 @@ import type { MatchSummary, TeamStanding } from "../contracts/types";
 // Classificação (Fase 5): agrega matches "finished" por time. Times cadastrados sem partida ainda
 // entram com 0 em tudo, pra aparecerem na tabela desde o cadastro.
 export async function computeStandings(): Promise<TeamStanding[]> {
-  const [teams, finished] = await Promise.all([listTeams(), listFinishedMatches()]);
+  const [teams, finished, cardEvents] = await Promise.all([listTeams(), listFinishedMatches(), listFinishedCardEvents()]);
 
   const table = new Map<string, TeamStanding>(
     teams.map((team) => [
@@ -23,6 +26,8 @@ export async function computeStandings(): Promise<TeamStanding[]> {
         goalsFor: 0,
         goalsAgainst: 0,
         points: 0,
+        yellowCards: 0,
+        redCards: 0,
       },
     ]),
   );
@@ -30,7 +35,21 @@ export async function computeStandings(): Promise<TeamStanding[]> {
   function ensure(teamId: string): TeamStanding {
     let row = table.get(teamId);
     if (!row) {
-      row = { teamId, slug: teamId, name: "—", crestUrl: null, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
+      row = {
+        teamId,
+        slug: teamId,
+        name: "—",
+        crestUrl: null,
+        played: 0,
+        won: 0,
+        drawn: 0,
+        lost: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        points: 0,
+        yellowCards: 0,
+        redCards: 0,
+      };
       table.set(teamId, row);
     }
     return row;
@@ -69,6 +88,13 @@ export async function computeStandings(): Promise<TeamStanding[]> {
     apply(match);
   }
 
+  for (const event of cardEvents) {
+    const teamId = event.side === "home" ? event.homeTeamId : event.awayTeamId;
+    const row = ensure(teamId);
+    if (event.kind === "yellow_card") row.yellowCards += 1;
+    else row.redCards += 1;
+  }
+
   return [...table.values()].sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
     const goalDiffA = a.goalsFor - a.goalsAgainst;
@@ -77,4 +103,23 @@ export async function computeStandings(): Promise<TeamStanding[]> {
     if (b.won !== a.won) return b.won - a.won;
     return a.name.localeCompare(b.name, "pt-BR");
   });
+}
+
+type CardEventRow = { side: "home" | "away"; kind: "yellow_card" | "red_card"; homeTeamId: string; awayTeamId: string };
+
+// Cartões (amarelo/vermelho) de partidas encerradas, com o time de cada lado já resolvido via
+// join — usado pra somar por time na classificação (pedido: "inclua quantidade de cartões").
+async function listFinishedCardEvents(): Promise<CardEventRow[]> {
+  const rows = await db
+    .select({
+      side: matchEventsTable.side,
+      kind: matchEventsTable.kind,
+      homeTeamId: matchesTable.homeTeamId,
+      awayTeamId: matchesTable.awayTeamId,
+    })
+    .from(matchEventsTable)
+    .innerJoin(matchesTable, eq(matchEventsTable.matchId, matchesTable.id))
+    .where(and(eq(matchesTable.status, "finished"), inArray(matchEventsTable.kind, ["yellow_card", "red_card"])));
+
+  return rows as CardEventRow[];
 }

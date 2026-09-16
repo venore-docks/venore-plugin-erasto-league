@@ -1,8 +1,8 @@
 import type { BlockDefinition } from "@venore/plugin-sdk/cms";
 
-// Agenda de jogos — todos os confrontos em ordem cronológica, com brasão de cada time (ao
-// contrário do bloco de fases, que não mostra mais data nenhuma). "limit" é o único ajuste real
-// que o editor tem. Ver blocks/schedule-block.tsx e runtime/bracket.ts (getScheduleView).
+// Agenda de jogos — todos os confrontos organizados em abas por rodada (client component,
+// ver blocks/schedule-tabs.tsx), com brasão de cada time. "limit" é o único ajuste real que o
+// editor tem. Ver blocks/schedule-block.tsx e runtime/bracket.ts (getScheduleView).
 export const erastoLeagueScheduleBlockDefinition: BlockDefinition = {
   key: "erasto-league.schedule",
   label: "Erasto League — Agenda de jogos",

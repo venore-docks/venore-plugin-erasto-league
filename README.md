@@ -64,15 +64,17 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     time (slug configurável) com recorde — pra "time campeão", destaque do mês, etc.
   - **Erasto League — Fases** (`erasto-league.bracket`) — pra formato copa (grupos +
     eliminatórias), que a classificação/últimos resultados sozinhos não cobrem: mini-classificação
-    e jogos por grupo, mais chaveamento de quartas/semi/final. Alimentado por `fixtures`
-    (confrontos agendados, ver abaixo), não por `matches` direto. Não mostra mais data (isso é o
-    bloco de agenda, abaixo) — só "a jogar" pro que ainda não aconteceu.
+    por grupo (agora com colunas de **CA/CV — cartões amarelos/vermelhos**, além de J/SG/Pts) mais
+    chaveamento de quartas/semi/final. Não lista mais os confrontos do grupo linha a linha (isso é
+    o bloco de agenda, abaixo) — só a tabela. Alimentado por `fixtures` (confrontos agendados, ver
+    abaixo) + `runtime/standings.ts` (cartões agregados de `match_events`), não por `matches`
+    direto.
   - **Erasto League — Agenda de jogos** (`erasto-league.schedule`) — TODOS os confrontos (grupos +
-    eliminatórias), ainda ordenados/agrupados por dia, mas numa **grade de cards de dia** (2-3
-    colunas) em vez de uma lista única empilhada — cada card do dia com os confrontos daquele dia
-    de forma compacta (brasão pequeno, placar/horário, rodada em selo), pra não virar um "listão"
-    conforme o campeonato acumula jogos. Alimentado por `runtime/bracket.ts` (`getScheduleView`),
-    mesma fonte do bloco de fases.
+    eliminatórias) em **abas por rodada** (client component, `blocks/schedule-tabs.tsx`) — dentro
+    de cada aba os cards continuam em ordem cronológica, mas só uma rodada aparece por vez, pra não
+    virar um "listão" conforme o campeonato acumula jogos. Confronto sem rodada (raro, geralmente
+    só em eliminatória) cai numa aba própria pela fase. Alimentado por `runtime/bracket.ts`
+    (`getScheduleView`), mesma fonte do bloco de fases.
   - **Erasto League — Próximo jogo (ad 16:9)** (`erasto-league.next-game-ad`) — card promocional
     de largura/altura fixa 16:9 (times, crista grande, rodada, data/hora, fundo dividido nas cores
     de cada time) — pra usar como destaque na página inicial. A mesma "página" aparece também na
