@@ -42,6 +42,18 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   - **Erasto League — Artilharia** (`erasto-league.top-scorers`) — ranking de gols por jogador.
   - **Erasto League — Time em destaque** (`erasto-league.team-spotlight`) — card compacto de UM
     time (slug configurável) com recorde — pra "time campeão", destaque do mês, etc.
+  - **Erasto League — Fases** (`erasto-league.bracket`) — pra formato copa (grupos +
+    eliminatórias), que a classificação/últimos resultados sozinhos não cobrem: mini-classificação
+    e jogos por grupo, mais chaveamento de quartas/semi/final. Alimentado por `fixtures`
+    (confrontos agendados, ver abaixo), não por `matches` direto.
+- **Fixtures (confrontos agendados) + import CSV** — `erasto_league.fixtures`: um confronto pode
+  existir ANTES de qualquer partida (importado via `/admin/erasto-league/import`), com fase
+  (grupo/quartas/semi/final), grupo, rodada, data e os dois times — ou só um rótulo ("Vencedor
+  Grupo A") quando o time da eliminatória ainda não é conhecido. `/admin/erasto-league/fixtures`
+  lista tudo e deixa **vincular manualmente** um confronto à partida real depois de jogada (não é
+  automático — dois times podem se enfrentar mais de uma vez). Import de times por CSV também
+  reaproveita `upsertTeamByName` — reimportar a mesma planilha atualiza em vez de duplicar. Exemplo
+  de planilha (times e confrontos do Erasto League 2026) em `csv/teams.csv` e `csv/fixtures.csv`.
 - **Tempo real** — `EventSource` → `/api/erasto-league/events` (SSE). O servidor relê o banco a
   cada 1s (catch-up multi-instância) e o client cai em polling de `/api/erasto-league/state`
   quando o SSE está fora.

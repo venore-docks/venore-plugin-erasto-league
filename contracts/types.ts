@@ -106,6 +106,10 @@ export type TeamProfile = {
   description: string | null;
   // ISO date (yyyy-mm-dd), sem hora — exibida logo abaixo do nome do time.
   foundedDate: string | null;
+  // Grupo da fase de grupos (Fase 6 — copa) — "A"/"B"/"C"... null = não participa de fase de
+  // grupos (ou campeonato sem chaves). Usado só pra agrupar a classificação no bloco de
+  // fases (erasto-league.bracket) — o resto do plugin (súmula, controle) não olha isto.
+  groupName: string | null;
 };
 
 export type PlayerProfile = {
@@ -117,6 +121,34 @@ export type PlayerProfile = {
   photoMediaId: string | null;
   photoUrl: string | null;
   bio: string | null;
+};
+
+// Fase 6 — copa (grupos + eliminatórias). Um "fixture" é um CONFRONTO agendado — pode existir
+// antes de qualquer partida ter sido jogada (importado via CSV), e opcionalmente aponta pra uma
+// `matches` row (Fase 2) quando o jogo já rolou. Times "TBD" (ex: quartas antes das quartas
+// existirem de verdade) usam homeLabel/awayLabel ("Vencedor Grupo A") em vez de homeTeamId/
+// awayTeamId — o widget de chaveamento (erasto-league.bracket) sabe mostrar os dois casos.
+export type FixturePhase = "group" | "quarterfinal" | "semifinal" | "final";
+
+export type Fixture = {
+  id: string;
+  phase: FixturePhase;
+  // Só faz sentido em phase "group" — "A"/"B"/"C"...
+  groupName: string | null;
+  // Rótulo livre da rodada dentro da fase de grupos (ex: "1ª Rodada") — informativo, não
+  // participa de nenhum cálculo.
+  roundLabel: string | null;
+  homeTeamId: string | null;
+  awayTeamId: string | null;
+  homeLabel: string | null;
+  awayLabel: string | null;
+  scheduledAt: number | null;
+  // Preenchido quando o confronto já foi jogado — vínculo manual (tela de fixtures do admin),
+  // não automático.
+  matchId: string | null;
+  // Posição de exibição dentro da fase (ex: QF1..QF4) — controla a ordem nas colunas do
+  // chaveamento.
+  sortOrder: number;
 };
 
 // Ações que o controle (celular) e a tela admin podem disparar. PIN protege o controle;

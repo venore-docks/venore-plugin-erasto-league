@@ -41,6 +41,22 @@ export async function getMatch(id: string): Promise<MatchSummary | null> {
   return row ? rowToSummary(row) : null;
 }
 
+// Candidatas pra vincular um fixture (tela de admin/fixtures) — os dois times na partida,
+// qualquer ordem/status (o admin decide qual é a certa).
+export async function listMatchesBetweenTeams(teamAId: string, teamBId: string): Promise<MatchSummary[]> {
+  const rows = await db
+    .select()
+    .from(matchesTable)
+    .where(
+      or(
+        and(eq(matchesTable.homeTeamId, teamAId), eq(matchesTable.awayTeamId, teamBId)),
+        and(eq(matchesTable.homeTeamId, teamBId), eq(matchesTable.awayTeamId, teamAId)),
+      ),
+    )
+    .orderBy(desc(matchesTable.startedAt));
+  return rows.map(rowToSummary);
+}
+
 // Últimos jogos de um time (perfil público, Fase 4) — só encerradas, mais recente primeiro.
 export async function listRecentMatchesForTeam(teamId: string, limit = 5): Promise<MatchSummary[]> {
   const rows = await db

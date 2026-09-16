@@ -14,6 +14,8 @@ export const teams = erastoLeagueSchema.table("teams", {
   secondaryColor: text("secondary_color"),
   description: text("description"),
   foundedDate: date("founded_date"),
+  // Grupo da fase de grupos (Fase 6 — copa) — ver TeamProfile.groupName em contracts/types.ts.
+  groupName: text("group_name"),
 
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

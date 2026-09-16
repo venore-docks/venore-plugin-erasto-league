@@ -1,0 +1,19 @@
+phase,group,round,homeTeam,awayTeam,homeLabel,awayLabel,date,time,order
+group,A,1ª Rodada,Bananáticos FC,Varzea FC,,,04/09/2026,,1
+group,A,1ª Rodada,Inter de Limão,Ousadia,,,14/09/2026,,2
+group,A,2ª Rodada,Bananáticos FC,Inter de Limão,,,21/09/2026,,3
+group,A,2ª Rodada,Varzea FC,Ousadia,,,28/09/2026,,4
+group,A,3ª Rodada,Bananáticos FC,Ousadia,,,05/10/2026,,5
+group,A,3ª Rodada,Inter de Limão,Varzea FC,,,19/10/2026,,6
+group,B,1ª Rodada,Erasto League Smurf,Lazionados,,,09/09/2026,,7
+group,B,1ª Rodada,Baile de Munich,Time B4 (confirmar nome),,,16/09/2026,,8
+group,B,2ª Rodada,Erasto League Smurf,Baile de Munich,,,23/09/2026,,9
+group,B,2ª Rodada,Lazionados,Time B4 (confirmar nome),,,30/09/2026,,10
+group,B,3ª Rodada,Erasto League Smurf,Time B4 (confirmar nome),,,14/10/2026,,11
+group,B,3ª Rodada,Baile de Munich,Lazionados,,,21/10/2026,,12
+group,C,1ª Rodada,Gotham FC,Katchau FC,,,11/09/2026,,13
+group,C,1ª Rodada,Flamingos FC,PSC,,,18/09/2026,,14
+group,C,2ª Rodada,Gotham FC,Flamingos FC,,,25/09/2026,,15
+group,C,2ª Rodada,Katchau FC,PSC,,,02/10/2026,,16
+group,C,3ª Rodada,Gotham FC,PSC,,,16/10/2026,,17
+group,C,3ª Rodada,Flamingos FC,Katchau FC,,,23/10/2026,,18

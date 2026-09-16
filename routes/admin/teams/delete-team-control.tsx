@@ -55,7 +55,7 @@ export function DeleteTeamControl({ teamId, teamName }: { teamId: string; teamNa
     });
   }
 
-  const blocked = Boolean(impact && impact.matchCount > 0);
+  const blocked = Boolean(impact && (impact.matchCount > 0 || impact.fixtureCount > 0));
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -70,11 +70,18 @@ export function DeleteTeamControl({ teamId, teamName }: { teamId: string; teamNa
           <DialogDescription>
             {loading && "Verificando o que será afetado…"}
             {loadError && loadError}
-            {impact && blocked && (
+            {impact && blocked && impact.matchCount > 0 && (
               <>
                 Este time tem {impact.matchCount} partida{impact.matchCount === 1 ? "" : "s"} registrada
                 {impact.matchCount === 1 ? "" : "s"} — excluir apagaria esse histórico da súmula e da classificação.
                 Não é permitido.
+              </>
+            )}
+            {impact && blocked && impact.matchCount === 0 && impact.fixtureCount > 0 && (
+              <>
+                Este time tem {impact.fixtureCount} confronto{impact.fixtureCount === 1 ? "" : "s"} na tabela de
+                jogos. Remova esses confrontos em <strong>Tabela de jogos</strong> antes de excluir o time. Não é
+                permitido.
               </>
             )}
             {impact && !blocked && (
