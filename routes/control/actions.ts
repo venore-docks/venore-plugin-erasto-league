@@ -3,14 +3,17 @@
 import {
   applyClockCommand,
   bumpScore,
-  newMatch,
-  resetScoreAndClock,
+  finishMatch,
+  recordCardOrFoul,
+  resetCurrentMatch,
   setLabel,
-  setTeamName,
+  startMatch,
 } from "../../runtime/match-actions";
+import { attributePlayer } from "../../runtime/match-events";
+import { listPlayersByTeam } from "../../runtime/players";
 import { resolveErastoLeagueConfig } from "../../shared/config";
 import { hasValidPin, writePinCookie } from "../../shared/pin";
-import type { ClockCommand, MatchSide, MatchState } from "../../contracts/types";
+import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile } from "../../contracts/types";
 
 export type SubmitPinState = { error: string | null };
 
@@ -33,25 +36,75 @@ export async function submitPinAction(
 }
 
 export type ScoreActionResult = { ok: true; state: MatchState } | { ok: false; error: string };
+export type EventActionResult = { ok: true; state: MatchState; eventId: string } | { ok: false; error: string };
 
 // Toda ação de escrita reconfere o cookie de PIN no servidor — o console é uma tela pública por URL.
-async function requirePin(): Promise<ScoreActionResult | null> {
+async function requirePin(): Promise<{ ok: false; error: string } | null> {
   if (await hasValidPin()) {
     return null;
   }
   return { ok: false, error: "Sessão expirada. Recarregue a página e informe o PIN de novo." };
 }
 
-export async function bumpScoreAction(side: MatchSide, delta: number): Promise<ScoreActionResult> {
-  const denied = await requirePin();
-  if (denied) return denied;
-  return { ok: true, state: await bumpScore(side, delta) };
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Falha inesperada.";
 }
 
-export async function setTeamNameAction(side: MatchSide, name: string): Promise<ScoreActionResult> {
+export async function startMatchAction(homeTeamId: string, awayTeamId: string): Promise<ScoreActionResult> {
   const denied = await requirePin();
   if (denied) return denied;
-  return { ok: true, state: await setTeamName(side, name) };
+  try {
+    return { ok: true, state: await startMatch(homeTeamId, awayTeamId) };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export async function finishMatchAction(): Promise<ScoreActionResult> {
+  const denied = await requirePin();
+  if (denied) return denied;
+  return { ok: true, state: await finishMatch() };
+}
+
+export async function resetMatchAction(): Promise<ScoreActionResult> {
+  const denied = await requirePin();
+  if (denied) return denied;
+  return { ok: true, state: await resetCurrentMatch() };
+}
+
+export async function bumpScoreAction(side: MatchSide, delta: number): Promise<EventActionResult> {
+  const denied = await requirePin();
+  if (denied) return denied;
+  try {
+    const { state, eventId } = await bumpScore(side, delta);
+    return { ok: true, state, eventId };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export async function recordEventAction(kind: Exclude<EventKind, "goal">, side: MatchSide): Promise<EventActionResult> {
+  const denied = await requirePin();
+  if (denied) return denied;
+  try {
+    const { state, eventId } = await recordCardOrFoul(kind, side);
+    return { ok: true, state, eventId };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export async function attributePlayerAction(eventId: string, playerId: string): Promise<{ ok: boolean }> {
+  const denied = await requirePin();
+  if (denied) return { ok: false };
+  await attributePlayer(eventId, playerId);
+  return { ok: true };
+}
+
+export async function listRosterAction(teamId: string): Promise<PlayerProfile[]> {
+  const denied = await requirePin();
+  if (denied) return [];
+  return listPlayersByTeam(teamId);
 }
 
 export async function setLabelAction(label: string): Promise<ScoreActionResult> {
@@ -64,22 +117,4 @@ export async function clockAction(command: ClockCommand): Promise<ScoreActionRes
   const denied = await requirePin();
   if (denied) return denied;
   return { ok: true, state: await applyClockCommand(command) };
-}
-
-// Zera placar + etiqueta + relógio, mantém os nomes dos times.
-export async function resetMatchAction(): Promise<ScoreActionResult> {
-  const denied = await requirePin();
-  if (denied) return denied;
-  return { ok: true, state: await resetScoreAndClock() };
-}
-
-// "Nova partida" — volta tudo ao zero, inclusive os nomes (pros padrões das settings).
-export async function newMatchAction(): Promise<ScoreActionResult> {
-  const denied = await requirePin();
-  if (denied) return denied;
-  const config = await resolveErastoLeagueConfig();
-  return {
-    ok: true,
-    state: await newMatch({ homeName: config.defaultHomeName, awayName: config.defaultAwayName }),
-  };
 }

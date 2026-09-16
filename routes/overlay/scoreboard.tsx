@@ -147,6 +147,12 @@ export function Scoreboard({
   const now = useTick(200);
   const [logoOk, setLogoOk] = useState(Boolean(logoUrl));
 
+  // Ocioso (nenhuma partida em andamento, ver runtime/match-actions.ts startMatch/finishMatch) —
+  // fonte de navegador some por completo, sem placar "fantasma" 0×0 entre partidas.
+  if (!state.currentMatchId) {
+    return <style>{"html, body { background: transparent !important; margin: 0; }"}</style>;
+  }
+
   const elapsed = computeElapsedMs(state.clock, now);
   const showClock = state.clock.running || elapsed > 0;
   const showCorner = !live || showClock || state.label.length > 0;

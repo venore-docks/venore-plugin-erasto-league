@@ -4,6 +4,8 @@ import TeamsAdminPage from "./admin/teams/page";
 import TeamDetailPage from "./admin/teams/team-page";
 import PlayersAdminPage from "./admin/players/page";
 import PlayerDetailPage from "./admin/players/player-page";
+import MatchesAdminPage from "./admin/matches/page";
+import MatchDetailPage from "./admin/matches/match-page";
 import OverlayPage from "./overlay/page";
 import ControlPage from "./control/page";
 import TeamProfilePage from "./teams-public/page";
@@ -25,6 +27,8 @@ export const erastoLeagueRouteTable: PluginRouteTable = {
     { pattern: "teams/:id", Component: asPluginPage(TeamDetailPage) },
     { pattern: "players", Component: asPluginPage(PlayersAdminPage) },
     { pattern: "players/:id", Component: asPluginPage(PlayerDetailPage) },
+    { pattern: "matches", Component: asPluginPage(MatchesAdminPage) },
+    { pattern: "matches/:id", Component: asPluginPage(MatchDetailPage) },
   ],
   standalone: [
     { pattern: "erasto-league/overlay", Component: asPluginPage(OverlayPage) },

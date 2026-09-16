@@ -20,6 +20,9 @@ function rowToState(row: MatchRow): MatchState {
     accumulatedMs: row.clockAccumulatedMs ?? 0,
   };
   return {
+    currentMatchId: row.currentMatchId,
+    homeTeamId: row.homeTeamId,
+    awayTeamId: row.awayTeamId,
     home: { name: row.homeName, score: row.homeScore },
     away: { name: row.awayName, score: row.awayScore },
     label: row.label,
@@ -50,6 +53,9 @@ export async function readMatchState(): Promise<MatchState> {
 type MatchPatch = Partial<
   Pick<
     MatchRow,
+    | "currentMatchId"
+    | "homeTeamId"
+    | "awayTeamId"
     | "homeName"
     | "homeScore"
     | "awayName"

@@ -10,17 +10,6 @@ export const ERASTO_LEAGUE_SETTINGS = {
     defaultValue: "",
     label: "PIN do controle (celular)",
   },
-  // Nomes que o botão "Nova partida" usa ao zerar tudo. Texto livre.
-  defaultHomeName: {
-    key: "erasto-league.defaultHomeName",
-    defaultValue: "Casa",
-    label: "Nome padrão do time da casa",
-  },
-  defaultAwayName: {
-    key: "erasto-league.defaultAwayName",
-    defaultValue: "Visitante",
-    label: "Nome padrão do time visitante",
-  },
   // Duração de UM tempo, em minutos. Os jogos da Erasto League são de 20min no total (2 × 10) —
   // esse valor alimenta os atalhos de relógio do controle ("Fim 1º", "Fim de jogo").
   periodMinutes: {
@@ -56,8 +45,6 @@ export type ErastoLeagueSettingField = keyof typeof ERASTO_LEAGUE_SETTINGS;
 // Snapshot resolvido das settings, no formato que o overlay/console consomem.
 export type ErastoLeagueConfig = {
   pin: string;
-  defaultHomeName: string;
-  defaultAwayName: string;
   periodMs: number;
   periodCount: number;
   accentColor: string;

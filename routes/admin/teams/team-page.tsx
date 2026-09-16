@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
-import { AdminAccessDenied, AdminPageHeader } from "@venore/plugin-sdk/ui";
+import { AdminAccessDenied, AdminPageHeader, Button } from "@venore/plugin-sdk/ui";
 import { getTeam } from "../../../runtime/teams";
 import { listPlayersByTeam } from "../../../runtime/players";
 import { TeamForm } from "./team-form";
@@ -32,6 +32,15 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ id:
       <AdminPageHeader
         title={isNew ? "Novo time" : team!.name}
         description={isNew ? "Cadastra um time novo pro campeonato." : `/${team!.slug}`}
+        actions={
+          team && (
+            <Button asChild variant="outline">
+              <Link href={`/ext/erasto-league/teams/${team.slug}`} target="_blank" rel="noreferrer">
+                Ver página pública ↗
+              </Link>
+            </Button>
+          )
+        }
       />
 
       <TeamForm team={team} crestMedia={crestMedia} />

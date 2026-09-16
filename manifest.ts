@@ -13,9 +13,9 @@ export const erastoLeagueManifest: PluginManifest = {
   manifestVersion: "1.0.0",
   key: "erasto-league",
   name: "Erasto League",
-  version: "0.4.0",
+  version: "0.5.0",
   description:
-    "Placar de futebol ao vivo: overlay pro OBS + controle pelo celular, com relógio de jogo, cadastro de times/jogadores e perfis públicos. Semente do site Erasto League.",
+    "Placar de futebol ao vivo: overlay pro OBS + controle pelo celular com partida ligada a times/jogadores cadastrados, gol/cartão/falta por jogador, súmula pós-jogo e classificação. Semente do site Erasto League.",
   compatibility: { coreVersion: ">=2.0.0 <3.0.0" },
 
   // Schema próprio — aplicado no install (run-plugin-migrations.ts), nunca no vercel-build. O

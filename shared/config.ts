@@ -24,10 +24,8 @@ function asNumber(value: unknown, fallback: number): number {
 // admin consomem. Uma ida ao contexts/settings por chave, em paralelo.
 export async function resolveErastoLeagueConfig(): Promise<ErastoLeagueConfig> {
   const S = ERASTO_LEAGUE_SETTINGS;
-  const [pin, home, away, periodMin, periodCount, accent, logo] = await Promise.all([
+  const [pin, periodMin, periodCount, accent, logo] = await Promise.all([
     getSetting({ key: S.pin.key }),
-    getSetting({ key: S.defaultHomeName.key }),
-    getSetting({ key: S.defaultAwayName.key }),
     getSetting({ key: S.periodMinutes.key }),
     getSetting({ key: S.periodCount.key }),
     getSetting({ key: S.accentColor.key }),
@@ -43,8 +41,6 @@ export async function resolveErastoLeagueConfig(): Promise<ErastoLeagueConfig> {
 
   return {
     pin: resolvedPin,
-    defaultHomeName: asString(read(home), S.defaultHomeName.defaultValue),
-    defaultAwayName: asString(read(away), S.defaultAwayName.defaultValue),
     periodMs: clampPeriodMinutes(asNumber(read(periodMin), S.periodMinutes.defaultValue)) * 60_000,
     periodCount: clampPeriodCount(asNumber(read(periodCount), S.periodCount.defaultValue)),
     accentColor: sanitizeAccentColor(asString(read(accent), S.accentColor.defaultValue)),

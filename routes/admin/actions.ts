@@ -35,8 +35,6 @@ export async function saveErastoLeagueSettingsAction(
 
   const writes = [
     setSetting({ key: S.pin.key, value: str(formData, "pin") }),
-    setSetting({ key: S.defaultHomeName.key, value: str(formData, "defaultHomeName") || S.defaultHomeName.defaultValue }),
-    setSetting({ key: S.defaultAwayName.key, value: str(formData, "defaultAwayName") || S.defaultAwayName.defaultValue }),
     setSetting({ key: S.periodMinutes.key, value: periodMinutes }),
     setSetting({ key: S.periodCount.key, value: periodCount }),
     setSetting({ key: S.accentColor.key, value: accentColor }),

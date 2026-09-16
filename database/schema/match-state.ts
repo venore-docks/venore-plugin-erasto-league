@@ -1,15 +1,23 @@
-import { bigint, boolean, real, text, timestamp } from "drizzle-orm/pg-core";
+import { bigint, boolean, real, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { erastoLeagueSchema } from "./schema";
+import { matches } from "./matches";
+import { teams } from "./teams";
 
 // Spike de partida ÚNICA: uma linha só, id fixo "singleton". Estado global persistido, pra
 // sobreviver a restart e a multi-instância da Vercel (o motivo do overlay "zerar" no F5 era o
 // estado morar só em globalThis).
 //
-// Fase 2 do plano de cadastro/eventos (docs internos) vai ligar isto a `matches`/`teams` via
-// currentMatchId/homeTeamId/awayTeamId — não mexido ainda nesta leva (Fase 1 = só cadastro de
-// times/jogadores, sem tocar no fluxo de partida).
+// Fase 2 (partida como entidade): currentMatchId null = nenhuma partida em andamento (overlay
+// ocioso/transparente). homeTeamId/awayTeamId identificam os times da partida atual. Os campos de
+// nome/placar abaixo continuam existindo como CACHE rápido denormalizado pro SSE — a fonte de
+// verdade durável é matches/match_events (runtime/match-events.ts); toda escrita de evento
+// atualiza os dois juntos.
 export const matchState = erastoLeagueSchema.table("match_state", {
   id: text("id").primaryKey().default("singleton"),
+
+  currentMatchId: uuid("current_match_id").references(() => matches.id),
+  homeTeamId: uuid("home_team_id").references(() => teams.id),
+  awayTeamId: uuid("away_team_id").references(() => teams.id),
 
   homeName: text("home_name").notNull().default("Casa"),
   // real (não integer): o placar aceita meio ponto (+0,5). 0,5 / 1,5 / 2,5… são exatos em float4.

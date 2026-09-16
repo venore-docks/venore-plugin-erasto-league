@@ -32,13 +32,6 @@ export function SettingsForm({ config }: { config: ErastoLeagueConfig }) {
   return (
     <form action={formAction} className="max-w-2xl space-y-5 rounded-panel border border-border bg-card p-4">
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Time da casa (padrão)" hint="Usado ao começar uma nova partida.">
-          <Input name="defaultHomeName" defaultValue={config.defaultHomeName} maxLength={40} />
-        </Field>
-        <Field label="Time visitante (padrão)">
-          <Input name="defaultAwayName" defaultValue={config.defaultAwayName} maxLength={40} />
-        </Field>
-
         <Field label="Duração de um tempo (min)" hint="Jogos de 20min = 2 tempos de 10.">
           <Input name="periodMinutes" type="number" min={1} max={90} defaultValue={config.periodMs / 60000} />
         </Field>

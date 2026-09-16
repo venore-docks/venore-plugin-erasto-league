@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
-import { AdminAccessDenied, AdminPageHeader } from "@venore/plugin-sdk/ui";
+import { AdminAccessDenied, AdminPageHeader, Button } from "@venore/plugin-sdk/ui";
 import { getPlayer } from "../../../runtime/players";
 import { listTeams } from "../../../runtime/teams";
 import { PlayerForm } from "./player-form";
@@ -37,6 +38,15 @@ export default async function PlayerDetailPage({
       <AdminPageHeader
         title={isNew ? "Novo jogador" : player!.name}
         description={isNew ? "Cadastra um jogador novo num time." : undefined}
+        actions={
+          player && (
+            <Button asChild variant="outline">
+              <Link href={`/ext/erasto-league/players/${player.slug}`} target="_blank" rel="noreferrer">
+                Ver página pública ↗
+              </Link>
+            </Button>
+          )
+        }
       />
       <PlayerForm player={player} teams={teams} defaultTeamId={teamId ?? null} photoMedia={photoMedia} />
     </div>
