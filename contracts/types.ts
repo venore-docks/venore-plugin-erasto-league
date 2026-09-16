@@ -6,6 +6,19 @@ export type MatchSide = "home" | "away";
 export type MatchStatus = "in_progress" | "finished" | "cancelled";
 export type EventKind = "goal" | "yellow_card" | "red_card" | "foul";
 
+// Catálogo MOCKADO (5 exemplos, pedido explícito) até a lista real dos "power boosts" do
+// campeonato chegar — ver shared/power-boosts.ts. Chave estável mesmo se o rótulo mudar depois.
+export type PowerBoostKey = "double_goal" | "extra_sub" | "iron_wall" | "time_freeze" | "wildcard";
+
+export type PowerBoostUse = {
+  id: string;
+  matchId: string;
+  side: MatchSide;
+  boostKey: PowerBoostKey;
+  minuteMs: number | null;
+  createdAt: number;
+};
+
 export type Team = {
   name: string;
   // Múltiplo de 0,5 — o placar aceita meio gol (+0,5). Ver shared/score.ts.
@@ -108,12 +121,16 @@ export type TeamProfile = {
   foundedDate: string | null;
 };
 
+export type PlayerGender = "male" | "female";
+
 export type PlayerProfile = {
   id: string;
   slug: string;
   teamId: string;
   name: string;
   number: number | null;
+  gender: PlayerGender | null;
+  isCaptain: boolean;
   photoMediaId: string | null;
   photoUrl: string | null;
   bio: string | null;

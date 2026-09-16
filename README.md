@@ -17,12 +17,13 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   logo; atalhos pras telas e pro cadastro. Link aparece na nav do admin ao instalar o plugin.
 - **Cadastro de times e jogadores** — `/admin/erasto-league/teams` e `/players`, sempre mantido
   por um admin (nunca pelos alunos). Time: nome, brasão (upload via `MediaPickerField`, sistema de
-  mídia do host), cores, descrição/história, data de fundação. Jogador: time, nome, número, foto,
-  bio. Perfis públicos em `/ext/erasto-league/teams/:slug` e `/players/:slug` — capa, recorde
-  (V/E/D/saldo/pontos) e últimos jogos encerrados pro time; gols/cartões e últimos jogos pro
-  jogador. Excluir time/jogador é seguro: bloqueado de verdade se o time tem partida registrada
-  (senão o histórico quebra); jogador sempre pode ser excluído — os eventos dele só perdem a
-  atribuição (`runtime/teams.ts` `deleteTeam`, `runtime/players.ts` `deletePlayer`).
+  mídia do host), cores, descrição/história, data de fundação. Jogador: time, nome, número, gênero
+  (opcional, só pra sinalizar), capitão (flag), foto, bio. Perfis públicos em
+  `/ext/erasto-league/teams/:slug` e `/players/:slug` — capa, recorde (V/E/D/saldo/pontos) e
+  últimos jogos encerrados pro time; gols/cartões e últimos jogos pro jogador (capitão aparece com
+  um selo "C"). Excluir time/jogador é seguro: bloqueado de verdade se o time tem partida
+  registrada (senão o histórico quebra); jogador sempre pode ser excluído — os eventos dele só
+  perdem a atribuição (`runtime/teams.ts` `deleteTeam`, `runtime/players.ts` `deletePlayer`).
 - **Partida como entidade** — cada partida (`matches`) tem uma trilha de eventos (`match_events`:
   gol/cartão/falta, cada um podendo apontar pro jogador) em vez de só um contador — placar de cada
   lado é a soma dos eventos "goal". Times/jogador podem ficar sem atribuição no calor do jogo.
@@ -32,6 +33,10 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   controle ao vivo — pra jogo que já aconteceu (atrasou o cadastro, ou é histórico anterior ao
   plugin): escolhe os times, o placar final e a data, e cai direto na súmula do jogo criado pra
   detalhar/atribuir os gols a jogadores específicos.
+- **Power boosts** — catálogo MOCKADO de 5 exemplos (`shared/power-boosts.ts`, troca fácil pela
+  lista real quando o campeonato mandar) — cada time pode usar um ou mais boosts durante a partida;
+  registrado direto no controle ao vivo (`erasto_league.match_boosts`, um evento por uso, sem
+  limite de quantidade) e corrigível/completável na súmula.
 - **Classificação** — `runtime/standings.ts` agrega as partidas encerradas por time (V=3/E=1/D=0,
   saldo de gols), semeada com todo time cadastrado mesmo sem jogo ainda.
 - **Blocos de page-builder** — contribuídos via `contributions.ts` (`blocks/`), aparecem no

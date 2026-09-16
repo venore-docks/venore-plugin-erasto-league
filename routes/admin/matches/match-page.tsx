@@ -5,9 +5,11 @@ import { getMatch } from "../../../runtime/matches";
 import { getTeam, listTeams } from "../../../runtime/teams";
 import { listPlayersByTeam } from "../../../runtime/players";
 import { listEventsByMatch } from "../../../runtime/match-events";
+import { listBoostsByMatch } from "../../../runtime/match-boosts";
 import { formatScore } from "../../../shared/score";
 import { MATCH_STATUS_BADGE_VARIANT, MATCH_STATUS_LABEL } from "../../../shared/match-status";
-import { addEventFormAction, deleteEventFormAction, updateEventFormAction } from "./actions";
+import { POWER_BOOST_CATALOG } from "../../../shared/power-boosts";
+import { addBoostFormAction, addEventFormAction, deleteBoostFormAction, deleteEventFormAction, updateEventFormAction } from "./actions";
 import { CreateMatchForm } from "./create-match-form";
 import type { EventKind, MatchEvent, PlayerProfile, TeamProfile } from "../../../contracts/types";
 
@@ -134,12 +136,13 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
     notFound();
   }
 
-  const [homeTeam, awayTeam, events, homeRoster, awayRoster] = await Promise.all([
+  const [homeTeam, awayTeam, events, homeRoster, awayRoster, boosts] = await Promise.all([
     getTeam(match.homeTeamId),
     getTeam(match.awayTeamId),
     listEventsByMatch(id),
     listPlayersByTeam(match.homeTeamId),
     listPlayersByTeam(match.awayTeamId),
+    listBoostsByMatch(id),
   ]);
   const playerById = new Map([...homeRoster, ...awayRoster].map((player) => [player.id, player]));
 
@@ -199,6 +202,51 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
             defaultValue={1}
             className="h-9 w-20 rounded-md border border-border bg-background px-2 text-sm text-foreground"
           />
+          <Button type="submit">Adicionar</Button>
+        </form>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-foreground">Power boosts</h2>
+        {boosts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum boost usado nesta partida.</p>
+        ) : (
+          <div className="space-y-2">
+            {boosts.map((boost) => {
+              const catalogEntry = POWER_BOOST_CATALOG.find((entry) => entry.key === boost.boostKey);
+              const side = boost.side === "home" ? homeTeam : awayTeam;
+              return (
+                <div key={boost.id} className="flex flex-wrap items-center gap-3 rounded-panel border border-border bg-card p-3">
+                  <span className="text-sm text-foreground">
+                    {catalogEntry?.emoji} {catalogEntry?.label ?? boost.boostKey}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{side?.name ?? "—"}</span>
+                  <form action={deleteBoostFormAction} className="ml-auto">
+                    <input type="hidden" name="boostId" value={boost.id} />
+                    <input type="hidden" name="matchId" value={id} />
+                    <Button type="submit" size="sm" variant="ghost" className="text-destructive">
+                      Excluir
+                    </Button>
+                  </form>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <form action={addBoostFormAction} className="flex flex-wrap items-center gap-2 rounded-panel border border-border bg-card p-3">
+          <input type="hidden" name="matchId" value={id} />
+          <select name="side" defaultValue="home" className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground">
+            <option value="home">{homeTeam?.name ?? "Casa"}</option>
+            <option value="away">{awayTeam?.name ?? "Visitante"}</option>
+          </select>
+          <select name="boostKey" defaultValue={POWER_BOOST_CATALOG[0].key} className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground">
+            {POWER_BOOST_CATALOG.map((boost) => (
+              <option key={boost.key} value={boost.key}>
+                {boost.emoji} {boost.label}
+              </option>
+            ))}
+          </select>
           <Button type="submit">Adicionar</Button>
         </form>
       </section>

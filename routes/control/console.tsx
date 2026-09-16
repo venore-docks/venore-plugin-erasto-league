@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useTransition, type CSSProperties } from "react";
-import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile, TeamProfile } from "../../contracts/types";
+import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile, PowerBoostUse, TeamProfile } from "../../contracts/types";
 import { computeElapsedMs, formatClock } from "../../shared/clock";
+import { POWER_BOOST_CATALOG } from "../../shared/power-boosts";
 import { formatScore } from "../../shared/score";
 import { useMatchState, useTick } from "../../shared/use-match-state";
 import { TeamPicker } from "./team-picker";
@@ -12,7 +13,9 @@ import {
   cancelMatchAction,
   clockAction,
   finishMatchAction,
+  listBoostsAction,
   listRosterAction,
+  recordBoostAction,
   recordEventAction,
   resetMatchAction,
   setLabelAction,
@@ -104,6 +107,20 @@ const CSS = `
   .el-c-infra.yellow { border-color: rgba(234,179,8,0.5); color: #eab308; }
   .el-c-infra.red { border-color: rgba(239,68,68,0.5); color: #f87171; }
 
+  .el-c-boosts { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 4px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); }
+  .el-c-boosts-label { font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+  .el-c-boost-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .el-c-boost-btn {
+    flex: 1 1 auto; min-width: 0; height: 30px; padding: 0 8px; font-size: 10px; font-weight: 700; border-radius: 8px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.75);
+    display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;
+  }
+  .el-c-boost-used { display: flex; flex-wrap: wrap; gap: 4px; }
+  .el-c-boost-pill {
+    display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 7px; border-radius: 999px;
+    background: color-mix(in srgb, var(--accent, #22c55e) 20%, transparent); color: var(--accent, #22c55e); font-size: 10px; font-weight: 800;
+  }
+
   .el-c-plus:disabled, .el-c-half:disabled, .el-c-minus:disabled, .el-c-chip:disabled, .el-c-reset:disabled,
   .el-c-startbtn:disabled, .el-c-tbtn:disabled, .el-c-finish:disabled, .el-c-infra:disabled, .el-c-cancel:disabled { opacity: 0.5; cursor: default; }
 
@@ -185,6 +202,7 @@ export function Console({
   const [overlayUrl, setOverlayUrl] = useState("/ext/erasto-league/overlay");
   const [attribution, setAttribution] = useState<Attribution | null>(null);
   const [roster, setRoster] = useState<{ home: PlayerProfile[]; away: PlayerProfile[] }>({ home: [], away: [] });
+  const [boosts, setBoosts] = useState<PowerBoostUse[]>([]);
 
   useEffect(() => {
     setOverlayUrl(`${window.location.origin}/ext/erasto-league/overlay`);
@@ -205,6 +223,34 @@ export function Console({
       cancelled = true;
     };
   }, [state.homeTeamId, state.awayTeamId]);
+
+  // Power boosts já usados nesta partida — buscado quando a partida atual muda (mesmo espírito do
+  // elenco acima); atualizado otimisticamente a cada novo uso em vez de refazer a busca inteira.
+  useEffect(() => {
+    if (!state.currentMatchId) {
+      setBoosts([]);
+      return;
+    }
+    let cancelled = false;
+    listBoostsAction(state.currentMatchId).then((result) => {
+      if (!cancelled) setBoosts(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [state.currentMatchId]);
+
+  function useBoost(side: MatchSide, boostKey: (typeof POWER_BOOST_CATALOG)[number]["key"]) {
+    startTransition(async () => {
+      const result = await recordBoostAction(side, boostKey);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setError(null);
+      setBoosts((prev) => [...prev, result.boost]);
+    });
+  }
 
   function run(action: () => Promise<ScoreActionResult>) {
     startTransition(async () => {
@@ -401,6 +447,38 @@ export function Console({
                 >
                   Falta
                 </button>
+              </div>
+
+              <div className="el-c-boosts">
+                <span className="el-c-boosts-label">Power boosts</span>
+                <div className="el-c-boost-row">
+                  {POWER_BOOST_CATALOG.map((boost) => (
+                    <button
+                      key={boost.key}
+                      type="button"
+                      className="el-c-boost-btn"
+                      disabled={pending}
+                      title={boost.description}
+                      onClick={() => useBoost(side, boost.key)}
+                    >
+                      {boost.emoji} {boost.label}
+                    </button>
+                  ))}
+                </div>
+                {boosts.filter((boost) => boost.side === side).length > 0 && (
+                  <div className="el-c-boost-used">
+                    {boosts
+                      .filter((boost) => boost.side === side)
+                      .map((boost) => {
+                        const catalogEntry = POWER_BOOST_CATALOG.find((entry) => entry.key === boost.boostKey);
+                        return (
+                          <span key={boost.id} className="el-c-boost-pill">
+                            {catalogEntry?.emoji} {catalogEntry?.label ?? boost.boostKey}
+                          </span>
+                        );
+                      })}
+                  </div>
+                )}
               </div>
             </div>
           ))}

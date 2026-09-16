@@ -5,6 +5,7 @@ import {
   bumpScore,
   cancelMatch,
   finishMatch,
+  recordBoostForCurrentMatch,
   recordCardOrFoul,
   resetCurrentMatch,
   setLabel,
@@ -12,10 +13,11 @@ import {
   startMatch,
 } from "../../runtime/match-actions";
 import { attributePlayer } from "../../runtime/match-events";
+import { listBoostsByMatch } from "../../runtime/match-boosts";
 import { listPlayersByTeam } from "../../runtime/players";
 import { resolveErastoLeagueConfig } from "../../shared/config";
 import { hasValidPin, writePinCookie } from "../../shared/pin";
-import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile } from "../../contracts/types";
+import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile, PowerBoostKey, PowerBoostUse } from "../../contracts/types";
 
 export type SubmitPinState = { error: string | null };
 
@@ -121,6 +123,24 @@ export async function listRosterAction(teamId: string): Promise<PlayerProfile[]>
   const denied = await requirePin();
   if (denied) return [];
   return listPlayersByTeam(teamId);
+}
+
+export type BoostActionResult = { ok: true; boost: PowerBoostUse } | { ok: false; error: string };
+
+export async function recordBoostAction(side: MatchSide, boostKey: PowerBoostKey): Promise<BoostActionResult> {
+  const denied = await requirePin();
+  if (denied) return denied;
+  try {
+    return { ok: true, boost: await recordBoostForCurrentMatch(side, boostKey) };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+}
+
+export async function listBoostsAction(matchId: string): Promise<PowerBoostUse[]> {
+  const denied = await requirePin();
+  if (denied) return [];
+  return listBoostsByMatch(matchId);
 }
 
 export async function setLabelAction(label: string): Promise<ScoreActionResult> {

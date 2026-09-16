@@ -66,7 +66,11 @@ const CSS = `
     width: 52px; height: 52px; border-radius: 999px; flex-shrink: 0; background: rgba(255,255,255,0.06);
     display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800;
   }
-  .el-tp-player-name { font-size: 13px; font-weight: 700; line-height: 1.25; }
+  .el-tp-player-name { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; line-height: 1.25; }
+  .el-tp-captain {
+    display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 999px;
+    background: color-mix(in srgb, var(--primary, #22c55e) 70%, white); color: #0a0d12; font-size: 9px; font-weight: 900; flex-shrink: 0;
+  }
   .el-tp-player-number {
     font-variant-numeric: tabular-nums; font-size: 11px; font-weight: 800; color: color-mix(in srgb, var(--primary, #22c55e) 75%, white);
   }
@@ -239,7 +243,10 @@ export function TeamProfileView({
                   ) : (
                     <div className="el-tp-player-mono">{player.name.slice(0, 2).toUpperCase()}</div>
                   )}
-                  <span className="el-tp-player-name">{player.name}</span>
+                  <span className="el-tp-player-name">
+                    {player.name}
+                    {player.isCaptain && <span className="el-tp-captain" title="Capitão">C</span>}
+                  </span>
                   {player.number != null && <span className="el-tp-player-number">#{player.number}</span>}
                 </Link>
               ))}

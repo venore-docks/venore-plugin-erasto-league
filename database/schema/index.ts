@@ -5,5 +5,6 @@ export * from "./teams";
 export * from "./players";
 export * from "./matches";
 export * from "./match-events";
+export * from "./match-boosts";
 export * from "./match-state";
 export * from "./fixtures";

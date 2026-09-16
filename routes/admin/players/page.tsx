@@ -4,6 +4,7 @@ import { AdminAccessDenied, AdminPageHeader, Button, EmptyState } from "@venore/
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { listPlayers } from "../../../runtime/players";
 import { listTeams } from "../../../runtime/teams";
+import { PLAYER_GENDER_LABEL } from "../../../shared/player-gender";
 
 // Lista de jogadores cadastrados (/admin/erasto-league/players) — igual a times, sempre cadastro
 // de admin. Agrupa visualmente por time só pra leitura mais fácil (sem seções colapsáveis, é uma
@@ -65,6 +66,15 @@ export default async function PlayersAdminPage() {
                     </div>
                   )}
                   <span className="text-sm text-foreground">{player.name}</span>
+                  {player.isCaptain && (
+                    <span
+                      className="flex size-4 shrink-0 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground"
+                      title="Capitão"
+                    >
+                      C
+                    </span>
+                  )}
+                  {player.gender && <span className="text-xs text-muted-foreground">{PLAYER_GENDER_LABEL[player.gender]}</span>}
                   {player.number != null && (
                     <span className="text-xs font-semibold tabular-nums text-muted-foreground">#{player.number}</span>
                   )}

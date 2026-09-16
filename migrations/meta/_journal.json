@@ -50,6 +50,20 @@
       "when": 1789581232898,
       "tag": "0006_drop_team_group",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789587578059,
+      "tag": "0007_player_gender_and_captain",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789587756454,
+      "tag": "0008_match_boosts",
+      "breakpoints": true
     }
   ]
 }

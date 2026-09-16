@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { deleteEvent, recordEvent, updateEvent } from "../../../runtime/match-events";
+import { deleteBoostUse, recordBoostUse } from "../../../runtime/match-boosts";
 import { createManualMatch } from "../../../runtime/matches";
-import type { EventKind, MatchSide } from "../../../contracts/types";
+import type { EventKind, MatchSide, PowerBoostKey } from "../../../contracts/types";
 
 // Súmula (Fase 3): corrige/completa ao vivo o que o controle deixou passar — mesmos mutators de
 // runtime/match-events.ts que o controle usa, só que gateados por permissão de admin em vez de PIN.
@@ -73,5 +74,22 @@ export async function deleteEventFormAction(formData: FormData): Promise<void> {
   const eventId = String(formData.get("eventId"));
   const matchId = String(formData.get("matchId"));
   await deleteEvent(eventId);
+  revalidatePath(`/admin/erasto-league/matches/${matchId}`);
+}
+
+export async function addBoostFormAction(formData: FormData): Promise<void> {
+  await requireGate();
+  const matchId = String(formData.get("matchId"));
+  const side = String(formData.get("side")) as MatchSide;
+  const boostKey = String(formData.get("boostKey")) as PowerBoostKey;
+  await recordBoostUse({ matchId, side, boostKey });
+  revalidatePath(`/admin/erasto-league/matches/${matchId}`);
+}
+
+export async function deleteBoostFormAction(formData: FormData): Promise<void> {
+  await requireGate();
+  const boostId = String(formData.get("boostId"));
+  const matchId = String(formData.get("matchId"));
+  await deleteBoostUse(boostId);
   revalidatePath(`/admin/erasto-league/matches/${matchId}`);
 }

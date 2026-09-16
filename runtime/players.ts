@@ -3,7 +3,7 @@ import { db } from "@venore/plugin-sdk";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
 import { matchEvents as matchEventsTable, players as playersTable } from "../database/schema";
 import { slugify } from "../shared/slug";
-import type { PlayerProfile } from "../contracts/types";
+import type { PlayerGender, PlayerProfile } from "../contracts/types";
 
 type PlayerRow = typeof playersTable.$inferSelect;
 
@@ -20,6 +20,8 @@ async function rowToProfile(row: PlayerRow): Promise<PlayerProfile> {
     teamId: row.teamId,
     name: row.name,
     number: row.number,
+    gender: row.gender,
+    isCaptain: row.isCaptain,
     photoMediaId: row.photoMediaId,
     photoUrl: await resolveMediaUrl(row.photoMediaId),
     bio: row.bio,
@@ -64,6 +66,8 @@ export type PlayerInput = {
   teamId: string;
   name: string;
   number: number | null;
+  gender: PlayerGender | null;
+  isCaptain: boolean;
   photoMediaId: string | null;
   bio: string | null;
 };

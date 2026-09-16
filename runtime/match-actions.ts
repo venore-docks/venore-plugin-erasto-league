@@ -1,11 +1,12 @@
 import { eq } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
 import { matchEvents as matchEventsTable, matches as matchesTable } from "../database/schema";
-import type { ClockCommand, EventKind, MatchSide, MatchState } from "../contracts/types";
+import type { ClockCommand, EventKind, MatchSide, MatchState, PowerBoostKey, PowerBoostUse } from "../contracts/types";
 import { adjustClock, computeElapsedMs, pauseClock, setClock, startClock } from "../shared/clock";
 import { getTeam } from "./teams";
 import { readMatchRow, readMatchState, writeMatchState } from "./match-store";
 import { recordEvent } from "./match-events";
+import { recordBoostUse } from "./match-boosts";
 
 // Mutators do estado da partida — mesma API mental de antes, agora em cima de partida como
 // entidade (matches/match_events, runtime/match-events.ts) em vez de contador direto. Sem
@@ -132,6 +133,18 @@ export async function recordCardOrFoul(
     kind,
     side,
     playerId: playerId ?? null,
+    minuteMs: computeElapsedMs(state.clock, Date.now()),
+  });
+}
+
+// Registra o uso de um power boost (catálogo mockado, shared/power-boosts.ts) pela partida em
+// andamento — mesmo espírito de bumpScore/recordCardOrFoul, sem afetar placar/relógio.
+export async function recordBoostForCurrentMatch(side: MatchSide, boostKey: PowerBoostKey): Promise<PowerBoostUse> {
+  const state = await readMatchState();
+  return recordBoostUse({
+    matchId: requireCurrentMatchId(state),
+    side,
+    boostKey,
     minuteMs: computeElapsedMs(state.clock, Date.now()),
   });
 }

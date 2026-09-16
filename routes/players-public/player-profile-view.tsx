@@ -29,7 +29,11 @@ const CSS = `
     border: 2px solid rgba(255,255,255,0.18); box-shadow: 0 16px 32px -10px rgba(0,0,0,0.6);
   }
   .el-pp-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin: 0 0 4px; }
-  .el-pp-name { font-size: 26px; font-weight: 900; margin: 0; }
+  .el-pp-name { display: flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 900; margin: 0; }
+  .el-pp-captain {
+    display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 999px;
+    background: color-mix(in srgb, var(--primary, #22c55e) 70%, white); color: #0a0d12; font-size: 12px; font-weight: 900; flex-shrink: 0;
+  }
   .el-pp-meta { display: flex; align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
   .el-pp-number {
     display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 800;
@@ -119,7 +123,10 @@ export function PlayerProfileView({
             )}
             <div>
               <p className="el-pp-eyebrow">Erasto League</p>
-              <h1 className="el-pp-name">{player.name}</h1>
+              <h1 className="el-pp-name">
+                {player.name}
+                {player.isCaptain && <span className="el-pp-captain" title="Capitão">C</span>}
+              </h1>
               <div className="el-pp-meta">
                 {player.number != null && <span className="el-pp-number">#{player.number}</span>}
                 {team && (

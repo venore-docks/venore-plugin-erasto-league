@@ -12,6 +12,7 @@ import {
   type PlayerDeleteImpact,
   type PlayerInput,
 } from "../../../runtime/players";
+import type { PlayerGender } from "../../../contracts/types";
 
 export type PlayerActionState = { error: string | null; playerId: string | null };
 
@@ -42,10 +43,15 @@ export async function savePlayerAction(_prev: PlayerActionState, formData: FormD
   const numberRaw = str(formData, "number");
   const number = numberRaw ? Math.max(0, Math.min(999, Math.round(Number(numberRaw)))) : null;
 
+  const genderRaw = nullableStr(formData, "gender");
+  const gender: PlayerGender | null = genderRaw === "male" || genderRaw === "female" ? genderRaw : null;
+
   const input: PlayerInput = {
     teamId,
     name,
     number: number != null && Number.isFinite(number) ? number : null,
+    gender,
+    isCaptain: formData.get("isCaptain") === "on",
     photoMediaId: nullableStr(formData, "photoMediaId"),
     bio: nullableStr(formData, "bio"),
   };

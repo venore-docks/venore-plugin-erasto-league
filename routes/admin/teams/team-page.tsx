@@ -6,6 +6,7 @@ import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { AdminAccessDenied, AdminPageHeader, Button } from "@venore/plugin-sdk/ui";
 import { getTeam } from "../../../runtime/teams";
 import { listPlayersByTeam } from "../../../runtime/players";
+import { PLAYER_GENDER_LABEL } from "../../../shared/player-gender";
 import { TeamForm } from "./team-form";
 import { DeleteTeamControl } from "./delete-team-control";
 
@@ -87,6 +88,15 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ id:
                       </div>
                     )}
                     <span className="text-sm text-foreground">{player.name}</span>
+                    {player.isCaptain && (
+                      <span
+                        className="flex size-4 shrink-0 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground"
+                        title="Capitão"
+                      >
+                        C
+                      </span>
+                    )}
+                    {player.gender && <span className="text-xs text-muted-foreground">{PLAYER_GENDER_LABEL[player.gender]}</span>}
                     {player.number != null && (
                       <span className="ml-auto text-xs font-semibold tabular-nums text-muted-foreground">#{player.number}</span>
                     )}
