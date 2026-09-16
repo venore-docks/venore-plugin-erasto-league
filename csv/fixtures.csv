@@ -1,19 +1,19 @@
-phase,group,round,homeTeamId,homeTeam,awayTeamId,awayTeam,homeLabel,awayLabel,date,time,order
-group,A,1ª Rodada,,Bananaticos FC,,Varzea FC,,,04/09/2026,,1
-group,A,1ª Rodada,,Inter de Limão,,Ousadia e Alegria FC,,,14/09/2026,,2
-group,A,2ª Rodada,,Bananaticos FC,,Inter de Limão,,,21/09/2026,,3
-group,A,2ª Rodada,,Varzea FC,,Ousadia e Alegria FC,,,28/09/2026,,4
-group,A,3ª Rodada,,Bananaticos FC,,Ousadia e Alegria FC,,,05/10/2026,,5
-group,A,3ª Rodada,,Inter de Limão,,Varzea FC,,,19/10/2026,,6
-group,B,1ª Rodada,,Smurfs FC,,Lazionados,,,09/09/2026,,7
-group,B,1ª Rodada,,Baile de Munich,,Chamas FC,,,16/09/2026,,8
-group,B,2ª Rodada,,Smurfs FC,,Baile de Munich,,,23/09/2026,,9
-group,B,2ª Rodada,,Lazionados,,Chamas FC,,,30/09/2026,,10
-group,B,3ª Rodada,,Smurfs FC,,Chamas FC,,,14/10/2026,,11
-group,B,3ª Rodada,,Baile de Munich,,Lazionados,,,21/10/2026,,12
-group,C,1ª Rodada,,Gotham FC,,Katchau FC,,,11/09/2026,,13
-group,C,1ª Rodada,,Flamingos FC,,Paysanduba,,,18/09/2026,,14
-group,C,2ª Rodada,,Gotham FC,,Flamingos FC,,,25/09/2026,,15
-group,C,2ª Rodada,,Katchau FC,,Paysanduba,,,02/10/2026,,16
-group,C,3ª Rodada,,Gotham FC,,Paysanduba,,,16/10/2026,,17
-group,C,3ª Rodada,,Flamingos FC,,Katchau FC,,,23/10/2026,,18
+phase,group,round,homeTeamId,awayTeamId,homeLabel,awayLabel,date,time,order
+group,A,1ª Rodada,8d958364-b5e2-4283-b18c-6118c264b9bf,a5cfda05-c9f7-4f85-8d93-c7fee52f8fbb,,,04/09/2026,,1
+group,A,1ª Rodada,926eed48-c2c0-492e-843d-2e0a03f18cf3,d342a5c3-2e94-4970-82ef-a0df85dce0c5,,,14/09/2026,,2
+group,A,2ª Rodada,8d958364-b5e2-4283-b18c-6118c264b9bf,926eed48-c2c0-492e-843d-2e0a03f18cf3,,,21/09/2026,,3
+group,A,2ª Rodada,a5cfda05-c9f7-4f85-8d93-c7fee52f8fbb,d342a5c3-2e94-4970-82ef-a0df85dce0c5,,,28/09/2026,,4
+group,A,3ª Rodada,8d958364-b5e2-4283-b18c-6118c264b9bf,d342a5c3-2e94-4970-82ef-a0df85dce0c5,,,05/10/2026,,5
+group,A,3ª Rodada,926eed48-c2c0-492e-843d-2e0a03f18cf3,a5cfda05-c9f7-4f85-8d93-c7fee52f8fbb,,,19/10/2026,,6
+group,B,1ª Rodada,a5626d1a-f8c9-43a4-b336-23fdf2ca0897,fc67e278-97c8-4ce6-ae5d-116dd5eb6e97,,,09/09/2026,,7
+group,B,1ª Rodada,f8676082-fef6-420b-b490-bbd79063ca44,034e53e6-9a0e-4899-af8b-ac1f838e4083,,,16/09/2026,,8
+group,B,2ª Rodada,a5626d1a-f8c9-43a4-b336-23fdf2ca0897,f8676082-fef6-420b-b490-bbd79063ca44,,,23/09/2026,,9
+group,B,2ª Rodada,fc67e278-97c8-4ce6-ae5d-116dd5eb6e97,034e53e6-9a0e-4899-af8b-ac1f838e4083,,,30/09/2026,,10
+group,B,3ª Rodada,a5626d1a-f8c9-43a4-b336-23fdf2ca0897,034e53e6-9a0e-4899-af8b-ac1f838e4083,,,14/10/2026,,11
+group,B,3ª Rodada,f8676082-fef6-420b-b490-bbd79063ca44,fc67e278-97c8-4ce6-ae5d-116dd5eb6e97,,,21/10/2026,,12
+group,C,1ª Rodada,6f4d2991-ee2b-42cc-9044-35e48af9030f,3b1128bd-3140-4c76-ad3f-fcc131c44701,,,11/09/2026,,13
+group,C,1ª Rodada,7ecb8e93-680e-40c2-8747-86e7a798a6ba,4e346d8d-4259-429c-84a1-769cc1b6c3b9,,,18/09/2026,,14
+group,C,2ª Rodada,6f4d2991-ee2b-42cc-9044-35e48af9030f,7ecb8e93-680e-40c2-8747-86e7a798a6ba,,,25/09/2026,,15
+group,C,2ª Rodada,3b1128bd-3140-4c76-ad3f-fcc131c44701,4e346d8d-4259-429c-84a1-769cc1b6c3b9,,,02/10/2026,,16
+group,C,3ª Rodada,6f4d2991-ee2b-42cc-9044-35e48af9030f,4e346d8d-4259-429c-84a1-769cc1b6c3b9,,,16/10/2026,,17
+group,C,3ª Rodada,7ecb8e93-680e-40c2-8747-86e7a798a6ba,3b1128bd-3140-4c76-ad3f-fcc131c44701,,,23/10/2026,,18

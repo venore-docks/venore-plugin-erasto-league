@@ -23,18 +23,18 @@ export default async function ImportPage() {
         action={importTeamsCsvAction}
         title="Times"
         description={
-          'Uma linha por time. Só "name" é obrigatória — o resto fica em branco se a coluna faltar. Sem "id": casa/atualiza pelo nome (import do zero). Com "id" preenchido (copie da página do time): atualiza aquele time específico, mesmo se o nome mudar. Grupo não é campo de time — isso fica só na planilha de confrontos, abaixo.'
+          'Uma linha por time. Só "name" é obrigatória — o resto fica em branco se a coluna faltar. "id" (uuid) é opcional mas recomendado: se você mesmo gerar um id pra cada time na planilha, pode referenciar esse mesmo id em fixtures.csv sem depender do nome. Id que já existe → atualiza; id que ainda não existe → cria o time com aquele id exato; sem id nenhum → casa/atualiza pelo nome. Grupo não é campo de time — isso fica só na planilha de confrontos, abaixo.'
         }
-        columns="name, primaryColor, secondaryColor, foundedDate, description, id (opcional)"
+        columns="id (opcional, uuid), name, primaryColor, secondaryColor, foundedDate, description"
       />
 
       <CsvImportForm
         action={importFixturesCsvAction}
         title="Tabela de jogos"
         description={
-          'Uma linha por confronto. homeTeamId/awayTeamId (copie da página do time) têm prioridade sobre homeTeam/awayTeam (nome) — use o nome no primeiro import (times ainda sem id conhecido) e o id numa correção depois. Deixe os dois em branco (usando homeLabel/awayLabel, ex: "Vencedor Grupo A") pra confrontos de eliminatória ainda sem time definido.'
+          'Uma linha por confronto. Recomendado usar homeTeamId/awayTeamId (uuid, copie da página do time ou do que você mesmo gerou em teams.csv) em vez de homeTeam/awayTeam (nome) — assim o vínculo não depende do time nunca ser renomeado ou digitado igualzinho. Deixe id e nome em branco (usando homeLabel/awayLabel, ex: "Vencedor Grupo A") pra confrontos de eliminatória ainda sem time definido.'
         }
-        columns="phase, group, round, homeTeamId, homeTeam, awayTeamId, awayTeam, homeLabel, awayLabel, date, time, order"
+        columns="phase, group, round, homeTeamId, awayTeamId, homeLabel, awayLabel, date, time, order (homeTeam/awayTeam por nome também funcionam, se preferir)"
         showReplaceAll
       />
     </div>

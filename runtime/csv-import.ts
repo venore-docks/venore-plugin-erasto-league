@@ -1,10 +1,12 @@
 import { csvToObjects } from "../shared/csv";
-import { getTeam, getTeamByName, updateTeam, upsertTeamByName, type TeamInput } from "./teams";
+import { createTeamWithId, getTeam, getTeamByName, updateTeam, upsertTeamByName, type TeamInput } from "./teams";
 import { createFixture, deleteAllFixtures } from "./fixtures";
 import type { FixturePhase } from "../contracts/types";
 
 export type ImportError = { line: number; message: string };
 export type ImportResult = { created: number; updated: number; errors: ImportError[] };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function cell(row: Record<string, string>, key: string): string {
   return (row[key] ?? "").trim();
@@ -16,13 +18,16 @@ function optionalCell(row: Record<string, string>, key: string): string | null {
 }
 
 // Colunas esperadas (header, case-insensitive): name, primaryColor, secondaryColor, foundedDate,
-// description, id (opcional). Só "name" é obrigatória — o resto fica null se a coluna faltar ou a
-// célula estiver vazia. Grupo NÃO é campo de time — mora só em fixtures.csv (confronto), porque é
-// propriedade da edição do campeonato, não do time em si.
+// description, id (opcional, uuid). Só "name" é obrigatória — o resto fica null se a coluna
+// faltar ou a célula estiver vazia. Grupo NÃO é campo de time — mora só em fixtures.csv
+// (confronto), porque é propriedade da edição do campeonato, não do time em si.
 //
-// "id" preenchido = atualiza aquele time por id (não recadastra por nome — útil pra renomear um
-// time sem duplicar). "id" vazio = casa/upserta pelo nome (ver upsertTeamByName), o caminho normal
-// pra um import do zero, quando os ids ainda não existem.
+// "id" vazio = casa/upserta pelo nome (upsertTeamByName) — o caminho normal quando não tem uuid
+// nenhum ainda. "id" preenchido e já existe = atualiza aquele time por id (não recadastra por
+// nome — útil pra renomear sem duplicar). "id" preenchido e NÃO existe ainda = cria o time COM
+// esse id exato (createTeamWithId) — pra planilha ser autorada com uuid pré-gerado desde o
+// início, e fixtures.csv já poder referenciar esses mesmos ids sem depender do nome de jeito
+// nenhum (nome muda, digita errado, tem acento — id não).
 export async function importTeamsCsv(csvText: string): Promise<ImportResult> {
   const rows = csvToObjects(csvText);
   const result: ImportResult = { created: 0, updated: 0, errors: [] };
@@ -48,13 +53,18 @@ export async function importTeamsCsv(csvText: string): Promise<ImportResult> {
     try {
       const idCell = optionalCell(row, "id");
       if (idCell) {
-        const existing = await getTeam(idCell);
-        if (!existing) {
-          result.errors.push({ line, message: `ID não encontrado: "${idCell}".` });
+        if (!UUID_RE.test(idCell)) {
+          result.errors.push({ line, message: `"${idCell}" não parece um id válido (uuid).` });
           continue;
         }
-        await updateTeam(idCell, input);
-        result.updated++;
+        const existing = await getTeam(idCell);
+        if (existing) {
+          await updateTeam(idCell, input);
+          result.updated++;
+        } else {
+          await createTeamWithId(idCell, input);
+          result.created++;
+        }
       } else {
         const { created } = await upsertTeamByName(input);
         if (created) result.created++;
@@ -130,6 +140,9 @@ type TeamRefResult = { ok: true; teamId: string | null } | { ok: false; message:
 async function resolveTeamRef(row: Record<string, string>, idKey: string, nameKey: string, label: string): Promise<TeamRefResult> {
   const idValue = cell(row, idKey);
   if (idValue) {
+    if (!UUID_RE.test(idValue)) {
+      return { ok: false, message: `${label}: "${idValue}" não parece um id válido (uuid).` };
+    }
     const team = await getTeam(idValue);
     if (!team) {
       return { ok: false, message: `${label} não encontrado pelo id: "${idValue}".` };

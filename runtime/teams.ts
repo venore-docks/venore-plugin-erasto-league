@@ -81,6 +81,18 @@ export async function createTeam(input: TeamInput): Promise<TeamProfile> {
   return rowToProfile(row);
 }
 
+// Igual a createTeam, mas com id explícito em vez de deixar o banco sortear (defaultRandom) — só
+// pra import de CSV (runtime/csv-import.ts) quando a planilha já vem com um uuid pré-gerado pro
+// time, pra poder referenciar esse mesmo id em fixtures.csv antes mesmo do time existir no banco.
+export async function createTeamWithId(id: string, input: TeamInput): Promise<TeamProfile> {
+  const slug = await uniqueSlug(input.name);
+  const [row] = await db
+    .insert(teamsTable)
+    .values({ ...input, id, slug, updatedAt: new Date() })
+    .returning();
+  return rowToProfile(row);
+}
+
 export async function updateTeam(id: string, input: TeamInput): Promise<TeamProfile> {
   const [existing] = await db.select().from(teamsTable).where(eq(teamsTable.id, id));
   const slug = existing && existing.name === input.name ? existing.slug : await uniqueSlug(input.name, id);
