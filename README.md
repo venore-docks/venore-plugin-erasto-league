@@ -27,12 +27,14 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
 - **Cadastro de times e jogadores** — `/admin/erasto-league/teams` e `/players`, sempre mantido
   por um admin (nunca pelos alunos). Time: nome, brasão (upload via `MediaPickerField`, sistema de
   mídia do host), cores, descrição/história, data de fundação. Jogador: time, nome, número, gênero
-  (opcional, só pra sinalizar), capitão (flag), foto, bio. Perfis públicos em
-  `/ext/erasto-league/teams/:slug` e `/players/:slug` — capa, recorde (V/E/D/saldo/pontos) e
-  últimos jogos encerrados pro time; gols/cartões e últimos jogos pro jogador (capitão aparece com
-  um selo "C"). Excluir time/jogador é seguro: bloqueado de verdade se o time tem partida
-  registrada (senão o histórico quebra); jogador sempre pode ser excluído — os eventos dele só
-  perdem a atribuição (`runtime/teams.ts` `deleteTeam`, `runtime/players.ts` `deletePlayer`).
+  (opcional, só pra sinalizar), capitão (flag), foto, bio. **Lista pública de times**
+  (`/ext/erasto-league/teams`) — mesma informação da tela admin (brasão, cor, elenco, recorde
+  V/E/D), aberta pra qualquer visitante. Perfis públicos em `/ext/erasto-league/teams/:slug` e
+  `/players/:slug` — capa, recorde (V/E/D/saldo/pontos) e últimos jogos encerrados pro time;
+  gols/cartões e últimos jogos pro jogador (capitão aparece com um selo "C"). Excluir time/jogador
+  é seguro: bloqueado de verdade se o time tem partida registrada (senão o histórico quebra);
+  jogador sempre pode ser excluído — os eventos dele só perdem a atribuição (`runtime/teams.ts`
+  `deleteTeam`, `runtime/players.ts` `deletePlayer`).
 - **Partida como entidade** — cada partida (`matches`) tem uma trilha de eventos (`match_events`:
   gol/cartão/falta, cada um podendo apontar pro jogador) em vez de só um contador — placar de cada
   lado é a soma dos eventos "goal". Times/jogador podem ficar sem atribuição no calor do jogo.
@@ -76,9 +78,10 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     só em eliminatória) cai numa aba própria pela fase. Alimentado por `runtime/bracket.ts`
     (`getScheduleView`), mesma fonte do bloco de fases.
   - **Erasto League — Próximo jogo (ad 16:9)** (`erasto-league.next-game-ad`) — card promocional
-    de largura/altura fixa 16:9 (times, crista grande, rodada, data/hora, fundo dividido nas cores
-    de cada time) — pra usar como destaque na página inicial. A mesma "página" aparece também na
-    view de TV (`/ext/erasto-league/tv`, sempre primeiro no rodízio), alimentadas pelo mesmo dado
+    de largura/altura fixa 16:9 (times, crista grande, rodada, data/hora) — pra usar como destaque
+    na página inicial. Fundo nas **cores do tema** (não dos times — cor de cada time fica só no
+    anel da crista e no traço sob o nome). A mesma "página" aparece também na view de TV
+    (`/ext/erasto-league/tv`, sempre primeiro no rodízio), alimentadas pelo mesmo dado
     (`runtime/bracket.ts` `getNextFixture`) — o próximo confronto ainda não jogado, em ordem
     cronológica.
 - **Fixtures (confrontos agendados) + import CSV** — `erasto_league.fixtures`: um confronto pode

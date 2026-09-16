@@ -12,6 +12,7 @@ import ImportAdminPage from "./admin/import/page";
 import OverlayPage from "./overlay/page";
 import ControlPage from "./control/page";
 import TvPage from "./tv/page";
+import TeamsListPage from "./teams-public/teams-list-page";
 import TeamProfilePage from "./teams-public/page";
 import PlayerProfilePage from "./players-public/page";
 import { GET as eventsGET } from "./api/events/route";
@@ -22,6 +23,7 @@ import { GET as stateGET } from "./api/state/route";
 // - overlay    -> /ext/erasto-league/overlay    (fonte de navegador do OBS)
 // - control    -> /ext/erasto-league/control    (celular, gate por login/permissão de admin)
 // - tv         -> /ext/erasto-league/tv         (view pra TV/projetor com as tabelas)
+// - times      -> /ext/erasto-league/teams       (lista pública de times)
 // - perfis     -> /ext/erasto-league/teams/:slug, /players/:slug (público, só leitura)
 // - eventos    -> /api/erasto-league/events     (SSE)
 // - estado     -> /api/erasto-league/state      (snapshot JSON — fallback do SSE)
@@ -42,6 +44,7 @@ export const erastoLeagueRouteTable: PluginRouteTable = {
     { pattern: "erasto-league/overlay", Component: asPluginPage(OverlayPage) },
     { pattern: "erasto-league/control", Component: asPluginPage(ControlPage) },
     { pattern: "erasto-league/tv", Component: asPluginPage(TvPage) },
+    { pattern: "erasto-league/teams", Component: asPluginPage(TeamsListPage) },
     { pattern: "erasto-league/teams/:slug", Component: asPluginPage(TeamProfilePage) },
     { pattern: "erasto-league/players/:slug", Component: asPluginPage(PlayerProfilePage) },
   ],

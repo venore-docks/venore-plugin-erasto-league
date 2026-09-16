@@ -73,22 +73,31 @@ const CSS = `
     background: var(--accent, #22c55e); color: #04170a; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;
   }
 
-  .el-tv-next { flex: 1; display: flex; flex-direction: column; min-height: 0; border-radius: 24px; overflow: hidden; position: relative; }
-  .el-tv-next-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.22); }
+  .el-tv-next {
+    flex: 1; display: flex; flex-direction: column; min-height: 0; border-radius: 28px; overflow: hidden; position: relative;
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+    border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 40px 80px -30px rgba(0,0,0,0.65);
+  }
   .el-tv-next-badges { position: relative; display: flex; justify-content: center; gap: 10px; padding-top: 28px; }
-  .el-tv-next-badge { padding: 5px 16px; border-radius: 999px; background: rgba(255,255,255,0.18); backdrop-filter: blur(4px);
+  .el-tv-next-badge { padding: 5px 16px; border-radius: 999px; background: rgba(255,255,255,0.1); backdrop-filter: blur(4px);
     font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #fff; }
-  .el-tv-next-badge.round { background: #fff; color: #04070d; }
+  .el-tv-next-badge.round { background: var(--accent, #22c55e); color: #04170a; }
   .el-tv-next-row { position: relative; flex: 1; display: flex; align-items: center; }
-  .el-tv-next-side { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 0 24px; min-width: 0; }
-  .el-tv-next-crest { width: 160px; height: 160px; border-radius: 999px; object-fit: cover; border: 6px solid rgba(255,255,255,0.25);
-    box-shadow: 0 24px 48px -12px rgba(0,0,0,0.7); }
-  .el-tv-next-crest-mono { width: 160px; height: 160px; border-radius: 999px; border: 6px solid rgba(255,255,255,0.25);
+  .el-tv-next-side { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 0 24px; min-width: 0; }
+  .el-tv-next-crest {
+    width: 160px; height: 160px; border-radius: 999px; object-fit: cover; border: 6px solid var(--team-color, rgba(255,255,255,0.25));
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.06), 0 24px 48px -12px rgba(0,0,0,0.7);
+  }
+  .el-tv-next-crest-mono {
+    width: 160px; height: 160px; border-radius: 999px; border: 6px solid var(--team-color, rgba(255,255,255,0.25));
+    background: rgba(255,255,255,0.06);
     display: flex; align-items: center; justify-content: center; font-size: 52px; font-weight: 900; color: #fff;
-    box-shadow: 0 24px 48px -12px rgba(0,0,0,0.7); }
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.06), 0 24px 48px -12px rgba(0,0,0,0.7);
+  }
   .el-tv-next-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 34px;
-    font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,0.4); }
-  .el-tv-next-vs { flex: none; font-size: 48px; font-style: italic; font-weight: 900; color: rgba(255,255,255,0.55); }
+    font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; }
+  .el-tv-next-name-bar { width: 48px; height: 4px; border-radius: 999px; background: var(--team-color, var(--accent, #22c55e)); }
+  .el-tv-next-vs { flex: none; font-size: 48px; font-style: italic; font-weight: 900; color: rgba(255,255,255,0.4); }
   .el-tv-next-when { position: relative; text-align: center; padding-bottom: 32px; font-size: 20px; font-weight: 800; color: #fff; }
 
   .el-tv-foot { padding: 24px 64px 40px; }
@@ -119,41 +128,35 @@ function formatNextGameWhen(epochMs: number | null): string {
 // cada time, crista grande, "VS" no meio — só que em CSS própria (sem Tailwind/shadcn, ver motivo
 // no topo do arquivo) e ocupando o palco inteiro (já é 16:9).
 function NextGamePage({ nextGame }: { nextGame: NextGameView }) {
-  const homeColor = nextGame.homeColor ?? "#0f172a";
-  const awayColor = nextGame.awayColor ?? "#020617";
+  const homeColor = nextGame.homeColor ?? "#6b7280";
+  const awayColor = nextGame.awayColor ?? "#6b7280";
 
   return (
-    <div
-      className="el-tv-next"
-      style={{ background: `linear-gradient(115deg, ${homeColor} 0%, ${homeColor} 42%, #04070d 50%, ${awayColor} 58%, ${awayColor} 100%)` }}
-    >
-      <div className="el-tv-next-overlay" />
+    <div className="el-tv-next">
       <div className="el-tv-next-badges">
         {nextGame.roundLabel && <span className="el-tv-next-badge round">{nextGame.roundLabel}</span>}
       </div>
       <div className="el-tv-next-row">
-        <div className="el-tv-next-side">
+        <div className="el-tv-next-side" style={{ "--team-color": homeColor } as CSSProperties}>
           {nextGame.homeCrestUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img className="el-tv-next-crest" src={nextGame.homeCrestUrl} alt="" />
           ) : (
-            <div className="el-tv-next-crest-mono" style={{ background: homeColor }}>
-              {nextGame.homeName.slice(0, 2).toUpperCase()}
-            </div>
+            <div className="el-tv-next-crest-mono">{nextGame.homeName.slice(0, 2).toUpperCase()}</div>
           )}
           <span className="el-tv-next-name">{nextGame.homeName}</span>
+          <span className="el-tv-next-name-bar" />
         </div>
         <span className="el-tv-next-vs">VS</span>
-        <div className="el-tv-next-side">
+        <div className="el-tv-next-side" style={{ "--team-color": awayColor } as CSSProperties}>
           {nextGame.awayCrestUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img className="el-tv-next-crest" src={nextGame.awayCrestUrl} alt="" />
           ) : (
-            <div className="el-tv-next-crest-mono" style={{ background: awayColor }}>
-              {nextGame.awayName.slice(0, 2).toUpperCase()}
-            </div>
+            <div className="el-tv-next-crest-mono">{nextGame.awayName.slice(0, 2).toUpperCase()}</div>
           )}
           <span className="el-tv-next-name">{nextGame.awayName}</span>
+          <span className="el-tv-next-name-bar" />
         </div>
       </div>
       <p className="el-tv-next-when">{formatNextGameWhen(nextGame.scheduledAt)}</p>

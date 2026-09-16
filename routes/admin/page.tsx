@@ -66,6 +66,11 @@ export default async function ErastoLeagueAdminPage() {
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm">
+            <a href="/ext/erasto-league/teams" target="_blank" rel="noreferrer">
+              <Shield className="size-4" /> Ver lista pública ↗
+            </a>
+          </Button>
+          <Button asChild variant="outline" size="sm">
             <Link href="/admin/erasto-league/players">
               <Users className="size-4" /> Jogadores
             </Link>
