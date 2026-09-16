@@ -6,9 +6,6 @@ import { importFixturesCsv, importTeamsCsv, type ImportResult } from "../../../r
 
 export type CsvImportState = { result: ImportResult | null; error: string | null };
 
-const initialState: CsvImportState = { result: null, error: null };
-export { initialState as initialImportState };
-
 async function readCsvFile(formData: FormData): Promise<{ ok: true; text: string } | { ok: false; error: string }> {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
