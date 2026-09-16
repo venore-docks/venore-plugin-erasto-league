@@ -1,7 +1,9 @@
 export type MatchSide = "home" | "away";
 
-// Fase 2 — partida como entidade viva.
-export type MatchStatus = "in_progress" | "finished";
+// Fase 2 — partida como entidade viva. "cancelled" = descartada pelo controle (operador errou o
+// time, testou, etc.) — sai do estado ao vivo sem contar pra súmula/classificação/resultados
+// (o filtro já é por status "finished" em runtime/matches.ts e runtime/standings.ts).
+export type MatchStatus = "in_progress" | "finished" | "cancelled";
 export type EventKind = "goal" | "yellow_card" | "red_card" | "foul";
 
 export type Team = {
@@ -37,6 +39,10 @@ export type MatchState = {
   away: Team;
   // Texto curto opcional exibido no overlay ("1º TEMPO", "INTERVALO"…). "" = sem etiqueta.
   label: string;
+  // Teaser opcional do overlay ocioso ("Em breve: Time A x Time B") — só faz sentido junto com
+  // currentMatchId null; o controle liga/desliga na tela de escolher times. null = overlay fica
+  // transparente sem nada, como sempre foi.
+  preMatchMessage: string | null;
   clock: MatchClock;
   // Epoch ms da última alteração — o SSE usa pra decidir se empurra um snapshot novo.
   updatedAt: number;

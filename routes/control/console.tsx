@@ -9,6 +9,7 @@ import { TeamPicker } from "./team-picker";
 import {
   attributePlayerAction,
   bumpScoreAction,
+  cancelMatchAction,
   clockAction,
   finishMatchAction,
   listRosterAction,
@@ -104,7 +105,7 @@ const CSS = `
   .el-c-infra.red { border-color: rgba(239,68,68,0.5); color: #f87171; }
 
   .el-c-plus:disabled, .el-c-half:disabled, .el-c-minus:disabled, .el-c-chip:disabled, .el-c-reset:disabled,
-  .el-c-startbtn:disabled, .el-c-tbtn:disabled, .el-c-finish:disabled, .el-c-infra:disabled { opacity: 0.5; cursor: default; }
+  .el-c-startbtn:disabled, .el-c-tbtn:disabled, .el-c-finish:disabled, .el-c-infra:disabled, .el-c-cancel:disabled { opacity: 0.5; cursor: default; }
 
   .el-c-actions { display: flex; gap: 10px; }
   .el-c-reset {
@@ -115,6 +116,11 @@ const CSS = `
     flex: 1.4; height: 46px; font-size: 13px; font-weight: 800; border-radius: 12px; cursor: pointer;
     background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.4);
   }
+  .el-c-cancel {
+    display: block; width: 100%; margin-top: 2px; padding: 6px; background: none; border: 0; cursor: pointer;
+    font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.35); text-align: center;
+  }
+  .el-c-cancel:hover { color: rgba(255,255,255,0.6); }
   .el-c-foot { font-size: 11px; color: rgba(255,255,255,0.35); text-align: center; word-break: break-all; }
 
   /* ---- folha "quem fez?" ---- */
@@ -244,7 +250,15 @@ export function Console({
   }
 
   if (!state.currentMatchId) {
-    return <TeamPicker teams={teams} accentColor={accentColor} onStarted={(result) => result.ok && setState(result.state)} />;
+    return (
+      <TeamPicker
+        teams={teams}
+        accentColor={accentColor}
+        preMatchMessage={state.preMatchMessage}
+        onStarted={(result) => result.ok && setState(result.state)}
+        onPreMatchMessageChange={(result) => result.ok && setState(result.state)}
+      />
+    );
   }
 
   const elapsed = computeElapsedMs(state.clock, now);
@@ -409,6 +423,19 @@ export function Console({
             Encerrar partida e salvar placar
           </button>
         </div>
+
+        <button
+          type="button"
+          className="el-c-cancel"
+          disabled={pending}
+          onClick={() => {
+            if (window.confirm("Cancelar esta partida sem salvar o placar? Não entra na súmula nem na classificação.")) {
+              run(() => cancelMatchAction());
+            }
+          }}
+        >
+          Cancelar partida (não salva o placar)
+        </button>
 
         <p className="el-c-foot">
           OBS → fonte de navegador em {overlayUrl} · tempo total {formatClock(fullMatchMs)}

@@ -134,6 +134,34 @@ const CSS = `
   @keyframes el-fade  { from { opacity: 0; } to { opacity: 1; } }
 `;
 
+// Prévia de "partida ocioso" — bem mais discreta que a barra de placar (el-bar acima): uma pílula
+// centralizada com o texto que o controle configurou (shared/config não entra aqui, o texto já
+// vem pronto em state.preMatchMessage).
+const TEASER_CSS = `
+  html, body { background: transparent !important; margin: 0; }
+  .el-teaser-wrap {
+    position: fixed; inset: 0; pointer-events: none;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    --accent: #22c55e;
+  }
+  .el-teaser-strip { position: absolute; left: 0; right: 0; bottom: 60px; display: flex; justify-content: center; }
+  .el-teaser-pill {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 30px; border-radius: 999px;
+    background: linear-gradient(180deg, rgba(15,20,26,0.90), rgba(8,11,15,0.93));
+    border: 1px solid rgba(255,255,255,0.09); border-top-color: rgba(255,255,255,0.22);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 8px 24px color-mix(in srgb, var(--accent) 18%, transparent);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    color: #fff; font-size: 22px; font-weight: 800; letter-spacing: 0.2px;
+    animation: el-teaser-rise 460ms ease-out both;
+  }
+  .el-teaser-dot { width: 10px; height: 10px; border-radius: 999px; background: var(--accent); flex: none;
+    animation: el-teaser-blink 1.2s ease-in-out infinite; }
+  @keyframes el-teaser-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  @keyframes el-teaser-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+`;
+
 export function Scoreboard({
   initialState,
   accentColor,
@@ -148,9 +176,24 @@ export function Scoreboard({
   const [logoOk, setLogoOk] = useState(Boolean(logoUrl));
 
   // Ocioso (nenhuma partida em andamento, ver runtime/match-actions.ts startMatch/finishMatch) —
-  // fonte de navegador some por completo, sem placar "fantasma" 0×0 entre partidas.
+  // some por completo (sem placar "fantasma" 0×0 entre partidas), a menos que o controle tenha
+  // ligado uma prévia ("Em breve: Time A x Time B") na tela de escolher times.
   if (!state.currentMatchId) {
-    return <style>{"html, body { background: transparent !important; margin: 0; }"}</style>;
+    return (
+      <>
+        <style>{TEASER_CSS}</style>
+        <div className="el-teaser-wrap" style={{ "--accent": accentColor } as CSSProperties}>
+          {state.preMatchMessage && (
+            <div className="el-teaser-strip">
+              <div className="el-teaser-pill">
+                <span className="el-teaser-dot" />
+                {state.preMatchMessage}
+              </div>
+            </div>
+          )}
+        </div>
+      </>
+    );
   }
 
   const elapsed = computeElapsedMs(state.clock, now);

@@ -1,0 +1,1 @@
+ALTER TABLE "erasto_league"."match_state" ADD COLUMN "pre_match_message" text;

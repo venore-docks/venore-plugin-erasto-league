@@ -5,6 +5,7 @@ import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { listMatches } from "../../../runtime/matches";
 import { listTeams } from "../../../runtime/teams";
 import { formatScore } from "../../../shared/score";
+import { MATCH_STATUS_LABEL } from "../../../shared/match-status";
 
 // Súmula: lista de partidas (/admin/erasto-league/matches), mais recente primeiro. Cada linha
 // abre /admin/erasto-league/matches/:id pra completar/corrigir os eventos.
@@ -39,9 +40,7 @@ export default async function MatchesAdminPage() {
                   {teamNameById.get(match.homeTeamId) ?? "—"} {formatScore(match.homeScore)} × {formatScore(match.awayScore)}{" "}
                   {teamNameById.get(match.awayTeamId) ?? "—"}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {match.status === "finished" ? "Encerrada" : "Em andamento"}
-                </span>
+                <span className="text-xs text-muted-foreground">{MATCH_STATUS_LABEL[match.status]}</span>
               </Link>
             </li>
           ))}

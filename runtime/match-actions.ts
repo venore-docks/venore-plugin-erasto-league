@@ -35,20 +35,22 @@ export async function startMatch(homeTeamId: string, awayTeamId: string): Promis
     awayName: awayTeam.name,
     awayScore: 0,
     label: "",
+    preMatchMessage: null,
     clockRunning: false,
     clockAnchorMs: null,
     clockAccumulatedMs: 0,
   });
 }
 
-// "Encerrar partida e salvar placar" — marca a partida atual como finished (fica na súmula/
-// histórico pra sempre) e volta o cache ao vivo pro estado ocioso.
-export async function finishMatch(): Promise<MatchState> {
+// Encerra a partida atual com o status dado e volta o cache ao vivo pro estado ocioso — usado
+// tanto por "Encerrar partida e salvar placar" (finished, conta na súmula/classificação) quanto
+// por "Cancelar partida" (cancelled, some do estado ao vivo sem contar em lugar nenhum).
+async function endCurrentMatch(status: "finished" | "cancelled"): Promise<MatchState> {
   const row = await readMatchRow();
   if (row.currentMatchId) {
     await db
       .update(matchesTable)
-      .set({ status: "finished", finishedAt: new Date() })
+      .set({ status, finishedAt: new Date() })
       .where(eq(matchesTable.id, row.currentMatchId));
   }
 
@@ -57,10 +59,25 @@ export async function finishMatch(): Promise<MatchState> {
     homeTeamId: null,
     awayTeamId: null,
     label: "",
+    preMatchMessage: null,
     clockRunning: false,
     clockAnchorMs: null,
     clockAccumulatedMs: 0,
   });
+}
+
+// "Encerrar partida e salvar placar" — marca a partida atual como finished (fica na súmula/
+// histórico/classificação pra sempre).
+export async function finishMatch(): Promise<MatchState> {
+  return endCurrentMatch("finished");
+}
+
+// "Cancelar partida" — pra quando o operador começou por engano (time errado, teste, etc.) e não
+// quer que isso conte em lugar nenhum. Marca "cancelled": some do súmula-como-resultado e da
+// classificação (que só olham status "finished"), mas o registro fica no banco pra auditoria —
+// nada é apagado.
+export async function cancelMatch(): Promise<MatchState> {
+  return endCurrentMatch("cancelled");
 }
 
 // "Zerar placar e relógio" — apaga os eventos da partida EM ANDAMENTO (fica 0×0 de novo) sem
@@ -121,6 +138,17 @@ export async function recordCardOrFoul(
 
 export async function setLabel(label: string): Promise<MatchState> {
   return writeMatchState({ label: label.trim().slice(0, MAX_LABEL) });
+}
+
+const MAX_PRE_MATCH_MESSAGE = 80;
+
+// Teaser do overlay ocioso ("Em breve: Time A x Time B") — só usado na tela de escolher times do
+// controle (não faz sentido com uma partida em andamento, mas não travamos por isso: o overlay só
+// lê preMatchMessage quando currentMatchId é null). message vazia limpa (overlay volta a ficar
+// só transparente).
+export async function setPreMatchMessage(message: string): Promise<MatchState> {
+  const trimmed = message.trim().slice(0, MAX_PRE_MATCH_MESSAGE);
+  return writeMatchState({ preMatchMessage: trimmed || null });
 }
 
 export async function applyClockCommand(command: ClockCommand): Promise<MatchState> {

@@ -26,6 +26,7 @@ function rowToState(row: MatchRow): MatchState {
     home: { name: row.homeName, score: row.homeScore },
     away: { name: row.awayName, score: row.awayScore },
     label: row.label,
+    preMatchMessage: row.preMatchMessage,
     clock,
     updatedAt: row.updatedAt.getTime(),
   };
@@ -61,6 +62,7 @@ type MatchPatch = Partial<
     | "awayName"
     | "awayScore"
     | "label"
+    | "preMatchMessage"
     | "clockRunning"
     | "clockAnchorMs"
     | "clockAccumulatedMs"

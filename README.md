@@ -8,7 +8,11 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   começar a partida; `+1 GOL` / `+0,5` / `−0,5` / `−1`, 🟨/🟥 cartão e falta por equipe (cada um
   abre uma folha rápida e dispensável "quem foi?" com o elenco), etiqueta, **relógio**
   (iniciar/pausar/zerar/±1:00 + atalhos "Fim 1º"/"Fim de jogo"), "Encerrar partida e salvar
-  placar". Gateado por PIN.
+  placar" ou "Cancelar partida" (descarta sem contar na súmula/classificação — pra quando começou
+  errado). Gateado por PIN.
+- **Prévia no overlay** — na tela de escolher times do controle, "Mostrar" liga uma pílula
+  discreta ("Em breve: Time A × Time B" ou texto livre) no overlay ocioso; "Ocultar" desliga. Sem
+  prévia ligada, o overlay ocioso continua só transparente, como sempre foi.
 - **Admin** — `/admin/erasto-league` — configura PIN, duração dos tempos, cor de destaque e a
   logo; atalhos pras telas e pro cadastro. Link aparece na nav do admin ao instalar o plugin.
 - **Cadastro de times e jogadores** — `/admin/erasto-league/teams` e `/players`, sempre mantido

@@ -3,10 +3,12 @@
 import {
   applyClockCommand,
   bumpScore,
+  cancelMatch,
   finishMatch,
   recordCardOrFoul,
   resetCurrentMatch,
   setLabel,
+  setPreMatchMessage,
   startMatch,
 } from "../../runtime/match-actions";
 import { attributePlayer } from "../../runtime/match-events";
@@ -70,6 +72,20 @@ export async function resetMatchAction(): Promise<ScoreActionResult> {
   const denied = await requirePin();
   if (denied) return denied;
   return { ok: true, state: await resetCurrentMatch() };
+}
+
+// "Cancelar partida" — descarta a partida atual sem contar na súmula/classificação (ver
+// runtime/match-actions.ts cancelMatch).
+export async function cancelMatchAction(): Promise<ScoreActionResult> {
+  const denied = await requirePin();
+  if (denied) return denied;
+  return { ok: true, state: await cancelMatch() };
+}
+
+export async function setPreMatchMessageAction(message: string): Promise<ScoreActionResult> {
+  const denied = await requirePin();
+  if (denied) return denied;
+  return { ok: true, state: await setPreMatchMessage(message) };
 }
 
 export async function bumpScoreAction(side: MatchSide, delta: number): Promise<EventActionResult> {

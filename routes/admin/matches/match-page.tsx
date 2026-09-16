@@ -6,6 +6,7 @@ import { getTeam } from "../../../runtime/teams";
 import { listPlayersByTeam } from "../../../runtime/players";
 import { listEventsByMatch } from "../../../runtime/match-events";
 import { formatScore } from "../../../shared/score";
+import { MATCH_STATUS_LABEL } from "../../../shared/match-status";
 import { addEventFormAction, deleteEventFormAction, updateEventFormAction } from "./actions";
 import type { EventKind, MatchEvent, PlayerProfile, TeamProfile } from "../../../contracts/types";
 
@@ -133,7 +134,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
     <div className="space-y-6">
       <AdminPageHeader
         title={`${homeTeam?.name ?? "—"} ${formatScore(match.homeScore)} × ${formatScore(match.awayScore)} ${awayTeam?.name ?? "—"}`}
-        description={match.status === "finished" ? "Partida encerrada" : "Partida em andamento"}
+        description={MATCH_STATUS_LABEL[match.status]}
       />
 
       <section className="space-y-3">

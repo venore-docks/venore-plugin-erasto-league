@@ -26,6 +26,8 @@ export const matchState = erastoLeagueSchema.table("match_state", {
   awayScore: real("away_score").notNull().default(0),
 
   label: text("label").notNull().default(""),
+  // Teaser do overlay ocioso ("Em breve: Time A x Time B") — ver MatchState.preMatchMessage.
+  preMatchMessage: text("pre_match_message"),
 
   // Relógio — ver MatchClock em contracts/types.ts. bigint em ms; mode "number" porque o intervalo
   // (partidas de minutos) cabe folgado em Number.MAX_SAFE_INTEGER.

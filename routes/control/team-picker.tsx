@@ -2,7 +2,7 @@
 
 import { useState, useTransition, type CSSProperties } from "react";
 import type { TeamProfile } from "../../contracts/types";
-import { startMatchAction, type ScoreActionResult } from "./actions";
+import { setPreMatchMessageAction, startMatchAction, type ScoreActionResult } from "./actions";
 
 const CSS = `
   html, body { margin: 0; background: radial-gradient(120% 140% at 50% -10%, #17202b 0%, #0b0f14 55%); }
@@ -38,21 +38,50 @@ const CSS = `
   }
   .el-tk-start:active { transform: scale(0.98); }
   .el-tk-start:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+
+  .el-tk-teaser { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 20px; }
+  .el-tk-teaser-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .el-tk-teaser-badge {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800;
+    color: var(--accent, #22c55e); text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .el-tk-teaser-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--accent, #22c55e); }
+  .el-tk-teaser-row { display: flex; gap: 8px; }
+  .el-tk-teaser-input {
+    flex: 1; height: 46px; padding: 0 14px; font-size: 14px;
+    background: #161d26; color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; outline: none;
+  }
+  .el-tk-teaser-input:focus { border-color: var(--accent, #22c55e); }
+  .el-tk-teaser-btn {
+    height: 46px; padding: 0 16px; font-size: 13px; font-weight: 800; border-radius: 12px; cursor: pointer;
+    background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.14); white-space: nowrap;
+  }
+  .el-tk-teaser-btn:disabled { opacity: 0.5; cursor: default; }
 `;
 
 export function TeamPicker({
   teams,
   accentColor,
+  preMatchMessage,
   onStarted,
+  onPreMatchMessageChange,
 }: {
   teams: TeamProfile[];
   accentColor: string;
+  preMatchMessage: string | null;
   onStarted: (result: ScoreActionResult) => void;
+  onPreMatchMessageChange: (result: ScoreActionResult) => void;
 }) {
   const [homeTeamId, setHomeTeamId] = useState(teams[0]?.id ?? "");
   const [awayTeamId, setAwayTeamId] = useState(teams[1]?.id ?? teams[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const homeTeam = teams.find((team) => team.id === homeTeamId);
+  const awayTeam = teams.find((team) => team.id === awayTeamId);
+  const suggestedTeaser = homeTeam && awayTeam ? `Em breve: ${homeTeam.name} × ${awayTeam.name}` : "Em breve, começando…";
+  const [teaserInput, setTeaserInput] = useState(preMatchMessage ?? "");
+  const [teaserPending, startTeaserTransition] = useTransition();
 
   function start() {
     if (!homeTeamId || !awayTeamId) {
@@ -71,6 +100,21 @@ export function TeamPicker({
       }
       setError(null);
       onStarted(result);
+    });
+  }
+
+  function showTeaser() {
+    const message = teaserInput.trim() || suggestedTeaser;
+    setTeaserInput(message);
+    startTeaserTransition(async () => {
+      onPreMatchMessageChange(await setPreMatchMessageAction(message));
+    });
+  }
+
+  function hideTeaser() {
+    setTeaserInput("");
+    startTeaserTransition(async () => {
+      onPreMatchMessageChange(await setPreMatchMessageAction(""));
     });
   }
 
@@ -118,6 +162,38 @@ export function TeamPicker({
             <button type="button" className="el-tk-start" disabled={pending} onClick={start}>
               {pending ? "Iniciando…" : "▶ Iniciar partida"}
             </button>
+
+            <div className="el-tk-teaser">
+              <div className="el-tk-teaser-head">
+                <label className="el-tk-label" style={{ marginBottom: 0 }}>
+                  Prévia no telão (opcional)
+                </label>
+                {preMatchMessage && (
+                  <span className="el-tk-teaser-badge">
+                    <span className="el-tk-teaser-dot" />
+                    No ar
+                  </span>
+                )}
+              </div>
+              <div className="el-tk-teaser-row">
+                <input
+                  className="el-tk-teaser-input"
+                  value={teaserInput}
+                  onChange={(e) => setTeaserInput(e.target.value)}
+                  placeholder={suggestedTeaser}
+                  maxLength={80}
+                />
+                {preMatchMessage ? (
+                  <button type="button" className="el-tk-teaser-btn" disabled={teaserPending} onClick={hideTeaser}>
+                    Ocultar
+                  </button>
+                ) : (
+                  <button type="button" className="el-tk-teaser-btn" disabled={teaserPending} onClick={showTeaser}>
+                    Mostrar
+                  </button>
+                )}
+              </div>
+            </div>
           </>
         )}
       </div>
