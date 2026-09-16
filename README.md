@@ -38,14 +38,20 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   - **Erasto League — Classificação** (`erasto-league.standings`) — tabela sempre recalculada na
     hora de renderizar (nunca lida do que foi salvo).
   - **Erasto League — Últimos resultados** (`erasto-league.recent-results`) — últimas N partidas
-    encerradas, mesma filosofia.
-  - **Erasto League — Artilharia** (`erasto-league.top-scorers`) — ranking de gols por jogador.
+    encerradas, cartão com placar em destaque e brasão dos dois times.
+  - **Erasto League — Artilharia** (`erasto-league.top-scorers`) — ranking de gols por jogador,
+    com foto (placeholder de avatar quando não há foto) e time abaixo do nome.
   - **Erasto League — Time em destaque** (`erasto-league.team-spotlight`) — card compacto de UM
     time (slug configurável) com recorde — pra "time campeão", destaque do mês, etc.
   - **Erasto League — Fases** (`erasto-league.bracket`) — pra formato copa (grupos +
     eliminatórias), que a classificação/últimos resultados sozinhos não cobrem: mini-classificação
     e jogos por grupo, mais chaveamento de quartas/semi/final. Alimentado por `fixtures`
-    (confrontos agendados, ver abaixo), não por `matches` direto.
+    (confrontos agendados, ver abaixo), não por `matches` direto. Não mostra mais data (isso é o
+    bloco de agenda, abaixo) — só "a jogar" pro que ainda não aconteceu.
+  - **Erasto League — Agenda de jogos** (`erasto-league.schedule`) — TODOS os confrontos (grupos +
+    eliminatórias) em ordem cronológica, agrupados por dia, com brasão dos dois times e horário ou
+    placar. Alimentado por `runtime/bracket.ts` (`getScheduleView`), mesma fonte do bloco de
+    fases.
 - **Fixtures (confrontos agendados) + import CSV** — `erasto_league.fixtures`: um confronto pode
   existir ANTES de qualquer partida (importado via `/admin/erasto-league/import`), com fase
   (grupo/quartas/semi/final), grupo, rodada, data e os dois times — ou só um rótulo ("Vencedor

@@ -20,6 +20,10 @@ export type FixtureView = {
   played: boolean;
 };
 
+// Mesmo FixtureView + fase/grupo, pra agenda de jogos precisar mostrar um selo ("Grupo A",
+// "Semifinal") junto de cada confronto sem ter que recasar com a fixture original.
+export type ScheduleEntry = FixtureView & { phase: FixturePhase; groupName: string | null };
+
 export type GroupView = {
   name: string;
   standings: TeamStanding[];
@@ -31,11 +35,11 @@ export type BracketView = {
   knockout: { phase: FixturePhase; fixtures: FixtureView[] }[];
 };
 
-// Monta tudo que o bloco erasto-league.bracket precisa: grupos (mini-classificação + jogos) e
-// eliminatórias (quartas/semi/final), sempre lido do banco na hora de renderizar (mesma filosofia
-// dos outros blocos — nunca dado salvo na composição).
-export async function getBracketView(): Promise<BracketView> {
-  const [fixtures, teams, standings] = await Promise.all([listFixtures(), listTeams(), computeStandings()]);
+// Busca fixtures + times + partidas ligadas e devolve um `toView` pronto — reaproveitado pelo
+// chaveamento (getBracketView) e pela agenda cronológica (getScheduleView), pra não duplicar o
+// join fixture→time→partida em dois lugares.
+async function loadFixtureViewData() {
+  const [fixtures, teams] = await Promise.all([listFixtures(), listTeams()]);
   const teamById = new Map(teams.map((team) => [team.id, team]));
 
   const matchIds = [...new Set(fixtures.map((fixture) => fixture.matchId).filter((id): id is string => Boolean(id)))];
@@ -62,6 +66,15 @@ export async function getBracketView(): Promise<BracketView> {
       played: Boolean(match && match.status === "finished"),
     };
   }
+
+  return { fixtures, toView };
+}
+
+// Monta tudo que o bloco erasto-league.bracket precisa: grupos (mini-classificação + jogos) e
+// eliminatórias (quartas/semi/final), sempre lido do banco na hora de renderizar (mesma filosofia
+// dos outros blocos — nunca dado salvo na composição).
+export async function getBracketView(): Promise<BracketView> {
+  const [{ fixtures, toView }, standings] = await Promise.all([loadFixtureViewData(), computeStandings()]);
 
   const groupFixtures = fixtures.filter((fixture) => fixture.phase === "group");
   const groupNames = [...new Set(groupFixtures.map((fixture) => fixture.groupName).filter((name): name is string => Boolean(name)))].sort(
@@ -90,4 +103,21 @@ export async function getBracketView(): Promise<BracketView> {
     .filter((entry) => entry.fixtures.length > 0);
 
   return { groups, knockout };
+}
+
+// Agenda de jogos: TODOS os confrontos (qualquer fase), em ordem cronológica — jogos com data
+// primeiro (mais próximo primeiro), sem data por último. Alimenta o bloco erasto-league.schedule
+// (widget novo, separado do chaveamento pra poder mostrar data/hora sem lotar o card de grupo).
+export async function getScheduleView(limit?: number): Promise<ScheduleEntry[]> {
+  const { fixtures, toView } = await loadFixtureViewData();
+
+  const sorted = [...fixtures].sort((a, b) => {
+    if (a.scheduledAt == null && b.scheduledAt == null) return 0;
+    if (a.scheduledAt == null) return 1;
+    if (b.scheduledAt == null) return -1;
+    return a.scheduledAt - b.scheduledAt;
+  });
+
+  const entries: ScheduleEntry[] = sorted.map((fixture) => ({ ...toView(fixture), phase: fixture.phase, groupName: fixture.groupName }));
+  return typeof limit === "number" && limit > 0 ? entries.slice(0, limit) : entries;
 }

@@ -9,11 +9,6 @@ function readString(data: Record<string, unknown>, key: string, fallback = ""): 
   return typeof value === "string" ? value : fallback;
 }
 
-function formatFixtureDate(epochMs: number | null): string | null {
-  if (!epochMs) return null;
-  return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-}
-
 function TeamRow({ name, crestUrl, slug, score, won }: { name: string; crestUrl: string | null; slug: string | null; score: number | null; won: boolean }) {
   const content = (
     <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -44,7 +39,6 @@ function TeamRow({ name, crestUrl, slug, score, won }: { name: string; crestUrl:
 }
 
 function FixtureCard({ fixture }: { fixture: FixtureView }) {
-  const date = formatFixtureDate(fixture.scheduledAt);
   const homeWon = fixture.played && fixture.homeScore != null && fixture.awayScore != null && fixture.homeScore > fixture.awayScore;
   const awayWon = fixture.played && fixture.homeScore != null && fixture.awayScore != null && fixture.awayScore > fixture.homeScore;
 
@@ -53,9 +47,7 @@ function FixtureCard({ fixture }: { fixture: FixtureView }) {
       <TeamRow name={fixture.homeName} crestUrl={fixture.homeCrestUrl} slug={fixture.homeSlug} score={fixture.homeScore} won={homeWon} />
       <div className="border-t border-border/60" />
       <TeamRow name={fixture.awayName} crestUrl={fixture.awayCrestUrl} slug={fixture.awaySlug} score={fixture.awayScore} won={awayWon} />
-      {!fixture.played && (
-        <p className="mt-2 text-center text-xs text-muted-foreground">{date ? `${date}${fixture.roundLabel ? ` · ${fixture.roundLabel}` : ""}` : "Data a definir"}</p>
-      )}
+      {!fixture.played && <p className="mt-2 text-center text-xs text-muted-foreground">A jogar</p>}
     </div>
   );
 }
@@ -109,9 +101,13 @@ export async function ErastoLeagueBracketBlock({ block }: BlockRendererProps) {
                     <span className="truncate text-foreground">
                       {fixture.homeName} <span className="text-muted-foreground">×</span> {fixture.awayName}
                     </span>
-                    <span className="shrink-0 font-semibold text-foreground">
-                      {fixture.played ? `${formatScore(fixture.homeScore ?? 0)}-${formatScore(fixture.awayScore ?? 0)}` : formatFixtureDate(fixture.scheduledAt) ?? "—"}
-                    </span>
+                    {fixture.played ? (
+                      <span className="shrink-0 font-semibold text-foreground">
+                        {formatScore(fixture.homeScore ?? 0)}-{formatScore(fixture.awayScore ?? 0)}
+                      </span>
+                    ) : (
+                      <span className="shrink-0 text-muted-foreground">a jogar</span>
+                    )}
                   </div>
                 ))}
               </div>

@@ -19,24 +19,28 @@ function formatMatchDate(epochMs: number): string {
   return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
-function TeamChip({ team }: { team: TeamProfile }) {
+function TeamChip({ team, align }: { team: TeamProfile; align: "left" | "right" }) {
   return (
-    <Link href={`/ext/erasto-league/teams/${team.slug}`} className="flex items-center gap-1.5 font-medium text-foreground hover:underline">
+    <Link
+      href={`/ext/erasto-league/teams/${team.slug}`}
+      className={`flex min-w-0 flex-1 items-center gap-2 hover:opacity-80 ${align === "right" ? "flex-row-reverse text-right" : ""}`}
+    >
       {team.crestUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={team.crestUrl} alt="" className="size-5 shrink-0 rounded object-cover" />
+        <img src={team.crestUrl} alt="" className="size-8 shrink-0 rounded-full border border-border/60 object-cover shadow-sm" />
       ) : (
-        <span className="flex size-5 shrink-0 items-center justify-center rounded bg-muted text-[8px] font-bold text-muted-foreground">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
           {team.name.slice(0, 2).toUpperCase()}
         </span>
       )}
-      {team.name}
+      <span className="truncate text-sm font-semibold text-foreground">{team.name}</span>
     </Link>
   );
 }
 
 // Últimos resultados — mesma filosofia de standings-block.tsx (sempre lido na hora, nunca salvo na
-// composição).
+// composição). Visual em linha com a agenda de jogos (schedule-block.tsx) — cartão com placar em
+// destaque no centro, brasão dos dois lados.
 export async function ErastoLeagueRecentResultsBlock({ block }: BlockRendererProps) {
   const title = readString(block.data, "title", "Últimos resultados");
   const limit = readNumber(block.data, "limit", 5);
@@ -52,24 +56,31 @@ export async function ErastoLeagueRecentResultsBlock({ block }: BlockRendererPro
       {recent.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nenhuma partida encerrada ainda.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-panel border border-border bg-card">
+        <div className="space-y-2">
           {recent.map((match) => {
             const home = teamById.get(match.homeTeamId);
             const away = teamById.get(match.awayTeamId);
             return (
-              <li key={match.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-                <div className="flex items-center gap-2 text-sm">
-                  {home && <TeamChip team={home} />}
-                  <span className="font-bold text-foreground">
-                    {formatScore(match.homeScore)} × {formatScore(match.awayScore)}
+              <div
+                key={match.id}
+                className="flex items-center gap-3 rounded-panel border border-border bg-card px-4 py-3 shadow-sm transition hover:border-primary/40"
+              >
+                {home && <TeamChip team={home} align="left" />}
+
+                <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
+                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
+                    {formatScore(match.homeScore)}-{formatScore(match.awayScore)}
                   </span>
-                  {away && <TeamChip team={away} />}
+                  {match.finishedAt && (
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{formatMatchDate(match.finishedAt)}</span>
+                  )}
                 </div>
-                {match.finishedAt && <span className="text-xs text-muted-foreground">{formatMatchDate(match.finishedAt)}</span>}
-              </li>
+
+                {away && <TeamChip team={away} align="right" />}
+              </div>
             );
           })}
-        </ul>
+        </div>
       )}
     </div>
   );
