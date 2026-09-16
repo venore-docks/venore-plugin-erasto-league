@@ -33,7 +33,15 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ id:
     <div className="space-y-6">
       <AdminPageHeader
         title={isNew ? "Novo time" : team!.name}
-        description={isNew ? "Cadastra um time novo pro campeonato." : `/${team!.slug}`}
+        description={
+          isNew ? (
+            "Cadastra um time novo pro campeonato."
+          ) : (
+            <>
+              /{team!.slug} · ID (pra CSV de fixtures): <code className="rounded bg-muted px-1 py-0.5 text-foreground">{team!.id}</code>
+            </>
+          )
+        }
         actions={
           team && (
             <>

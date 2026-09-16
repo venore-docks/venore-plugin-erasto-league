@@ -43,6 +43,13 @@
       "when": 1789577098876,
       "tag": "0005_fixtures_and_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789581232898,
+      "tag": "0006_drop_team_group",
+      "breakpoints": true
     }
   ]
 }

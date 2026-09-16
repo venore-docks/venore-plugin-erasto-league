@@ -25,7 +25,6 @@ async function rowToProfile(row: TeamRow): Promise<TeamProfile> {
     secondaryColor: row.secondaryColor,
     description: row.description,
     foundedDate: row.foundedDate,
-    groupName: row.groupName,
   };
 }
 
@@ -71,7 +70,6 @@ export type TeamInput = {
   secondaryColor: string | null;
   description: string | null;
   foundedDate: string | null;
-  groupName: string | null;
 };
 
 export async function createTeam(input: TeamInput): Promise<TeamProfile> {

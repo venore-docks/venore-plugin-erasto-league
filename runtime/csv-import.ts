@@ -1,5 +1,5 @@
 import { csvToObjects } from "../shared/csv";
-import { getTeamByName, upsertTeamByName } from "./teams";
+import { getTeam, getTeamByName, updateTeam, upsertTeamByName, type TeamInput } from "./teams";
 import { createFixture, deleteAllFixtures } from "./fixtures";
 import type { FixturePhase } from "../contracts/types";
 
@@ -15,10 +15,14 @@ function optionalCell(row: Record<string, string>, key: string): string | null {
   return value || null;
 }
 
-// Colunas esperadas (header, case-insensitive): name, group, primaryColor, secondaryColor,
-// foundedDate, description. Só "name" é obrigatória — o resto fica null se a coluna faltar ou a
-// célula estiver vazia. Reimportar a mesma planilha atualiza os times existentes (casados por
-// nome, ver upsertTeamByName) em vez de duplicar.
+// Colunas esperadas (header, case-insensitive): name, primaryColor, secondaryColor, foundedDate,
+// description, id (opcional). Só "name" é obrigatória — o resto fica null se a coluna faltar ou a
+// célula estiver vazia. Grupo NÃO é campo de time — mora só em fixtures.csv (confronto), porque é
+// propriedade da edição do campeonato, não do time em si.
+//
+// "id" preenchido = atualiza aquele time por id (não recadastra por nome — útil pra renomear um
+// time sem duplicar). "id" vazio = casa/upserta pelo nome (ver upsertTeamByName), o caminho normal
+// pra um import do zero, quando os ids ainda não existem.
 export async function importTeamsCsv(csvText: string): Promise<ImportResult> {
   const rows = csvToObjects(csvText);
   const result: ImportResult = { created: 0, updated: 0, errors: [] };
@@ -28,22 +32,34 @@ export async function importTeamsCsv(csvText: string): Promise<ImportResult> {
     const line = i + 2; // +1 pelo header, +1 porque índice começa em 0
     const name = cell(row, "name");
     if (!name) {
-      result.errors.push({ line, message: "Coluna \"name\" vazia." });
+      result.errors.push({ line, message: 'Coluna "name" vazia.' });
       continue;
     }
 
+    const input: TeamInput = {
+      name,
+      crestMediaId: null, // CSV não faz upload de arquivo — brasão continua manual pelo form.
+      primaryColor: optionalCell(row, "primarycolor"),
+      secondaryColor: optionalCell(row, "secondarycolor"),
+      description: optionalCell(row, "description"),
+      foundedDate: optionalCell(row, "foundeddate"),
+    };
+
     try {
-      const { created } = await upsertTeamByName({
-        name,
-        crestMediaId: null, // CSV não faz upload de arquivo — brasão continua manual pelo form.
-        primaryColor: optionalCell(row, "primarycolor"),
-        secondaryColor: optionalCell(row, "secondarycolor"),
-        description: optionalCell(row, "description"),
-        foundedDate: optionalCell(row, "foundeddate"),
-        groupName: optionalCell(row, "group"),
-      });
-      if (created) result.created++;
-      else result.updated++;
+      const idCell = optionalCell(row, "id");
+      if (idCell) {
+        const existing = await getTeam(idCell);
+        if (!existing) {
+          result.errors.push({ line, message: `ID não encontrado: "${idCell}".` });
+          continue;
+        }
+        await updateTeam(idCell, input);
+        result.updated++;
+      } else {
+        const { created } = await upsertTeamByName(input);
+        if (created) result.created++;
+        else result.updated++;
+      }
     } catch (error) {
       result.errors.push({ line, message: error instanceof Error ? error.message : "Falha ao importar." });
     }
@@ -105,9 +121,39 @@ function parseFlexibleDate(dateRaw: string, timeRaw: string): number | null {
   return Number.isNaN(date.getTime()) ? null : date.getTime();
 }
 
-// Colunas esperadas: phase, group, round, homeTeam, awayTeam, homeLabel, awayLabel, date, time,
-// order. homeTeam/awayTeam vazios = confronto "a definir" (usa homeLabel/awayLabel — ex: "Vencedor
-// Grupo A") pra quartas/semi/final antes dos times reais serem conhecidos.
+type TeamRefResult = { ok: true; teamId: string | null } | { ok: false; message: string };
+
+// Resolve um lado (casa/visitante) de um confronto: a coluna "...Id" (uuid) tem prioridade sobre a
+// coluna de nome — pensado pra um export/reimport corretivo (ids não mudam se o time for
+// renomeado, nome muda). As duas vazias = confronto "a definir" (eliminatória sem time conhecido
+// ainda), não é erro.
+async function resolveTeamRef(row: Record<string, string>, idKey: string, nameKey: string, label: string): Promise<TeamRefResult> {
+  const idValue = cell(row, idKey);
+  if (idValue) {
+    const team = await getTeam(idValue);
+    if (!team) {
+      return { ok: false, message: `${label} não encontrado pelo id: "${idValue}".` };
+    }
+    return { ok: true, teamId: team.id };
+  }
+
+  const nameValue = cell(row, nameKey);
+  if (nameValue) {
+    const team = await getTeamByName(nameValue);
+    if (!team) {
+      return { ok: false, message: `${label} não encontrado: "${nameValue}". Cadastre/importe os times antes.` };
+    }
+    return { ok: true, teamId: team.id };
+  }
+
+  return { ok: true, teamId: null };
+}
+
+// Colunas esperadas: phase, group, round, homeTeamId, homeTeam, awayTeamId, awayTeam, homeLabel,
+// awayLabel, date, time, order. homeTeamId/awayTeamId (uuid, ver ID em /admin/erasto-league/teams/
+// :id) têm prioridade sobre homeTeam/awayTeam (nome, usado quando o id ainda não existe — primeiro
+// import). Os dois vazios = confronto "a definir" (usa homeLabel/awayLabel, ex: "Vencedor Grupo A")
+// pra quartas/semi/final antes dos times reais serem conhecidos.
 export async function importFixturesCsv(csvText: string, options: { replaceAll?: boolean } = {}): Promise<ImportResult> {
   const rows = csvToObjects(csvText);
   const result: ImportResult = { created: 0, updated: 0, errors: [] };
@@ -126,26 +172,15 @@ export async function importFixturesCsv(csvText: string, options: { replaceAll?:
       continue;
     }
 
-    const homeTeamName = cell(row, "hometeam");
-    const awayTeamName = cell(row, "awayteam");
-    let homeTeamId: string | null = null;
-    let awayTeamId: string | null = null;
-
-    if (homeTeamName) {
-      const team = await getTeamByName(homeTeamName);
-      if (!team) {
-        result.errors.push({ line, message: `Time da casa não encontrado: "${homeTeamName}". Cadastre/importe os times antes.` });
-        continue;
-      }
-      homeTeamId = team.id;
+    const home = await resolveTeamRef(row, "hometeamid", "hometeam", "Time da casa");
+    if (!home.ok) {
+      result.errors.push({ line, message: home.message });
+      continue;
     }
-    if (awayTeamName) {
-      const team = await getTeamByName(awayTeamName);
-      if (!team) {
-        result.errors.push({ line, message: `Time visitante não encontrado: "${awayTeamName}". Cadastre/importe os times antes.` });
-        continue;
-      }
-      awayTeamId = team.id;
+    const away = await resolveTeamRef(row, "awayteamid", "awayteam", "Time visitante");
+    if (!away.ok) {
+      result.errors.push({ line, message: away.message });
+      continue;
     }
 
     try {
@@ -153,8 +188,8 @@ export async function importFixturesCsv(csvText: string, options: { replaceAll?:
         phase,
         groupName: optionalCell(row, "group"),
         roundLabel: optionalCell(row, "round"),
-        homeTeamId,
-        awayTeamId,
+        homeTeamId: home.teamId,
+        awayTeamId: away.teamId,
         homeLabel: optionalCell(row, "homelabel"),
         awayLabel: optionalCell(row, "awaylabel"),
         scheduledAt: parseFlexibleDate(cell(row, "date"), cell(row, "time")),

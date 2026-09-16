@@ -68,9 +68,20 @@ export async function getBracketView(): Promise<BracketView> {
     (a, b) => a.localeCompare(b, "pt-BR"),
   );
 
+  // Grupo é propriedade do CONFRONTO (fixtures.groupName), não do time — um time não guarda em
+  // qual grupo está; deriva-se de quais fixtures de fase de grupos ele aparece.
+  const teamIdsByGroup = new Map<string, Set<string>>();
+  for (const fixture of groupFixtures) {
+    if (!fixture.groupName) continue;
+    const set = teamIdsByGroup.get(fixture.groupName) ?? new Set<string>();
+    if (fixture.homeTeamId) set.add(fixture.homeTeamId);
+    if (fixture.awayTeamId) set.add(fixture.awayTeamId);
+    teamIdsByGroup.set(fixture.groupName, set);
+  }
+
   const groups: GroupView[] = groupNames.map((name) => ({
     name,
-    standings: standings.filter((row) => teamById.get(row.teamId)?.groupName === name),
+    standings: standings.filter((row) => teamIdsByGroup.get(name)?.has(row.teamId)),
     fixtures: groupFixtures.filter((fixture) => fixture.groupName === name).map(toView),
   }));
 

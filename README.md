@@ -49,11 +49,17 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
 - **Fixtures (confrontos agendados) + import CSV** — `erasto_league.fixtures`: um confronto pode
   existir ANTES de qualquer partida (importado via `/admin/erasto-league/import`), com fase
   (grupo/quartas/semi/final), grupo, rodada, data e os dois times — ou só um rótulo ("Vencedor
-  Grupo A") quando o time da eliminatória ainda não é conhecido. `/admin/erasto-league/fixtures`
-  lista tudo e deixa **vincular manualmente** um confronto à partida real depois de jogada (não é
-  automático — dois times podem se enfrentar mais de uma vez). Import de times por CSV também
-  reaproveita `upsertTeamByName` — reimportar a mesma planilha atualiza em vez de duplicar. Exemplo
-  de planilha (times e confrontos do Erasto League 2026) em `csv/teams.csv` e `csv/fixtures.csv`.
+  Grupo A") quando o time da eliminatória ainda não é conhecido. **Grupo é campo do confronto, não
+  do time** — `teams` não guarda grupo nenhum; o grupo de um time (usado pela mini-classificação do
+  bloco de fases) é derivado de em quais fixtures de fase de grupos ele aparece. `homeTeamId`/
+  `awayTeamId` (uuid, veja o ID na página do time em `/admin/erasto-league/teams/:id`) têm
+  prioridade sobre `homeTeam`/`awayTeam` (nome) na hora de casar o time da linha — use nome no
+  primeiro import (id ainda não existe) e id numa correção depois (sobrevive a renomear o time).
+  `/admin/erasto-league/fixtures` lista tudo e deixa **vincular manualmente** um confronto à
+  partida real depois de jogada (não é automático — dois times podem se enfrentar mais de uma
+  vez). Times por CSV: sem "id" casa/upserta pelo nome (`upsertTeamByName`); com "id" atualiza
+  aquele time específico. Exemplo de planilha (times e confrontos do Erasto League 2026) em
+  `csv/teams.csv` e `csv/fixtures.csv`.
 - **Tempo real** — `EventSource` → `/api/erasto-league/events` (SSE). O servidor relê o banco a
   cada 1s (catch-up multi-instância) e o client cai em polling de `/api/erasto-league/state`
   quando o SSE está fora.

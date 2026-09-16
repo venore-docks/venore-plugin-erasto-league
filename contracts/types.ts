@@ -106,10 +106,6 @@ export type TeamProfile = {
   description: string | null;
   // ISO date (yyyy-mm-dd), sem hora — exibida logo abaixo do nome do time.
   foundedDate: string | null;
-  // Grupo da fase de grupos (Fase 6 — copa) — "A"/"B"/"C"... null = não participa de fase de
-  // grupos (ou campeonato sem chaves). Usado só pra agrupar a classificação no bloco de
-  // fases (erasto-league.bracket) — o resto do plugin (súmula, controle) não olha isto.
-  groupName: string | null;
 };
 
 export type PlayerProfile = {

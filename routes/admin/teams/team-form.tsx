@@ -49,14 +49,9 @@ export function TeamForm({ team, crestMedia }: { team: TeamProfile | null; crest
         </Field>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Data de fundação">
-          <Input name="foundedDate" type="date" defaultValue={team?.foundedDate ?? ""} />
-        </Field>
-        <Field label="Grupo (fase de grupos, opcional)">
-          <Input name="groupName" defaultValue={team?.groupName ?? ""} placeholder="ex: A" maxLength={10} />
-        </Field>
-      </div>
+      <Field label="Data de fundação">
+        <Input name="foundedDate" type="date" defaultValue={team?.foundedDate ?? ""} />
+      </Field>
 
       <Field label="Descrição / história">
         <Textarea name="description" defaultValue={team?.description ?? ""} rows={4} maxLength={2000} />

@@ -1,0 +1,1 @@
+ALTER TABLE "erasto_league"."teams" DROP COLUMN "group_name";

@@ -41,7 +41,6 @@ export async function saveTeamAction(_prev: TeamActionState, formData: FormData)
     secondaryColor: nullableStr(formData, "secondaryColor"),
     description: nullableStr(formData, "description"),
     foundedDate: nullableStr(formData, "foundedDate"),
-    groupName: nullableStr(formData, "groupName"),
   };
 
   const id = str(formData, "id");
