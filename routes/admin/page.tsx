@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Award, CalendarDays, ClipboardList, MonitorPlay, Radio, Shield, Smartphone, Upload, Users } from "lucide-react";
+import { Award, CalendarDays, ClipboardList, MonitorPlay, Radio, Shield, Smartphone, Tv, Upload, Users } from "lucide-react";
 import { AdminAccessDenied, AdminPageHeader, AdminStatTile, Badge, Button } from "@venore/plugin-sdk/ui";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { resolveErastoLeagueConfig } from "../../shared/config";
@@ -105,6 +105,11 @@ export default async function ErastoLeagueAdminPage() {
           <Button asChild variant="outline" size="sm">
             <a href="/ext/erasto-league/control" target="_blank" rel="noreferrer">
               <Smartphone className="size-4" /> Abrir controle ↗
+            </a>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <a href="/ext/erasto-league/tv" target="_blank" rel="noreferrer">
+              <Tv className="size-4" /> Abrir view de TV ↗
             </a>
           </Button>
           {state.currentMatchId && (
