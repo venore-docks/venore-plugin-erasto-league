@@ -1,6 +1,7 @@
 import { and, desc, eq, or } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
 import { matches as matchesTable } from "../database/schema";
+import { recordEvent } from "./match-events";
 import type { MatchSummary } from "../contracts/types";
 
 type MatchRow = typeof matchesTable.$inferSelect;
@@ -55,6 +56,51 @@ export async function listMatchesBetweenTeams(teamAId: string, teamBId: string):
     )
     .orderBy(desc(matchesTable.startedAt));
   return rows.map(rowToSummary);
+}
+
+export type ManualMatchInput = {
+  homeTeamId: string;
+  awayTeamId: string;
+  homeScore: number;
+  awayScore: number;
+  // "YYYY-MM-DD" (input type="date") — null = agora. Sempre local, sem hora (jogo passado, hora
+  // exata não importa pra súmula/classificação).
+  playedOn: string | null;
+};
+
+// Cria uma súmula já ENCERRADA sem passar pelo controle ao vivo — pra jogo que já aconteceu
+// (atrasou o cadastro, ou é histórico anterior ao plugin). O placar entra como um evento "goal" de
+// amount=N por lado (playerId null) em vez de escrever homeScore/awayScore direto, pra manter o
+// mesmo invariante do resto do sistema (placar = soma dos eventos, runtime/match-events.ts) — dá
+// pra depois abrir a súmula normal e detalhar/atribuir os gols a jogadores específicos.
+export async function createManualMatch(input: ManualMatchInput): Promise<MatchSummary> {
+  const playedAt = input.playedOn ? parseLocalDate(input.playedOn) : new Date();
+
+  const [row] = await db
+    .insert(matchesTable)
+    .values({
+      homeTeamId: input.homeTeamId,
+      awayTeamId: input.awayTeamId,
+      status: "finished",
+      startedAt: playedAt,
+      finishedAt: playedAt,
+    })
+    .returning();
+
+  if (input.homeScore > 0) {
+    await recordEvent({ matchId: row.id, kind: "goal", side: "home", amount: input.homeScore });
+  }
+  if (input.awayScore > 0) {
+    await recordEvent({ matchId: row.id, kind: "goal", side: "away", amount: input.awayScore });
+  }
+
+  const created = await getMatch(row.id);
+  return created!;
+}
+
+function parseLocalDate(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, (month || 1) - 1, day || 1, 12, 0);
 }
 
 // Últimos jogos de um time (perfil público, Fase 4) — só encerradas, mais recente primeiro.

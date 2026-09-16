@@ -28,6 +28,10 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   lado é a soma dos eventos "goal". Times/jogador podem ficar sem atribuição no calor do jogo.
 - **Súmula** — `/admin/erasto-league/matches` lista as partidas; abrir uma deixa completar o
   jogador de um evento sem atribuição, corrigir tipo/lado/quantidade ou remover um evento.
+  "Nova súmula" (`/admin/erasto-league/matches/new`) cria uma partida já ENCERRADA sem passar pelo
+  controle ao vivo — pra jogo que já aconteceu (atrasou o cadastro, ou é histórico anterior ao
+  plugin): escolhe os times, o placar final e a data, e cai direto na súmula do jogo criado pra
+  detalhar/atribuir os gols a jogadores específicos.
 - **Classificação** — `runtime/standings.ts` agrega as partidas encerradas por time (V=3/E=1/D=0,
   saldo de gols), semeada com todo time cadastrado mesmo sem jogo ainda.
 - **Blocos de page-builder** — contribuídos via `contributions.ts` (`blocks/`), aparecem no

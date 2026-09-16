@@ -2,12 +2,13 @@ import { notFound } from "next/navigation";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { AdminAccessDenied, AdminPageHeader, Badge, Button } from "@venore/plugin-sdk/ui";
 import { getMatch } from "../../../runtime/matches";
-import { getTeam } from "../../../runtime/teams";
+import { getTeam, listTeams } from "../../../runtime/teams";
 import { listPlayersByTeam } from "../../../runtime/players";
 import { listEventsByMatch } from "../../../runtime/match-events";
 import { formatScore } from "../../../shared/score";
 import { MATCH_STATUS_BADGE_VARIANT, MATCH_STATUS_LABEL } from "../../../shared/match-status";
 import { addEventFormAction, deleteEventFormAction, updateEventFormAction } from "./actions";
+import { CreateMatchForm } from "./create-match-form";
 import type { EventKind, MatchEvent, PlayerProfile, TeamProfile } from "../../../contracts/types";
 
 const EVENT_LABEL: Record<EventKind, string> = {
@@ -109,11 +110,23 @@ function EventRow({
   );
 }
 
+// id "new" = criar súmula sem controle ao vivo (ver create-match-form.tsx); qualquer outro valor é
+// o uuid de uma partida existente.
 export default async function MatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const gate = await getPluginAdminPageData("erasto-league");
   if (!gate.granted) {
     return <AdminAccessDenied message="Você não tem permissão para ver o Erasto League." />;
+  }
+
+  if (id === "new") {
+    const teams = await listTeams();
+    return (
+      <div className="space-y-6">
+        <AdminPageHeader title="Nova súmula" description="Registra uma partida que já aconteceu, sem passar pelo controle ao vivo." />
+        <CreateMatchForm teams={teams} />
+      </div>
+    );
   }
 
   const match = await getMatch(id);

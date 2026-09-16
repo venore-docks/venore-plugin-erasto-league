@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ClipboardList } from "lucide-react";
-import { AdminAccessDenied, AdminPageHeader, Badge, EmptyState } from "@venore/plugin-sdk/ui";
+import { ClipboardList, Plus } from "lucide-react";
+import { AdminAccessDenied, AdminPageHeader, Badge, Button, EmptyState } from "@venore/plugin-sdk/ui";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { listMatches } from "../../../runtime/matches";
 import { listTeams } from "../../../runtime/teams";
@@ -24,13 +24,23 @@ export default async function MatchesAdminPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader title="Súmulas" description="Partidas registradas — corrija ou complete quem fez cada gol/cartão/falta." />
+      <AdminPageHeader
+        title="Súmulas"
+        description="Partidas registradas — corrija ou complete quem fez cada gol/cartão/falta."
+        actions={
+          <Button asChild>
+            <Link href="/admin/erasto-league/matches/new">
+              <Plus className="size-4" /> Nova súmula
+            </Link>
+          </Button>
+        }
+      />
 
       {matches.length === 0 ? (
         <EmptyState
           icon={<ClipboardList className="size-8" strokeWidth={1.5} />}
           title="Nenhuma partida ainda"
-          description="Inicie uma partida no controle (/ext/erasto-league/control) pra ela aparecer aqui."
+          description="Inicie uma partida no controle (/ext/erasto-league/control) ou crie uma súmula manual pra um jogo que já aconteceu."
         />
       ) : (
         <ul className="divide-y divide-border rounded-panel border border-border bg-card">

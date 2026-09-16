@@ -1,8 +1,10 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { deleteEvent, recordEvent, updateEvent } from "../../../runtime/match-events";
+import { createManualMatch } from "../../../runtime/matches";
 import type { EventKind, MatchSide } from "../../../contracts/types";
 
 // Súmula (Fase 3): corrige/completa ao vivo o que o controle deixou passar — mesmos mutators de
@@ -22,6 +24,33 @@ function eventInputFromForm(formData: FormData) {
   const amountRaw = String(formData.get("amount") ?? "1");
   const amount = kind === "goal" ? Number(amountRaw) || 1 : 1;
   return { kind, side, playerId, amount };
+}
+
+export type CreateMatchActionState = { error: string | null };
+
+// "Criar súmula" sem controle ao vivo (jogo atrasado / histórico anterior ao plugin) — ver
+// runtime/matches.ts createManualMatch. Redireciona pra súmula normal do jogo criado, onde dá pra
+// atribuir os gols a jogadores e adicionar cartão/falta como em qualquer outra partida.
+export async function createMatchFormAction(_prev: CreateMatchActionState, formData: FormData): Promise<CreateMatchActionState> {
+  await requireGate();
+
+  const homeTeamId = String(formData.get("homeTeamId") ?? "");
+  const awayTeamId = String(formData.get("awayTeamId") ?? "");
+  if (!homeTeamId || !awayTeamId) {
+    return { error: "Escolha os dois times." };
+  }
+  if (homeTeamId === awayTeamId) {
+    return { error: "Escolha times diferentes." };
+  }
+
+  const homeScore = Math.max(0, Number(formData.get("homeScore") ?? 0) || 0);
+  const awayScore = Math.max(0, Number(formData.get("awayScore") ?? 0) || 0);
+  const playedOn = String(formData.get("playedOn") ?? "") || null;
+
+  const match = await createManualMatch({ homeTeamId, awayTeamId, homeScore, awayScore, playedOn });
+
+  revalidatePath("/admin/erasto-league/matches");
+  redirect(`/admin/erasto-league/matches/${match.id}`);
 }
 
 export async function addEventFormAction(formData: FormData): Promise<void> {
