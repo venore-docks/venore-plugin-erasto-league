@@ -94,7 +94,8 @@ export default async function ErastoLeagueAdminPage() {
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">
           O overlay é uma fonte de navegador no OBS (fundo transparente). O controle abre no
-          celular e pede o PIN.
+          celular e pede login (mesma permissão desta seção). A view de TV é feita pra abrir em
+          tela cheia num projetor/TV do evento.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button asChild variant="outline" size="sm">

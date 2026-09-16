@@ -41,8 +41,6 @@ const CSS = `
   .el-c-dot { width: 8px; height: 8px; border-radius: 999px; }
   .el-c-dot.on { background: var(--accent, #22c55e); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #22c55e) 25%, transparent); }
   .el-c-dot.off { background: #6b7280; }
-  .el-c-banner { background: rgba(234,179,8,0.14); border: 1px solid rgba(234,179,8,0.4); color: #eab308;
-    font-size: 12px; padding: 8px 12px; border-radius: 10px; }
   .el-c-error { background: rgba(248,113,113,0.14); border: 1px solid rgba(248,113,113,0.4); color: #f87171;
     font-size: 13px; padding: 8px 12px; border-radius: 10px; }
 
@@ -184,14 +182,12 @@ export function Console({
   initialState,
   teams,
   accentColor,
-  usingDefaultPin,
   periodMs,
   periodCount,
 }: {
   initialState: MatchState;
   teams: TeamProfile[];
   accentColor: string;
-  usingDefaultPin: boolean;
   periodMs: number;
   periodCount: number;
 }) {
@@ -324,12 +320,6 @@ export function Console({
           </span>
         </div>
 
-        {usingDefaultPin ? (
-          <div className="el-c-banner">
-            PIN padrão <strong>1234</strong> em uso — defina em <code>/admin/erasto-league</code> ou
-            na env <code>ERASTO_LEAGUE_PIN</code>.
-          </div>
-        ) : null}
         {error ? <div className="el-c-error">{error}</div> : null}
 
         {/* ---- relógio ---- */}

@@ -164,8 +164,8 @@ export type Fixture = {
   sortOrder: number;
 };
 
-// Ações que o controle (celular) e a tela admin podem disparar. PIN protege o controle;
-// authorizeActor("erasto-league.manage") protege a tela admin. As duas convergem nos mutators de
+// Ações que o controle (celular) e a tela admin podem disparar. Os dois são protegidos pela mesma
+// permissão ("erasto-league.manage", via getPluginAdminPageData) — convergem nos mutators de
 // runtime/match-actions.ts.
 export type ClockCommand =
   | { kind: "start" }

@@ -2,14 +2,6 @@
 // manifest.ts (registro do default via registerDefaultSetting, ver register-plugins.ts do core)
 // quanto pela tela admin de configuração. Mesmo padrão de BROADCAST_SETTINGS do venore-plugin-broadcast.
 export const ERASTO_LEAGUE_SETTINGS = {
-  // PIN de escrita do controle (celular). Antes só existia como env ERASTO_LEAGUE_PIN — agora a
-  // env continua valendo como override (útil em dev / CI), mas o valor "oficial" mora aqui e é
-  // editável pela tela admin sem redeploy. Vazio = cai no env; env vazio = "1234" com aviso.
-  pin: {
-    key: "erasto-league.pin",
-    defaultValue: "",
-    label: "PIN do controle (celular)",
-  },
   // Duração de UM tempo, em minutos. Os jogos da Erasto League são de 20min no total (2 × 10) —
   // esse valor alimenta os atalhos de relógio do controle ("Fim 1º", "Fim de jogo").
   periodMinutes: {
@@ -44,7 +36,6 @@ export type ErastoLeagueSettingField = keyof typeof ERASTO_LEAGUE_SETTINGS;
 
 // Snapshot resolvido das settings, no formato que o overlay/console consomem.
 export type ErastoLeagueConfig = {
-  pin: string;
   periodMs: number;
   periodCount: number;
   accentColor: string;

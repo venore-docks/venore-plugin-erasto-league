@@ -34,7 +34,6 @@ export async function saveErastoLeagueSettingsAction(
   const accentColor = sanitizeAccentColor(str(formData, "accentColor"));
 
   const writes = [
-    setSetting({ key: S.pin.key, value: str(formData, "pin") }),
     setSetting({ key: S.periodMinutes.key, value: periodMinutes }),
     setSetting({ key: S.periodCount.key, value: periodCount }),
     setSetting({ key: S.accentColor.key, value: accentColor }),

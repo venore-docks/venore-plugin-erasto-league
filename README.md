@@ -14,12 +14,14 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   abre uma folha rápida e dispensável "quem foi?" com o elenco), etiqueta, **relógio**
   (iniciar/pausar/zerar/±1:00 + atalhos "Fim 1º"/"Fim de jogo"), "Encerrar partida e salvar
   placar" ou "Cancelar partida" (descarta sem contar na súmula/classificação — pra quando começou
-  errado). Gateado por PIN.
+  errado). Gateado por LOGIN — mesma permissão (`erasto-league.manage`) de qualquer outra tela
+  admin do plugin (não mais PIN de cookie), alcançável pela superfície do admin ("Abrir controle ↗"
+  em `/admin/erasto-league`).
 - **Prévia no overlay** — na tela de escolher times do controle, "Mostrar" liga uma pílula
   discreta ("Em breve: Time A × Time B" ou texto livre) no overlay ocioso; "Ocultar" desliga. Sem
   prévia ligada, o overlay ocioso continua só transparente, como sempre foi.
-- **Admin** — `/admin/erasto-league` — configura PIN, duração dos tempos, cor de destaque e a
-  logo; atalhos pras telas e pro cadastro. Link aparece na nav do admin ao instalar o plugin.
+- **Admin** — `/admin/erasto-league` — configura duração dos tempos, cor de destaque e a logo;
+  atalhos pras telas e pro cadastro. Link aparece na nav do admin ao instalar o plugin.
 - **Cadastro de times e jogadores** — `/admin/erasto-league/teams` e `/players`, sempre mantido
   por um admin (nunca pelos alunos). Time: nome, brasão (upload via `MediaPickerField`, sistema de
   mídia do host), cores, descrição/história, data de fundação. Jogador: time, nome, número, gênero
@@ -107,7 +109,6 @@ Tudo em `/admin/erasto-league` (contexts/settings do host):
 
 | Setting | Default | Pra quê |
 | --- | --- | --- |
-| `erasto-league.pin` | *(vazio)* | PIN do controle. Vazio = env `ERASTO_LEAGUE_PIN`, ou `1234`. |
 | `erasto-league.periodMinutes` | 10 | Duração de um tempo. |
 | `erasto-league.periodCount` | 2 | Número de tempos (10 × 2 = jogo de 20min). |
 | `erasto-league.accentColor` | `#22c55e` | Cor da placa/halo/relógio no overlay. |
@@ -127,5 +128,5 @@ Usa o `Date.now()` do cliente — em máquinas sem NTP pode divergir alguns segu
   o total (stats já existem em `runtime/stats.ts`).
 - **Latência na Vercel.** Gol propaga entre instâncias em até ~1s (o re-poll do SSE). Pra reação
   instantânea, rodar como processo único (LAN / `next start`).
-- **SSE de leitura aberto.** Qualquer um na rede vê o placar. O PIN protege só a escrita.
-- **PIN simples.** Comparação direta, sem hash nem limite de tentativas.
+- **SSE de leitura aberto.** Qualquer um na rede vê o placar (overlay/TV são intencionalmente
+  públicos). A escrita (controle) exige login com a permissão `erasto-league.manage`.

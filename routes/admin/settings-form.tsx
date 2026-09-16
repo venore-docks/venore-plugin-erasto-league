@@ -39,9 +39,6 @@ export function SettingsForm({ config }: { config: ErastoLeagueConfig }) {
           <Input name="periodCount" type="number" min={1} max={4} defaultValue={config.periodCount} />
         </Field>
 
-        <Field label="PIN do controle" hint="Vazio = usa a env ERASTO_LEAGUE_PIN, ou 1234.">
-          <Input name="pin" defaultValue={config.pin === "1234" ? "" : config.pin} placeholder="ex: 4820" />
-        </Field>
         <Field label="Cor de destaque" hint="Placa do placar, halo e relógio.">
           <input
             name="accentColor"

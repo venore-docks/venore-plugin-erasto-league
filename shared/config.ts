@@ -24,8 +24,7 @@ function asNumber(value: unknown, fallback: number): number {
 // admin consomem. Uma ida ao contexts/settings por chave, em paralelo.
 export async function resolveErastoLeagueConfig(): Promise<ErastoLeagueConfig> {
   const S = ERASTO_LEAGUE_SETTINGS;
-  const [pin, periodMin, periodCount, accent, logo] = await Promise.all([
-    getSetting({ key: S.pin.key }),
+  const [periodMin, periodCount, accent, logo] = await Promise.all([
     getSetting({ key: S.periodMinutes.key }),
     getSetting({ key: S.periodCount.key }),
     getSetting({ key: S.accentColor.key }),
@@ -34,21 +33,10 @@ export async function resolveErastoLeagueConfig(): Promise<ErastoLeagueConfig> {
 
   const read = (r: GetSettingResult): unknown => (r.success && r.data ? r.data.value : undefined);
 
-  // PIN: setting > env ERASTO_LEAGUE_PIN > "1234".
-  const settingPin = asString(read(pin), "").trim();
-  const envPin = process.env.ERASTO_LEAGUE_PIN?.trim() ?? "";
-  const resolvedPin = settingPin || envPin || "1234";
-
   return {
-    pin: resolvedPin,
     periodMs: clampPeriodMinutes(asNumber(read(periodMin), S.periodMinutes.defaultValue)) * 60_000,
     periodCount: clampPeriodCount(asNumber(read(periodCount), S.periodCount.defaultValue)),
     accentColor: sanitizeAccentColor(asString(read(accent), S.accentColor.defaultValue)),
     logoUrl: asString(read(logo), S.logoUrl.defaultValue).trim(),
   };
-}
-
-// true quando o PIN NÃO veio de uma setting nem de env — o console mostra um aviso.
-export function pinIsDefaultFor(config: ErastoLeagueConfig): boolean {
-  return config.pin === "1234" && !process.env.ERASTO_LEAGUE_PIN?.trim();
 }

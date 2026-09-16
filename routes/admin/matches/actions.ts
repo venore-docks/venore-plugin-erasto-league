@@ -9,7 +9,7 @@ import { createManualMatch } from "../../../runtime/matches";
 import type { EventKind, MatchSide, PowerBoostKey } from "../../../contracts/types";
 
 // Súmula (Fase 3): corrige/completa ao vivo o que o controle deixou passar — mesmos mutators de
-// runtime/match-events.ts que o controle usa, só que gateados por permissão de admin em vez de PIN.
+// runtime/match-events.ts que o controle usa, com o mesmo gate de permissão de admin.
 
 async function requireGate(): Promise<void> {
   const gate = await getPluginAdminPageData("erasto-league");

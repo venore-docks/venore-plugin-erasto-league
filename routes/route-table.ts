@@ -19,7 +19,7 @@ import { GET as stateGET } from "./api/state/route";
 // - admin      -> /admin/erasto-league          (config + atalhos; link vem do manifest.navigation)
 //                 /admin/erasto-league/teams(/:id), /players(/:id) — cadastro (admin-only)
 // - overlay    -> /ext/erasto-league/overlay    (fonte de navegador do OBS)
-// - control    -> /ext/erasto-league/control    (celular, gate por PIN)
+// - control    -> /ext/erasto-league/control    (celular, gate por login/permissão de admin)
 // - tv         -> /ext/erasto-league/tv         (view pra TV/projetor com as tabelas)
 // - perfis     -> /ext/erasto-league/teams/:slug, /players/:slug (público, só leitura)
 // - eventos    -> /api/erasto-league/events     (SSE)

@@ -1,5 +1,6 @@
 "use server";
 
+import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import {
   applyClockCommand,
   bumpScore,
@@ -15,39 +16,19 @@ import {
 import { attributePlayer } from "../../runtime/match-events";
 import { listBoostsByMatch } from "../../runtime/match-boosts";
 import { listPlayersByTeam } from "../../runtime/players";
-import { resolveErastoLeagueConfig } from "../../shared/config";
-import { hasValidPin, writePinCookie } from "../../shared/pin";
 import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile, PowerBoostKey, PowerBoostUse } from "../../contracts/types";
-
-export type SubmitPinState = { error: string | null };
-
-// Ligada a <form action={...}> na tela de PIN. Depois de gravar o cookie, o Next reexecuta os
-// Server Components da rota (control/page.tsx) sozinho.
-export async function submitPinAction(
-  _prev: SubmitPinState,
-  formData: FormData,
-): Promise<SubmitPinState> {
-  const pin = String(formData.get("pin") ?? "").trim();
-  if (!pin) {
-    return { error: "Informe o PIN." };
-  }
-  const config = await resolveErastoLeagueConfig();
-  if (pin !== config.pin) {
-    return { error: "PIN incorreto." };
-  }
-  await writePinCookie(pin);
-  return { error: null };
-}
 
 export type ScoreActionResult = { ok: true; state: MatchState } | { ok: false; error: string };
 export type EventActionResult = { ok: true; state: MatchState; eventId: string } | { ok: false; error: string };
 
-// Toda ação de escrita reconfere o cookie de PIN no servidor — o console é uma tela pública por URL.
-async function requirePin(): Promise<{ ok: false; error: string } | null> {
-  if (await hasValidPin()) {
+// Toda ação de escrita reconfere a sessão/permissão no servidor — mesmo gate de qualquer tela
+// admin do plugin (getPluginAdminPageData), não mais um PIN de cookie.
+async function requireGate(): Promise<{ ok: false; error: string } | null> {
+  const gate = await getPluginAdminPageData("erasto-league");
+  if (gate.granted) {
     return null;
   }
-  return { ok: false, error: "Sessão expirada. Recarregue a página e informe o PIN de novo." };
+  return { ok: false, error: "Sessão expirada ou sem permissão. Faça login de novo em /login." };
 }
 
 function errorMessage(error: unknown): string {
@@ -55,7 +36,7 @@ function errorMessage(error: unknown): string {
 }
 
 export async function startMatchAction(homeTeamId: string, awayTeamId: string): Promise<ScoreActionResult> {
-  const denied = await requirePin();
+  const denied = await requireGate();
   if (denied) return denied;
   try {
     return { ok: true, state: await startMatch(homeTeamId, awayTeamId) };
@@ -65,13 +46,13 @@ export async function startMatchAction(homeTeamId: string, awayTeamId: string): 
 }
 
 export async function finishMatchAction(): Promise<ScoreActionResult> {
-  const denied = await requirePin();
+  const denied = await requireGate();
   if (denied) return denied;
   return { ok: true, state: await finishMatch() };
 }
 
 export async function resetMatchAction(): Promise<ScoreActionResult> {
-  const denied = await requirePin();
+  const denied = await requireGate();
   if (denied) return denied;
   return { ok: true, state: await resetCurrentMatch() };
 }
@@ -79,19 +60,19 @@ export async function resetMatchAction(): Promise<ScoreActionResult> {
 // "Cancelar partida" — descarta a partida atual sem contar na súmula/classificação (ver
 // runtime/match-actions.ts cancelMatch).
 export async function cancelMatchAction(): Promise<ScoreActionResult> {
-  const denied = await requirePin();
+  const denied = await requireGate();
   if (denied) return denied;
   return { ok: true, state: await cancelMatch() };
 }
 
 export async function setPreMatchMessageAction(message: string): Promise<ScoreActionResult> {
-  const denied = await requirePin();
+  const denied = await requireGate();
   if (denied) return denied;
   return { ok: true, state: await setPreMatchMessage(message) };
 }
 
 export async function bumpScoreAction(side: MatchSide, delta: number): Promise<EventActionResult> {
-  const denied = await requirePin();
+  const denied = await requireGate();
   if (denied) return denied;
   try {
     const { state, eventId } = await bumpScore(side, delta);
@@ -102,7 +83,7 @@ export async function bumpScoreAction(side: MatchSide, delta: number): Promise<E
 }
 
 export async function recordEventAction(kind: Exclude<EventKind, "goal">, side: MatchSide): Promise<EventActionResult> {
-  const denied = await requirePin();
+  const denied = await requireGate();
   if (denied) return denied;
   try {
     const { state, eventId } = await recordCardOrFoul(kind, side);
@@ -113,14 +94,14 @@ export async function recordEventAction(kind: Exclude<EventKind, "goal">, side: 
 }
 
 export async function attributePlayerAction(eventId: string, playerId: string): Promise<{ ok: boolean }> {
-  const denied = await requirePin();
+  const denied = await requireGate();
   if (denied) return { ok: false };
   await attributePlayer(eventId, playerId);
   return { ok: true };
 }
 
 export async function listRosterAction(teamId: string): Promise<PlayerProfile[]> {
-  const denied = await requirePin();
+  const denied = await requireGate();
   if (denied) return [];
   return listPlayersByTeam(teamId);
 }
@@ -128,7 +109,7 @@ export async function listRosterAction(teamId: string): Promise<PlayerProfile[]>
 export type BoostActionResult = { ok: true; boost: PowerBoostUse } | { ok: false; error: string };
 
 export async function recordBoostAction(side: MatchSide, boostKey: PowerBoostKey): Promise<BoostActionResult> {
-  const denied = await requirePin();
+  const denied = await requireGate();
   if (denied) return denied;
   try {
     return { ok: true, boost: await recordBoostForCurrentMatch(side, boostKey) };
@@ -138,19 +119,19 @@ export async function recordBoostAction(side: MatchSide, boostKey: PowerBoostKey
 }
 
 export async function listBoostsAction(matchId: string): Promise<PowerBoostUse[]> {
-  const denied = await requirePin();
+  const denied = await requireGate();
   if (denied) return [];
   return listBoostsByMatch(matchId);
 }
 
 export async function setLabelAction(label: string): Promise<ScoreActionResult> {
-  const denied = await requirePin();
+  const denied = await requireGate();
   if (denied) return denied;
   return { ok: true, state: await setLabel(label) };
 }
 
 export async function clockAction(command: ClockCommand): Promise<ScoreActionResult> {
-  const denied = await requirePin();
+  const denied = await requireGate();
   if (denied) return denied;
   return { ok: true, state: await applyClockCommand(command) };
 }

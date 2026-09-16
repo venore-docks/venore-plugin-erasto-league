@@ -10,8 +10,8 @@ import { recordBoostUse } from "./match-boosts";
 
 // Mutators do estado da partida — mesma API mental de antes, agora em cima de partida como
 // entidade (matches/match_events, runtime/match-events.ts) em vez de contador direto. Sem
-// autorização aqui: cada porta de entrada resolve a sua (PIN no controle,
-// authorizeActor("erasto-league.manage") na tela admin/súmula) e chama estes.
+// autorização aqui: cada porta de entrada resolve a sua (getPluginAdminPageData
+// "erasto-league.manage", tanto no controle quanto na tela admin/súmula) e chama estes.
 
 export { readMatchState as getMatchState };
 
