@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Plus } from "lucide-react";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { AdminAccessDenied, AdminPageHeader, Button } from "@venore/plugin-sdk/ui";
@@ -47,27 +48,41 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ id:
 
       {team && (
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-foreground">Elenco</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">Elenco</h2>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/admin/erasto-league/players/new?teamId=${team.id}`}>
+                <Plus className="size-4" /> Adicionar jogador
+              </Link>
+            </Button>
+          </div>
           {roster.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum jogador cadastrado neste time ainda.</p>
           ) : (
             <ul className="divide-y divide-border rounded-panel border border-border bg-card">
               {roster.map((player) => (
-                <li key={player.id} className="flex items-center justify-between px-4 py-2.5">
-                  <Link href={`/admin/erasto-league/players/${player.id}`} className="text-sm text-foreground hover:underline">
-                    {player.number != null ? `#${player.number} ` : ""}
-                    {player.name}
+                <li key={player.id}>
+                  <Link
+                    href={`/admin/erasto-league/players/${player.id}`}
+                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-accent/14"
+                  >
+                    {player.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={player.photoUrl} alt="" className="size-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex size-8 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
+                        {player.name.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-sm text-foreground">{player.name}</span>
+                    {player.number != null && (
+                      <span className="ml-auto text-xs font-semibold tabular-nums text-muted-foreground">#{player.number}</span>
+                    )}
                   </Link>
                 </li>
               ))}
             </ul>
           )}
-          <Link
-            href={`/admin/erasto-league/players/new?teamId=${team.id}`}
-            className="inline-block text-sm font-medium text-foreground hover:underline"
-          >
-            + Adicionar jogador
-          </Link>
         </section>
       )}
     </div>

@@ -15,7 +15,7 @@ export default async function PlayersAdminPage() {
   }
 
   const [players, teams] = await Promise.all([listPlayers(), listTeams()]);
-  const teamNameById = new Map(teams.map((team) => [team.id, team.name]));
+  const teamById = new Map(teams.map((team) => [team.id, team]));
 
   return (
     <div className="space-y-6">
@@ -48,15 +48,38 @@ export default async function PlayersAdminPage() {
         />
       ) : (
         <ul className="divide-y divide-border rounded-panel border border-border bg-card">
-          {players.map((player) => (
-            <li key={player.id} className="flex items-center justify-between px-4 py-2.5">
-              <Link href={`/admin/erasto-league/players/${player.id}`} className="text-sm text-foreground hover:underline">
-                {player.number != null ? `#${player.number} ` : ""}
-                {player.name}
-              </Link>
-              <span className="text-xs text-muted-foreground">{teamNameById.get(player.teamId) ?? "—"}</span>
-            </li>
-          ))}
+          {players.map((player) => {
+            const team = teamById.get(player.teamId);
+            return (
+              <li key={player.id}>
+                <Link
+                  href={`/admin/erasto-league/players/${player.id}`}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-accent/14"
+                >
+                  {player.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={player.photoUrl} alt="" className="size-9 rounded-full object-cover" />
+                  ) : (
+                    <div className="flex size-9 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">
+                      {player.name.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-sm text-foreground">{player.name}</span>
+                  {player.number != null && (
+                    <span className="text-xs font-semibold tabular-nums text-muted-foreground">#{player.number}</span>
+                  )}
+                  {team && (
+                    <span
+                      className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-foreground"
+                    >
+                      <span className="size-2 rounded-full" style={{ background: team.primaryColor ?? "#334155" }} />
+                      {team.name}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

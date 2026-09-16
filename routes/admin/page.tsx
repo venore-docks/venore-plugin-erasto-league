@@ -1,19 +1,30 @@
 import Link from "next/link";
-import { AdminAccessDenied, AdminPageHeader } from "@venore/plugin-sdk/ui";
+import { Award, ClipboardList, MonitorPlay, Radio, Shield, Smartphone, Users } from "lucide-react";
+import { AdminAccessDenied, AdminPageHeader, AdminStatTile, Badge, Button } from "@venore/plugin-sdk/ui";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { resolveErastoLeagueConfig } from "../../shared/config";
 import { formatClock } from "../../shared/clock";
+import { getMatchState } from "../../runtime/match-actions";
+import { listTeams } from "../../runtime/teams";
+import { listPlayers } from "../../runtime/players";
+import { listFinishedMatches } from "../../runtime/matches";
 import { SettingsForm } from "./settings-form";
 
-// Único ponto do plugin no admin (link criado no install via manifest.navigation). Config das
-// settings + atalhos pras telas standalone (overlay do OBS, controle do celular).
+// Único ponto do plugin no admin (link criado no install via manifest.navigation). Visão geral
+// (stats + status ao vivo) + atalhos pro cadastro/telas + config das settings.
 export default async function ErastoLeagueAdminPage() {
   const gate = await getPluginAdminPageData("erasto-league");
   if (!gate.granted) {
     return <AdminAccessDenied message="Você não tem permissão para ver o Erasto League." />;
   }
 
-  const config = await resolveErastoLeagueConfig();
+  const [config, state, teams, players, finished] = await Promise.all([
+    resolveErastoLeagueConfig(),
+    getMatchState(),
+    listTeams(),
+    listPlayers(),
+    listFinishedMatches(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -22,56 +33,75 @@ export default async function ErastoLeagueAdminPage() {
         description="Placar ao vivo pro OBS + controle pelo celular. Configure abaixo e abra as telas."
       />
 
+      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr))]">
+        <AdminStatTile label="Times" value={teams.length} />
+        <AdminStatTile label="Jogadores" value={players.length} />
+        <AdminStatTile label="Partidas encerradas" value={finished.length} />
+        <AdminStatTile
+          label="Agora"
+          value={
+            state.currentMatchId ? (
+              <span className="inline-flex items-center gap-1.5 text-base font-semibold text-destructive">
+                <Radio className="size-4" /> Ao vivo
+              </span>
+            ) : (
+              <span className="text-base font-semibold text-muted-foreground">Ociosa</span>
+            )
+          }
+          hint={state.currentMatchId ? `${state.home.name} × ${state.away.name}` : undefined}
+        />
+      </div>
+
       <section className="rounded-panel border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold text-foreground">Cadastro</h2>
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Award className="size-4 text-muted-foreground" /> Cadastro
+        </h2>
         <p className="mt-1 text-xs text-muted-foreground">
           Times e jogadores do campeonato — sempre cadastrados por um admin.
         </p>
-        <div className="mt-3 flex flex-wrap gap-3">
-          <Link
-            href="/admin/erasto-league/teams"
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent/14"
-          >
-            Times
-          </Link>
-          <Link
-            href="/admin/erasto-league/players"
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent/14"
-          >
-            Jogadores
-          </Link>
-          <Link
-            href="/admin/erasto-league/matches"
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent/14"
-          >
-            Súmulas
-          </Link>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/erasto-league/teams">
+              <Shield className="size-4" /> Times
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/erasto-league/players">
+              <Users className="size-4" /> Jogadores
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/erasto-league/matches">
+              <ClipboardList className="size-4" /> Súmulas
+            </Link>
+          </Button>
         </div>
       </section>
 
       <section className="rounded-panel border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold text-foreground">Telas</h2>
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <MonitorPlay className="size-4 text-muted-foreground" /> Telas
+        </h2>
         <p className="mt-1 text-xs text-muted-foreground">
           O overlay é uma fonte de navegador no OBS (fundo transparente). O controle abre no
           celular e pede o PIN.
         </p>
-        <div className="mt-3 flex flex-wrap gap-3">
-          <a
-            href="/ext/erasto-league/overlay"
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent/14"
-          >
-            Abrir overlay ↗
-          </a>
-          <a
-            href="/ext/erasto-league/control"
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent/14"
-          >
-            Abrir controle ↗
-          </a>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <a href="/ext/erasto-league/overlay" target="_blank" rel="noreferrer">
+              <MonitorPlay className="size-4" /> Abrir overlay ↗
+            </a>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <a href="/ext/erasto-league/control" target="_blank" rel="noreferrer">
+              <Smartphone className="size-4" /> Abrir controle ↗
+            </a>
+          </Button>
+          {state.currentMatchId && (
+            <Badge variant="destructive" className="gap-1">
+              <Radio className="size-3" /> ao vivo agora
+            </Badge>
+          )}
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
           Tempo total configurado: <strong>{formatClock(config.periodMs * config.periodCount)}</strong>{" "}

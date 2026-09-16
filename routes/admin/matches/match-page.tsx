@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
-import { AdminAccessDenied, AdminPageHeader, Button } from "@venore/plugin-sdk/ui";
+import { AdminAccessDenied, AdminPageHeader, Badge, Button } from "@venore/plugin-sdk/ui";
 import { getMatch } from "../../../runtime/matches";
 import { getTeam } from "../../../runtime/teams";
 import { listPlayersByTeam } from "../../../runtime/players";
 import { listEventsByMatch } from "../../../runtime/match-events";
 import { formatScore } from "../../../shared/score";
-import { MATCH_STATUS_LABEL } from "../../../shared/match-status";
+import { MATCH_STATUS_BADGE_VARIANT, MATCH_STATUS_LABEL } from "../../../shared/match-status";
 import { addEventFormAction, deleteEventFormAction, updateEventFormAction } from "./actions";
 import type { EventKind, MatchEvent, PlayerProfile, TeamProfile } from "../../../contracts/types";
 
@@ -134,7 +134,9 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
     <div className="space-y-6">
       <AdminPageHeader
         title={`${homeTeam?.name ?? "—"} ${formatScore(match.homeScore)} × ${formatScore(match.awayScore)} ${awayTeam?.name ?? "—"}`}
-        description={MATCH_STATUS_LABEL[match.status]}
+        description={
+          <Badge variant={MATCH_STATUS_BADGE_VARIANT[match.status]}>{MATCH_STATUS_LABEL[match.status]}</Badge>
+        }
       />
 
       <section className="space-y-3">
