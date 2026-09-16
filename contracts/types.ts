@@ -59,6 +59,7 @@ export type MatchEvent = {
 // (aparece com 0 jogos antes da primeira partida).
 export type TeamStanding = {
   teamId: string;
+  slug: string;
   name: string;
   crestUrl: string | null;
   played: number;

@@ -22,6 +22,15 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   jogador de um evento sem atribuição, corrigir tipo/lado/quantidade ou remover um evento.
 - **Classificação** — `runtime/standings.ts` agrega as partidas encerradas por time (V=3/E=1/D=0,
   saldo de gols), semeada com todo time cadastrado mesmo sem jogo ainda.
+- **Blocos de page-builder** — contribuídos via `contributions.ts` (`blocks/`), aparecem no
+  palette do builder do CMS (`/admin/cms/entries/:id/builder`) igual a qualquer bloco nativo, sem
+  precisar do sistema de import/export do site:
+  - **Erasto League — Capa** (`erasto-league.hero`) — título/subtítulo/CTA editáveis; cor de
+    destaque e "🔴 ao vivo agora" vêm do plugin, não do que foi salvo na composição.
+  - **Erasto League — Classificação** (`erasto-league.standings`) — tabela sempre recalculada na
+    hora de renderizar (nunca lida do que foi salvo).
+  - **Erasto League — Últimos resultados** (`erasto-league.recent-results`) — últimas N partidas
+    encerradas, mesma filosofia.
 - **Tempo real** — `EventSource` → `/api/erasto-league/events` (SSE). O servidor relê o banco a
   cada 1s (catch-up multi-instância) e o client cai em polling de `/api/erasto-league/state`
   quando o SSE está fora.
@@ -65,8 +74,6 @@ Usa o `Date.now()` do cliente — em máquinas sem NTP pode divergir alguns segu
   campeonato interno — ver plano interno).
 - **Gráfico de rendimento e stats por jogador/time nos perfis** — próxima etapa, em cima do que
   `match_events` já guarda (gols/cartões/faltas por jogador).
-- **Página inicial com classificação/resultados ao vivo** — depende de blocos de page-builder
-  contribuídos pelo plugin (ainda não existem; ver `docs`/plano interno).
 - **Latência na Vercel.** Gol propaga entre instâncias em até ~1s (o re-poll do SSE). Pra reação
   instantânea, rodar como processo único (LAN / `next start`).
 - **SSE de leitura aberto.** Qualquer um na rede vê o placar. O PIN protege só a escrita.

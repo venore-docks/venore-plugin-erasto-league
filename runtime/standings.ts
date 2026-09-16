@@ -11,14 +11,26 @@ export async function computeStandings(): Promise<TeamStanding[]> {
   const table = new Map<string, TeamStanding>(
     teams.map((team) => [
       team.id,
-      { teamId: team.id, name: team.name, crestUrl: team.crestUrl, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 },
+      {
+        teamId: team.id,
+        slug: team.slug,
+        name: team.name,
+        crestUrl: team.crestUrl,
+        played: 0,
+        won: 0,
+        drawn: 0,
+        lost: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        points: 0,
+      },
     ]),
   );
 
   function ensure(teamId: string): TeamStanding {
     let row = table.get(teamId);
     if (!row) {
-      row = { teamId, name: "—", crestUrl: null, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
+      row = { teamId, slug: teamId, name: "—", crestUrl: null, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
       table.set(teamId, row);
     }
     return row;

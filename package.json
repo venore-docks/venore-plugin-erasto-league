@@ -8,6 +8,7 @@
     ".": "./index.ts",
     "./manifest": "./manifest.ts",
     "./route-table": "./routes/route-table.ts",
+    "./contributions": "./contributions.ts",
     "./migrations/*": "./migrations/*",
     "./package.json": "./package.json"
   },
