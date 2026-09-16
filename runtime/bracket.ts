@@ -121,3 +121,52 @@ export async function getScheduleView(limit?: number): Promise<ScheduleEntry[]> 
   const entries: ScheduleEntry[] = sorted.map((fixture) => ({ ...toView(fixture), phase: fixture.phase, groupName: fixture.groupName }));
   return typeof limit === "number" && limit > 0 ? entries.slice(0, limit) : entries;
 }
+
+// FixtureView + cores dos times — só o bloco/TV de "próximo jogo" (ad 16:9) precisa disso, pra
+// pintar um fundo split com a cor de cada lado.
+export type NextGameView = FixtureView & { homeColor: string | null; awayColor: string | null };
+
+// Próximo jogo ainda não realizado, em ordem cronológica (mesma fonte de getScheduleView) — null
+// quando não há nenhum confronto pendente (campeonato encerrado ou tabela ainda não importada).
+export async function getNextFixture(): Promise<NextGameView | null> {
+  const [fixtures, teams] = await Promise.all([listFixtures(), listTeams()]);
+  const teamById = new Map(teams.map((team) => [team.id, team]));
+
+  const matchIds = [...new Set(fixtures.map((fixture) => fixture.matchId).filter((id): id is string => Boolean(id)))];
+  const matches = await Promise.all(matchIds.map((id) => getMatch(id)));
+  const matchById = new Map(matches.filter((match): match is MatchSummary => Boolean(match)).map((match) => [match.id, match]));
+
+  const sorted = [...fixtures].sort((a, b) => {
+    if (a.scheduledAt == null && b.scheduledAt == null) return 0;
+    if (a.scheduledAt == null) return 1;
+    if (b.scheduledAt == null) return -1;
+    return a.scheduledAt - b.scheduledAt;
+  });
+
+  const next = sorted.find((fixture) => {
+    const match = fixture.matchId ? matchById.get(fixture.matchId) : null;
+    return !(match && match.status === "finished");
+  });
+  if (!next) return null;
+
+  const home = next.homeTeamId ? teamById.get(next.homeTeamId) : null;
+  const away = next.awayTeamId ? teamById.get(next.awayTeamId) : null;
+  const match = next.matchId ? matchById.get(next.matchId) : null;
+
+  return {
+    id: next.id,
+    homeName: home?.name ?? next.homeLabel ?? "A definir",
+    homeCrestUrl: home?.crestUrl ?? null,
+    homeSlug: home?.slug ?? null,
+    homeColor: home?.primaryColor ?? null,
+    awayName: away?.name ?? next.awayLabel ?? "A definir",
+    awayCrestUrl: away?.crestUrl ?? null,
+    awaySlug: away?.slug ?? null,
+    awayColor: away?.primaryColor ?? null,
+    homeScore: match ? match.homeScore : null,
+    awayScore: match ? match.awayScore : null,
+    scheduledAt: next.scheduledAt,
+    roundLabel: next.roundLabel,
+    played: Boolean(match && match.status === "finished"),
+  };
+}

@@ -65,13 +65,24 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     (confrontos agendados, ver abaixo), não por `matches` direto. Não mostra mais data (isso é o
     bloco de agenda, abaixo) — só "a jogar" pro que ainda não aconteceu.
   - **Erasto League — Agenda de jogos** (`erasto-league.schedule`) — TODOS os confrontos (grupos +
-    eliminatórias) em ordem cronológica, agrupados por dia, com brasão dos dois times e horário ou
-    placar. Alimentado por `runtime/bracket.ts` (`getScheduleView`), mesma fonte do bloco de
-    fases.
+    eliminatórias) em ordem cronológica, agrupados por dia, com brasão dos dois times, horário ou
+    placar, e a **rodada em destaque** (selo cheio) quando o confronto tem uma. Alimentado por
+    `runtime/bracket.ts` (`getScheduleView`), mesma fonte do bloco de fases.
+  - **Erasto League — Próximo jogo (ad 16:9)** (`erasto-league.next-game-ad`) — card promocional
+    de largura/altura fixa 16:9 (times, crista grande, rodada, data/hora, fundo dividido nas cores
+    de cada time) — pra usar como destaque na página inicial. A mesma "página" aparece também na
+    view de TV (`/ext/erasto-league/tv`, sempre primeiro no rodízio), alimentadas pelo mesmo dado
+    (`runtime/bracket.ts` `getNextFixture`) — o próximo confronto ainda não jogado, em ordem
+    cronológica.
 - **Fixtures (confrontos agendados) + import CSV** — `erasto_league.fixtures`: um confronto pode
-  existir ANTES de qualquer partida (importado via `/admin/erasto-league/import`), com fase
-  (grupo/quartas/semi/final), grupo, rodada, data e os dois times — ou só um rótulo ("Vencedor
-  Grupo A") quando o time da eliminatória ainda não é conhecido. **Grupo é campo do confronto, não
+  existir ANTES de qualquer partida (importado via `/admin/erasto-league/import` OU criado/editado
+  direto em `/admin/erasto-league/fixtures/new` e `/fixtures/:id` — fase, grupo, **rodada**, os
+  dois times ou um rótulo livre, e data/hora), com fase (grupo/quartas/semi/final), grupo, rodada,
+  data e os dois times — ou só um rótulo ("Vencedor Grupo A") quando o time da eliminatória ainda
+  não é conhecido. A **rodada** (`roundLabel`) aparece em destaque (selo cheio, não mais uma tag
+  discreta) na agenda de jogos, no bloco de fases e na view de TV. **Ordem de apresentação sempre
+  por data** (`runtime/fixtures.ts` `listFixtures`/`listFixturesByPhase` — confrontos sem data
+  ficam por último), nunca pela ordem de importação do CSV. **Grupo é campo do confronto, não
   do time** — `teams` não guarda grupo nenhum; o grupo de um time (usado pela mini-classificação do
   bloco de fases) é derivado de em quais fixtures de fase de grupos ele aparece. `homeTeamId`/
   `awayTeamId` (uuid) têm prioridade sobre `homeTeam`/`awayTeam` (nome) na hora de casar o time da
@@ -81,9 +92,10 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   não existir, ou atualiza se já existir (`createTeamWithId`/`updateTeam`); sem "id", casa/upserta
   pelo nome (`upsertTeamByName`), o caminho de quando não tem uuid nenhum à mão. Dá pra ver o id de
   um time já cadastrado na página dele (`/admin/erasto-league/teams/:id`). `/admin/erasto-league/fixtures`
-  lista tudo e deixa **vincular manualmente** um confronto à partida real depois de jogada (não é
-  automático — dois times podem se enfrentar mais de uma vez). Exemplo de planilha (times e
-  confrontos do Erasto League 2026, 100% por id) em `csv/teams.csv` e `csv/fixtures.csv`.
+  lista tudo, deixa **editar/excluir/criar confrontos manualmente** e **vincular manualmente** um
+  confronto à partida real depois de jogada (não é automático — dois times podem se enfrentar mais
+  de uma vez). Exemplo de planilha (times e confrontos do Erasto League 2026, 100% por id) em
+  `csv/teams.csv` e `csv/fixtures.csv`.
 - **Tempo real** — `EventSource` → `/api/erasto-league/events` (SSE). O servidor relê o banco a
   cada 1s (catch-up multi-instância) e o client cai em polling de `/api/erasto-league/state`
   quando o SSE está fora.

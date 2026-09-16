@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { AdminAccessDenied, AdminPageHeader, Badge, Button, EmptyState } from "@venore/plugin-sdk/ui";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Pencil, Plus } from "lucide-react";
 import { listFixtures } from "../../../runtime/fixtures";
 import { listTeams } from "../../../runtime/teams";
 import { listMatchesBetweenTeams } from "../../../runtime/matches";
@@ -37,10 +37,14 @@ async function FixtureRow({ fixture, teamById }: { fixture: Fixture; teamById: M
       </div>
       <span className="shrink-0 text-xs text-muted-foreground">{formatDate(fixture.scheduledAt)}</span>
       {fixture.roundLabel && (
-        <Badge variant="outline" className="shrink-0">
-          {fixture.roundLabel}
-        </Badge>
+        <Badge className="shrink-0 bg-primary/15 font-bold text-primary hover:bg-primary/15">{fixture.roundLabel}</Badge>
       )}
+
+      <Button asChild size="sm" variant="ghost">
+        <Link href={`/admin/erasto-league/fixtures/${fixture.id}`}>
+          <Pencil className="size-3.5" /> Editar
+        </Link>
+      </Button>
 
       {candidates.length > 0 && (
         <form action={linkFixtureFormAction} className="flex shrink-0 items-center gap-1.5">
@@ -95,9 +99,16 @@ export default async function FixturesAdminPage() {
         title="Tabela de jogos"
         description="Confrontos agendados (grupos + eliminatórias) — importados via CSV, vinculados à partida real quando jogados."
         actions={
-          <Button asChild variant="outline">
-            <Link href="/admin/erasto-league/import">Importar CSV</Link>
-          </Button>
+          <>
+            <Button asChild variant="outline">
+              <Link href="/admin/erasto-league/import">Importar CSV</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/admin/erasto-league/fixtures/new">
+                <Plus className="size-4" /> Novo confronto
+              </Link>
+            </Button>
+          </>
         }
       />
 

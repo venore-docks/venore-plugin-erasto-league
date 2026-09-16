@@ -6,6 +6,7 @@ import { erastoLeagueTopScorersBlockDefinition } from "./top-scorers";
 import { erastoLeagueTeamSpotlightBlockDefinition } from "./team-spotlight";
 import { erastoLeagueBracketBlockDefinition } from "./bracket";
 import { erastoLeagueScheduleBlockDefinition } from "./schedule";
+import { erastoLeagueNextGameAdBlockDefinition } from "./next-game-ad";
 
 export const blockDefinitions: BlockDefinition[] = [
   erastoLeagueHeroBlockDefinition,
@@ -15,4 +16,5 @@ export const blockDefinitions: BlockDefinition[] = [
   erastoLeagueTeamSpotlightBlockDefinition,
   erastoLeagueBracketBlockDefinition,
   erastoLeagueScheduleBlockDefinition,
+  erastoLeagueNextGameAdBlockDefinition,
 ];

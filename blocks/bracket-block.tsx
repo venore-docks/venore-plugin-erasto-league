@@ -44,6 +44,11 @@ function FixtureCard({ fixture }: { fixture: FixtureView }) {
 
   return (
     <div className="w-full rounded-panel border border-border bg-card p-3">
+      {fixture.roundLabel && (
+        <span className="mb-2 inline-block rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-primary-foreground">
+          {fixture.roundLabel}
+        </span>
+      )}
       <TeamRow name={fixture.homeName} crestUrl={fixture.homeCrestUrl} slug={fixture.homeSlug} score={fixture.homeScore} won={homeWon} />
       <div className="border-t border-border/60" />
       <TeamRow name={fixture.awayName} crestUrl={fixture.awayCrestUrl} slug={fixture.awaySlug} score={fixture.awayScore} won={awayWon} />
@@ -98,8 +103,15 @@ export async function ErastoLeagueBracketBlock({ block }: BlockRendererProps) {
               <div className="space-y-1.5 border-t border-border pt-2">
                 {group.fixtures.map((fixture) => (
                   <div key={fixture.id} className="flex items-center justify-between gap-2 text-xs">
-                    <span className="truncate text-foreground">
-                      {fixture.homeName} <span className="text-muted-foreground">×</span> {fixture.awayName}
+                    <span className="flex min-w-0 items-center gap-1.5 truncate text-foreground">
+                      {fixture.roundLabel && (
+                        <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary">
+                          {fixture.roundLabel}
+                        </span>
+                      )}
+                      <span className="truncate">
+                        {fixture.homeName} <span className="text-muted-foreground">×</span> {fixture.awayName}
+                      </span>
                     </span>
                     {fixture.played ? (
                       <span className="shrink-0 font-semibold text-foreground">

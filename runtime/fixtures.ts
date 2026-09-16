@@ -21,8 +21,11 @@ function rowToFixture(row: FixtureRow): Fixture {
   };
 }
 
+// Ordem de apresentação: por data (Postgres já põe NULL — "a definir" — por último num ASC),
+// sortOrder só como desempate pra confrontos no mesmo dia ou igualmente sem data (ordem que veio
+// do CSV/criação). Pedido explícito: a ordem tem que ser por data, não pela ordem de importação.
 export async function listFixtures(): Promise<Fixture[]> {
-  const rows = await db.select().from(fixturesTable).orderBy(asc(fixturesTable.sortOrder), asc(fixturesTable.scheduledAt));
+  const rows = await db.select().from(fixturesTable).orderBy(asc(fixturesTable.scheduledAt), asc(fixturesTable.sortOrder));
   return rows.map(rowToFixture);
 }
 
@@ -31,7 +34,7 @@ export async function listFixturesByPhase(phase: FixturePhase): Promise<Fixture[
     .select()
     .from(fixturesTable)
     .where(eq(fixturesTable.phase, phase))
-    .orderBy(asc(fixturesTable.sortOrder), asc(fixturesTable.scheduledAt));
+    .orderBy(asc(fixturesTable.scheduledAt), asc(fixturesTable.sortOrder));
   return rows.map(rowToFixture);
 }
 

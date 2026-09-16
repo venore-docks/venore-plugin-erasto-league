@@ -63,23 +63,35 @@ function TeamCell({ name, crestUrl, slug, align }: { name: string; crestUrl: str
 
 function ScheduleRow({ entry }: { entry: ScheduleEntry }) {
   return (
-    <div className="flex items-center gap-3 rounded-panel border border-border bg-card px-4 py-3 shadow-sm transition hover:border-primary/40">
-      <TeamCell name={entry.homeName} crestUrl={entry.homeCrestUrl} slug={entry.homeSlug} align="left" />
+    <div className="rounded-panel border border-border bg-card px-4 py-3 shadow-sm transition hover:border-primary/40">
+      {entry.roundLabel && (
+        <div className="mb-2 flex items-center gap-2">
+          <span className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-primary-foreground">
+            {entry.roundLabel}
+          </span>
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{phaseTag(entry)}</span>
+        </div>
+      )}
+      <div className="flex items-center gap-3">
+        <TeamCell name={entry.homeName} crestUrl={entry.homeCrestUrl} slug={entry.homeSlug} align="left" />
 
-      <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
-        {entry.played ? (
-          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
-            {formatScore(entry.homeScore ?? 0)}-{formatScore(entry.awayScore ?? 0)}
-          </span>
-        ) : (
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-            {entry.scheduledAt ? formatTime(entry.scheduledAt) : "vs"}
-          </span>
-        )}
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{phaseTag(entry)}</span>
+        <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
+          {entry.played ? (
+            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
+              {formatScore(entry.homeScore ?? 0)}-{formatScore(entry.awayScore ?? 0)}
+            </span>
+          ) : (
+            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+              {entry.scheduledAt ? formatTime(entry.scheduledAt) : "vs"}
+            </span>
+          )}
+          {!entry.roundLabel && (
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{phaseTag(entry)}</span>
+          )}
+        </div>
+
+        <TeamCell name={entry.awayName} crestUrl={entry.awayCrestUrl} slug={entry.awaySlug} align="right" />
       </div>
-
-      <TeamCell name={entry.awayName} crestUrl={entry.awayCrestUrl} slug={entry.awaySlug} align="right" />
     </div>
   );
 }
