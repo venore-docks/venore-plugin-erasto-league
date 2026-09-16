@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import type { PlayerProfile, TeamProfile } from "../../contracts/types";
+import type { MatchSummary, PlayerProfile, TeamProfile, TeamStanding } from "../../contracts/types";
+import { formatScore } from "../../shared/score";
 
 // Fora da shell/tema do host — mesmo motivo do overlay/console (CSS vars do tema não existem
 // nesta rota standalone). Server component: página só de leitura, sem interatividade.
@@ -39,6 +40,15 @@ const CSS = `
   .el-tp-name { font-size: 28px; font-weight: 900; margin: 0; letter-spacing: 0.2px; }
   .el-tp-founded { margin: 6px 0 0; font-size: 13px; color: rgba(255,255,255,0.55); }
 
+  .el-tp-stats {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px;
+    max-width: 1040px; margin: 0 auto; background: rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .el-tp-stat { background: #10141a; padding: 12px 6px; text-align: center; }
+  .el-tp-stat-value { font-size: 18px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .el-tp-stat-label { margin-top: 2px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(255,255,255,0.4); }
+
   .el-tp-body { padding: 24px 20px 0; max-width: 1040px; margin: 0 auto; }
   .el-tp-desc { font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.78); white-space: pre-wrap; max-width: 640px; }
   .el-tp-section-title { margin: 30px 0 14px; font-size: 12px; font-weight: 800; text-transform: uppercase;
@@ -62,6 +72,23 @@ const CSS = `
   }
   .el-tp-empty { font-size: 13px; color: rgba(255,255,255,0.4); }
 
+  .el-tp-matches { display: flex; flex-direction: column; gap: 8px; }
+  .el-tp-match {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px;
+    background: linear-gradient(180deg, #151b23, #10141a); border: 1px solid rgba(255,255,255,0.08);
+    text-decoration: none; color: #fff;
+  }
+  .el-tp-match-result {
+    flex: none; width: 26px; height: 26px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 900;
+  }
+  .el-tp-match-result.win { background: rgba(34,197,94,0.18); color: #4ade80; }
+  .el-tp-match-result.draw { background: rgba(234,179,8,0.18); color: #facc15; }
+  .el-tp-match-result.loss { background: rgba(239,68,68,0.18); color: #f87171; }
+  .el-tp-match-opponent { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .el-tp-match-score { flex: none; font-size: 15px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .el-tp-match-date { flex: none; font-size: 11px; color: rgba(255,255,255,0.4); width: 52px; text-align: right; }
+
   @media (min-width: 900px) {
     .el-tp-cover { padding: 88px 48px 48px; }
     .el-tp-head { gap: 28px; }
@@ -70,6 +97,9 @@ const CSS = `
     .el-tp-eyebrow { font-size: 13px; }
     .el-tp-name { font-size: 48px; }
     .el-tp-founded { font-size: 15px; margin-top: 10px; }
+    .el-tp-stat { padding: 18px 6px; }
+    .el-tp-stat-value { font-size: 26px; }
+    .el-tp-stat-label { font-size: 10px; }
     .el-tp-body { padding: 40px 48px 0; }
     .el-tp-desc { font-size: 16px; }
     .el-tp-section-title { font-size: 13px; margin-top: 44px; }
@@ -77,6 +107,7 @@ const CSS = `
     .el-tp-player { padding: 20px 12px; }
     .el-tp-player-photo, .el-tp-player-mono { width: 64px; height: 64px; }
     .el-tp-player-name { font-size: 14px; }
+    .el-tp-matches { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
   }
 `;
 
@@ -87,9 +118,26 @@ function formatFoundedDate(iso: string | null): string | null {
   return `Fundado em ${day}/${month}/${year}`;
 }
 
-export function TeamProfileView({ team, roster }: { team: TeamProfile; roster: PlayerProfile[] }) {
+function formatMatchDate(epochMs: number): string {
+  return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+export function TeamProfileView({
+  team,
+  roster,
+  recentMatches,
+  standing,
+  teamById,
+}: {
+  team: TeamProfile;
+  roster: PlayerProfile[];
+  recentMatches: MatchSummary[];
+  standing: TeamStanding | null;
+  teamById: Map<string, TeamProfile>;
+}) {
   const founded = formatFoundedDate(team.foundedDate);
   const vars = { "--primary": team.primaryColor ?? "#22c55e", "--secondary": team.secondaryColor ?? "#0f172a" } as CSSProperties;
+  const goalDiff = standing ? standing.goalsFor - standing.goalsAgainst : 0;
 
   return (
     <>
@@ -113,8 +161,70 @@ export function TeamProfileView({ team, roster }: { team: TeamProfile; roster: P
           </div>
         </div>
 
+        {standing && standing.played > 0 && (
+          <div className="el-tp-stats">
+            <div className="el-tp-stat">
+              <p className="el-tp-stat-value">{standing.points}</p>
+              <p className="el-tp-stat-label">Pontos</p>
+            </div>
+            <div className="el-tp-stat">
+              <p className="el-tp-stat-value">{standing.played}</p>
+              <p className="el-tp-stat-label">Jogos</p>
+            </div>
+            <div className="el-tp-stat">
+              <p className="el-tp-stat-value">{standing.won}</p>
+              <p className="el-tp-stat-label">Vitórias</p>
+            </div>
+            <div className="el-tp-stat">
+              <p className="el-tp-stat-value">{standing.drawn}</p>
+              <p className="el-tp-stat-label">Empates</p>
+            </div>
+            <div className="el-tp-stat">
+              <p className="el-tp-stat-value">{standing.lost}</p>
+              <p className="el-tp-stat-label">Derrotas</p>
+            </div>
+            <div className="el-tp-stat">
+              <p className="el-tp-stat-value">
+                {goalDiff > 0 ? "+" : ""}
+                {formatScore(goalDiff)}
+              </p>
+              <p className="el-tp-stat-label">Saldo</p>
+            </div>
+          </div>
+        )}
+
         <div className="el-tp-body">
           {team.description && <p className="el-tp-desc">{team.description}</p>}
+
+          <h2 className="el-tp-section-title">Últimos jogos</h2>
+          {recentMatches.length === 0 ? (
+            <p className="el-tp-empty">Nenhuma partida encerrada ainda.</p>
+          ) : (
+            <div className="el-tp-matches">
+              {recentMatches.map((match) => {
+                const isHome = match.homeTeamId === team.id;
+                const ownScore = isHome ? match.homeScore : match.awayScore;
+                const opponentScore = isHome ? match.awayScore : match.homeScore;
+                const opponent = teamById.get(isHome ? match.awayTeamId : match.homeTeamId);
+                const result = ownScore > opponentScore ? "win" : ownScore < opponentScore ? "loss" : "draw";
+                const resultLabel = result === "win" ? "V" : result === "loss" ? "D" : "E";
+                return (
+                  <Link
+                    key={match.id}
+                    href={opponent ? `/ext/erasto-league/teams/${opponent.slug}` : "#"}
+                    className="el-tp-match"
+                  >
+                    <span className={`el-tp-match-result ${result}`}>{resultLabel}</span>
+                    <span className="el-tp-match-opponent">{opponent?.name ?? "—"}</span>
+                    <span className="el-tp-match-score">
+                      {formatScore(ownScore)} × {formatScore(opponentScore)}
+                    </span>
+                    {match.finishedAt && <span className="el-tp-match-date">{formatMatchDate(match.finishedAt)}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
 
           <h2 className="el-tp-section-title">Elenco</h2>
           {roster.length === 0 ? (

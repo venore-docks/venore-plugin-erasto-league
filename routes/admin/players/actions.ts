@@ -3,7 +3,15 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
-import { createPlayer, updatePlayer, type PlayerInput } from "../../../runtime/players";
+import {
+  createPlayer,
+  deletePlayer,
+  getPlayer,
+  getPlayerDeleteImpact,
+  updatePlayer,
+  type PlayerDeleteImpact,
+  type PlayerInput,
+} from "../../../runtime/players";
 
 export type PlayerActionState = { error: string | null; playerId: string | null };
 
@@ -54,4 +62,28 @@ export async function savePlayerAction(_prev: PlayerActionState, formData: FormD
   }
 
   return { error: null, playerId: player.id };
+}
+
+export async function getPlayerDeleteImpactAction(id: string): Promise<{ ok: true; data: PlayerDeleteImpact } | { ok: false; error: string }> {
+  const gate = await getPluginAdminPageData("erasto-league");
+  if (!gate.granted) {
+    return { ok: false, error: "Você não tem permissão para configurar o Erasto League." };
+  }
+  return { ok: true, data: await getPlayerDeleteImpact(id) };
+}
+
+export async function deletePlayerAction(id: string): Promise<{ ok: boolean; error?: string }> {
+  const gate = await getPluginAdminPageData("erasto-league");
+  if (!gate.granted) {
+    return { ok: false, error: "Você não tem permissão para configurar o Erasto League." };
+  }
+  const player = await getPlayer(id);
+  if (!player) {
+    return { ok: false, error: "Jogador não encontrado." };
+  }
+
+  await deletePlayer(id);
+  revalidatePath("/admin/erasto-league/players");
+  revalidatePath(`/admin/erasto-league/teams/${player.teamId}`);
+  redirect("/admin/erasto-league/players");
 }

@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import { isPluginActive } from "@venore/plugin-sdk";
-import { getTeamBySlug } from "../../runtime/teams";
+import { getTeamBySlug, listTeams } from "../../runtime/teams";
 import { listPlayersByTeam } from "../../runtime/players";
+import { listRecentMatchesForTeam } from "../../runtime/matches";
+import { computeStandings } from "../../runtime/standings";
 import { TeamProfileView } from "./team-profile-view";
 
 // Perfil público do time (/ext/erasto-league/teams/:slug) — só leitura, sem PIN, mesmo padrão de
-// overlay/control (fora da shell do host). Estatísticas/gráfico de rendimento entram na Fase 4.
+// overlay/control (fora da shell do host).
 export default async function TeamProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   if (!(await isPluginActive("erasto-league"))) {
     notFound();
@@ -17,7 +19,16 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ sl
     notFound();
   }
 
-  const roster = await listPlayersByTeam(team.id);
+  const [roster, recentMatches, standings, allTeams] = await Promise.all([
+    listPlayersByTeam(team.id),
+    listRecentMatchesForTeam(team.id),
+    computeStandings(),
+    listTeams(),
+  ]);
+  const standing = standings.find((row) => row.teamId === team.id) ?? null;
+  const teamById = new Map(allTeams.map((t) => [t.id, t]));
 
-  return <TeamProfileView team={team} roster={roster} />;
+  return (
+    <TeamProfileView team={team} roster={roster} recentMatches={recentMatches} standing={standing} teamById={teamById} />
+  );
 }

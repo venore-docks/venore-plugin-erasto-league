@@ -18,7 +18,11 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
 - **Cadastro de times e jogadores** — `/admin/erasto-league/teams` e `/players`, sempre mantido
   por um admin (nunca pelos alunos). Time: nome, brasão (upload via `MediaPickerField`, sistema de
   mídia do host), cores, descrição/história, data de fundação. Jogador: time, nome, número, foto,
-  bio. Perfis públicos em `/ext/erasto-league/teams/:slug` e `/players/:slug`.
+  bio. Perfis públicos em `/ext/erasto-league/teams/:slug` e `/players/:slug` — capa, recorde
+  (V/E/D/saldo/pontos) e últimos jogos encerrados pro time; gols/cartões e últimos jogos pro
+  jogador. Excluir time/jogador é seguro: bloqueado de verdade se o time tem partida registrada
+  (senão o histórico quebra); jogador sempre pode ser excluído — os eventos dele só perdem a
+  atribuição (`runtime/teams.ts` `deleteTeam`, `runtime/players.ts` `deletePlayer`).
 - **Partida como entidade** — cada partida (`matches`) tem uma trilha de eventos (`match_events`:
   gol/cartão/falta, cada um podendo apontar pro jogador) em vez de só um contador — placar de cada
   lado é a soma dos eventos "goal". Times/jogador podem ficar sem atribuição no calor do jogo.
@@ -35,6 +39,9 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     hora de renderizar (nunca lida do que foi salvo).
   - **Erasto League — Últimos resultados** (`erasto-league.recent-results`) — últimas N partidas
     encerradas, mesma filosofia.
+  - **Erasto League — Artilharia** (`erasto-league.top-scorers`) — ranking de gols por jogador.
+  - **Erasto League — Time em destaque** (`erasto-league.team-spotlight`) — card compacto de UM
+    time (slug configurável) com recorde — pra "time campeão", destaque do mês, etc.
 - **Tempo real** — `EventSource` → `/api/erasto-league/events` (SSE). O servidor relê o banco a
   cada 1s (catch-up multi-instância) e o client cai em polling de `/api/erasto-league/state`
   quando o SSE está fora.
@@ -76,8 +83,8 @@ Usa o `Date.now()` do cliente — em máquinas sem NTP pode divergir alguns segu
 
 - **Uma partida por vez.** Sem quadras/jogos simultâneos (confirmado como suficiente pro
   campeonato interno — ver plano interno).
-- **Gráfico de rendimento e stats por jogador/time nos perfis** — próxima etapa, em cima do que
-  `match_events` já guarda (gols/cartões/faltas por jogador).
+- **Gráfico de rendimento** (série temporal de gols/cartões) nos perfis — próxima etapa; hoje é só
+  o total (stats já existem em `runtime/stats.ts`).
 - **Latência na Vercel.** Gol propaga entre instâncias em até ~1s (o re-poll do SSE). Pra reação
   instantânea, rodar como processo único (LAN / `next start`).
 - **SSE de leitura aberto.** Qualquer um na rede vê o placar. O PIN protege só a escrita.

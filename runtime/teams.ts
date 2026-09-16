@@ -1,7 +1,8 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, or } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
-import { teams as teamsTable } from "../database/schema";
+import { matches as matchesTable, players as playersTable, teams as teamsTable } from "../database/schema";
+import { deletePlayer } from "./players";
 import { slugify } from "../shared/slug";
 import type { TeamProfile } from "../contracts/types";
 
@@ -81,4 +82,39 @@ export async function updateTeam(id: string, input: TeamInput): Promise<TeamProf
     .where(eq(teamsTable.id, id))
     .returning();
   return rowToProfile(row);
+}
+
+export type TeamDeleteImpact = { matchCount: number; playerCount: number };
+
+export async function getTeamDeleteImpact(id: string): Promise<TeamDeleteImpact> {
+  const [matchRows, playerRows] = await Promise.all([
+    db.select({ id: matchesTable.id }).from(matchesTable).where(or(eq(matchesTable.homeTeamId, id), eq(matchesTable.awayTeamId, id))),
+    db.select({ id: playersTable.id }).from(playersTable).where(eq(playersTable.teamId, id)),
+  ]);
+  return { matchCount: matchRows.length, playerCount: playerRows.length };
+}
+
+export type DeleteTeamResult = { ok: true } | { ok: false; error: string };
+
+// Exclusão "segura": bloqueada se o time tem QUALQUER partida (inclusive em andamento/cancelada) —
+// times.id é referenciado por matches.home_team_id/away_team_id (NOT NULL, sem cascade), então
+// apagar quebraria a integridade do histórico/classificação. Sem partida, os jogadores do time
+// nunca tiveram evento (evento sempre pertence a uma partida do próprio time), então apagá-los
+// junto é seguro de verdade — reaproveita deletePlayer (mesma lógica seria trivial aqui, mas evita
+// duas fontes de verdade sobre "como apagar um jogador").
+export async function deleteTeam(id: string): Promise<DeleteTeamResult> {
+  const impact = await getTeamDeleteImpact(id);
+  if (impact.matchCount > 0) {
+    return {
+      ok: false,
+      error: `Este time tem ${impact.matchCount} partida${impact.matchCount === 1 ? "" : "s"} registrada${impact.matchCount === 1 ? "" : "s"} — excluir apagaria esse histórico da súmula/classificação. Não é permitido.`,
+    };
+  }
+
+  const players = await db.select({ id: playersTable.id }).from(playersTable).where(eq(playersTable.teamId, id));
+  for (const player of players) {
+    await deletePlayer(player.id);
+  }
+  await db.delete(teamsTable).where(eq(teamsTable.id, id));
+  return { ok: true };
 }

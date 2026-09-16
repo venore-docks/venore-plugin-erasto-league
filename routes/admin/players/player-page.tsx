@@ -6,6 +6,7 @@ import { AdminAccessDenied, AdminPageHeader, Button } from "@venore/plugin-sdk/u
 import { getPlayer } from "../../../runtime/players";
 import { listTeams } from "../../../runtime/teams";
 import { PlayerForm } from "./player-form";
+import { DeletePlayerControl } from "./delete-player-control";
 
 // /admin/erasto-league/players/:id — id "new" = formulário em branco. ?teamId= pré-seleciona o
 // time quando vem do link "+ Adicionar jogador" da página do time.
@@ -40,11 +41,14 @@ export default async function PlayerDetailPage({
         description={isNew ? "Cadastra um jogador novo num time." : undefined}
         actions={
           player && (
-            <Button asChild variant="outline">
-              <Link href={`/ext/erasto-league/players/${player.slug}`} target="_blank" rel="noreferrer">
-                Ver página pública ↗
-              </Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <Link href={`/ext/erasto-league/players/${player.slug}`} target="_blank" rel="noreferrer">
+                  Ver página pública ↗
+                </Link>
+              </Button>
+              <DeletePlayerControl playerId={player.id} playerName={player.name} />
+            </>
           )
         }
       />

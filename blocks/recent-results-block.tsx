@@ -3,6 +3,7 @@ import type { BlockRendererProps } from "@venore/plugin-sdk";
 import { listFinishedMatches } from "../runtime/matches";
 import { listTeams } from "../runtime/teams";
 import { formatScore } from "../shared/score";
+import type { TeamProfile } from "../contracts/types";
 
 function readString(data: Record<string, unknown>, key: string, fallback = ""): string {
   const value = data[key];
@@ -16,6 +17,22 @@ function readNumber(data: Record<string, unknown>, key: string, fallback: number
 
 function formatMatchDate(epochMs: number): string {
   return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+function TeamChip({ team }: { team: TeamProfile }) {
+  return (
+    <Link href={`/ext/erasto-league/teams/${team.slug}`} className="flex items-center gap-1.5 font-medium text-foreground hover:underline">
+      {team.crestUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={team.crestUrl} alt="" className="size-5 shrink-0 rounded object-cover" />
+      ) : (
+        <span className="flex size-5 shrink-0 items-center justify-center rounded bg-muted text-[8px] font-bold text-muted-foreground">
+          {team.name.slice(0, 2).toUpperCase()}
+        </span>
+      )}
+      {team.name}
+    </Link>
+  );
 }
 
 // Últimos resultados — mesma filosofia de standings-block.tsx (sempre lido na hora, nunca salvo na
@@ -42,19 +59,11 @@ export async function ErastoLeagueRecentResultsBlock({ block }: BlockRendererPro
             return (
               <li key={match.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
                 <div className="flex items-center gap-2 text-sm">
-                  {home && (
-                    <Link href={`/ext/erasto-league/teams/${home.slug}`} className="font-medium text-foreground hover:underline">
-                      {home.name}
-                    </Link>
-                  )}
+                  {home && <TeamChip team={home} />}
                   <span className="font-bold text-foreground">
                     {formatScore(match.homeScore)} × {formatScore(match.awayScore)}
                   </span>
-                  {away && (
-                    <Link href={`/ext/erasto-league/teams/${away.slug}`} className="font-medium text-foreground hover:underline">
-                      {away.name}
-                    </Link>
-                  )}
+                  {away && <TeamChip team={away} />}
                 </div>
                 {match.finishedAt && <span className="text-xs text-muted-foreground">{formatMatchDate(match.finishedAt)}</span>}
               </li>

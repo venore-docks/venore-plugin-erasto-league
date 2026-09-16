@@ -3,7 +3,14 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
-import { createTeam, updateTeam, type TeamInput } from "../../../runtime/teams";
+import {
+  createTeam,
+  deleteTeam,
+  getTeamDeleteImpact,
+  updateTeam,
+  type TeamDeleteImpact,
+  type TeamInput,
+} from "../../../runtime/teams";
 
 export type TeamActionState = { error: string | null; teamId: string | null };
 
@@ -47,4 +54,28 @@ export async function saveTeamAction(_prev: TeamActionState, formData: FormData)
   }
 
   return { error: null, teamId: team.id };
+}
+
+export async function getTeamDeleteImpactAction(id: string): Promise<{ ok: true; data: TeamDeleteImpact } | { ok: false; error: string }> {
+  const gate = await getPluginAdminPageData("erasto-league");
+  if (!gate.granted) {
+    return { ok: false, error: "Você não tem permissão para configurar o Erasto League." };
+  }
+  return { ok: true, data: await getTeamDeleteImpact(id) };
+}
+
+export async function deleteTeamAction(id: string): Promise<{ ok: boolean; error?: string }> {
+  const gate = await getPluginAdminPageData("erasto-league");
+  if (!gate.granted) {
+    return { ok: false, error: "Você não tem permissão para configurar o Erasto League." };
+  }
+
+  const result = await deleteTeam(id);
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+
+  revalidatePath("/admin/erasto-league/teams");
+  revalidatePath("/admin/erasto-league/players");
+  redirect("/admin/erasto-league/teams");
 }

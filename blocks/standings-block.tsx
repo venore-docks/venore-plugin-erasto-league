@@ -37,10 +37,18 @@ export async function ErastoLeagueStandingsBlock({ block }: BlockRendererProps) 
             </TableHeader>
             <TableBody>
               {standings.map((row, index) => (
-                <TableRow key={row.teamId}>
+                <TableRow key={row.teamId} className={index === 0 ? "bg-accent/8" : undefined}>
                   <TableCell className="text-muted-foreground">{index + 1}</TableCell>
                   <TableCell className="font-medium">
-                    <Link href={`/ext/erasto-league/teams/${row.slug}`} className="hover:underline">
+                    <Link href={`/ext/erasto-league/teams/${row.slug}`} className="flex items-center gap-2 hover:underline">
+                      {row.crestUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={row.crestUrl} alt="" className="size-6 shrink-0 rounded object-cover" />
+                      ) : (
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded bg-muted text-[9px] font-bold text-muted-foreground">
+                          {row.name.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
                       {row.name}
                     </Link>
                   </TableCell>

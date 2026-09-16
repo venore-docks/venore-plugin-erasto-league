@@ -7,6 +7,7 @@ import { AdminAccessDenied, AdminPageHeader, Button } from "@venore/plugin-sdk/u
 import { getTeam } from "../../../runtime/teams";
 import { listPlayersByTeam } from "../../../runtime/players";
 import { TeamForm } from "./team-form";
+import { DeleteTeamControl } from "./delete-team-control";
 
 // /admin/erasto-league/teams/:id — id "new" = formulário em branco (criar), qualquer outro valor
 // é o uuid de um time existente (editar). Mesmo formulário serve os dois casos.
@@ -35,11 +36,14 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ id:
         description={isNew ? "Cadastra um time novo pro campeonato." : `/${team!.slug}`}
         actions={
           team && (
-            <Button asChild variant="outline">
-              <Link href={`/ext/erasto-league/teams/${team.slug}`} target="_blank" rel="noreferrer">
-                Ver página pública ↗
-              </Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <Link href={`/ext/erasto-league/teams/${team.slug}`} target="_blank" rel="noreferrer">
+                  Ver página pública ↗
+                </Link>
+              </Button>
+              <DeleteTeamControl teamId={team.id} teamName={team.name} />
+            </>
           )
         }
       />
