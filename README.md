@@ -9,6 +9,10 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   ±1:00 + atalhos "Fim 1º"/"Fim de jogo"), nova partida. Gateado por PIN.
 - **Admin** — `/admin/erasto-league` — configura PIN, nomes padrão, duração dos tempos, cor de
   destaque e a logo; atalhos pras telas. Link aparece na nav do admin ao instalar o plugin.
+- **Cadastro de times e jogadores** — `/admin/erasto-league/teams` e `/players`, sempre mantido
+  por um admin (nunca pelos alunos). Time: nome, brasão (upload via `MediaPickerField`, sistema de
+  mídia do host), cores, descrição/história, data de fundação. Jogador: time, nome, número, foto,
+  bio. Perfis públicos só-leitura em `/ext/erasto-league/teams/:slug` e `/players/:slug`.
 - **Tempo real** — `EventSource` → `/api/erasto-league/events` (SSE). O servidor relê o banco a
   cada 1s (catch-up multi-instância) e o client cai em polling de `/api/erasto-league/state`
   quando o SSE está fora.

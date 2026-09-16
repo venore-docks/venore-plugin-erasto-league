@@ -31,6 +31,35 @@ export type MatchState = {
   updatedAt: number;
 };
 
+// Cadastro de times/jogadores (Fase 1) — sempre mantido por um admin. crestUrl/photoUrl já vêm
+// resolvidos (getMediaAsset em @venore/plugin-sdk/media) pras páginas de perfil não precisarem
+// saber de media id.
+export type TeamProfile = {
+  id: string;
+  slug: string;
+  name: string;
+  // crestMediaId: bruto (pro MediaPickerField do form de edição). crestUrl: já resolvido, pra
+  // exibir sem outra ida ao sistema de mídia (listagem, perfil público).
+  crestMediaId: string | null;
+  crestUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  description: string | null;
+  // ISO date (yyyy-mm-dd), sem hora — exibida logo abaixo do nome do time.
+  foundedDate: string | null;
+};
+
+export type PlayerProfile = {
+  id: string;
+  slug: string;
+  teamId: string;
+  name: string;
+  number: number | null;
+  photoMediaId: string | null;
+  photoUrl: string | null;
+  bio: string | null;
+};
+
 // Ações que o controle (celular) e a tela admin podem disparar. PIN protege o controle;
 // authorizeActor("erasto-league.manage") protege a tela admin. As duas convergem nos mutators de
 // runtime/match-actions.ts.

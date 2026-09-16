@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AdminAccessDenied, AdminPageHeader } from "@venore/plugin-sdk/ui";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { resolveErastoLeagueConfig } from "../../shared/config";
@@ -20,6 +21,27 @@ export default async function ErastoLeagueAdminPage() {
         title="Erasto League"
         description="Placar ao vivo pro OBS + controle pelo celular. Configure abaixo e abra as telas."
       />
+
+      <section className="rounded-panel border border-border bg-card p-4">
+        <h2 className="text-sm font-semibold text-foreground">Cadastro</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Times e jogadores do campeonato — sempre cadastrados por um admin.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-3">
+          <Link
+            href="/admin/erasto-league/teams"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent/14"
+          >
+            Times
+          </Link>
+          <Link
+            href="/admin/erasto-league/players"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent/14"
+          >
+            Jogadores
+          </Link>
+        </div>
+      </section>
 
       <section className="rounded-panel border border-border bg-card p-4">
         <h2 className="text-sm font-semibold text-foreground">Telas</h2>
