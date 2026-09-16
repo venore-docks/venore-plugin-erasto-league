@@ -2,7 +2,7 @@ import { bigint, real, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { erastoLeagueSchema } from "./schema";
 import { matches } from "./matches";
 import { players } from "./players";
-import type { EventKind, MatchSide } from "../contracts/types";
+import type { EventKind, MatchSide } from "../../contracts/types";
 
 // Um evento por gol/cartão/falta (Fase 2). playerId nullable: atribuição pode ser pulada ao vivo
 // (o controle não trava esperando "quem foi?") e completada depois na súmula (Fase 3).
