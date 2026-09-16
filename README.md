@@ -68,9 +68,11 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     (confrontos agendados, ver abaixo), não por `matches` direto. Não mostra mais data (isso é o
     bloco de agenda, abaixo) — só "a jogar" pro que ainda não aconteceu.
   - **Erasto League — Agenda de jogos** (`erasto-league.schedule`) — TODOS os confrontos (grupos +
-    eliminatórias) em ordem cronológica, agrupados por dia, com brasão dos dois times, horário ou
-    placar, e a **rodada em destaque** (selo cheio) quando o confronto tem uma. Alimentado por
-    `runtime/bracket.ts` (`getScheduleView`), mesma fonte do bloco de fases.
+    eliminatórias), ainda ordenados/agrupados por dia, mas numa **grade de cards de dia** (2-3
+    colunas) em vez de uma lista única empilhada — cada card do dia com os confrontos daquele dia
+    de forma compacta (brasão pequeno, placar/horário, rodada em selo), pra não virar um "listão"
+    conforme o campeonato acumula jogos. Alimentado por `runtime/bracket.ts` (`getScheduleView`),
+    mesma fonte do bloco de fases.
   - **Erasto League — Próximo jogo (ad 16:9)** (`erasto-league.next-game-ad`) — card promocional
     de largura/altura fixa 16:9 (times, crista grande, rodada, data/hora, fundo dividido nas cores
     de cada time) — pra usar como destaque na página inicial. A mesma "página" aparece também na

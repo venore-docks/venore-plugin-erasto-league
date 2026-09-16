@@ -37,18 +37,18 @@ function phaseTag(entry: ScheduleEntry): string {
   return FIXTURE_PHASE_LABEL[entry.phase];
 }
 
-function TeamCell({ name, crestUrl, slug, align }: { name: string; crestUrl: string | null; slug: string | null; align: "left" | "right" }) {
+function TeamChip({ name, crestUrl, slug, align }: { name: string; crestUrl: string | null; slug: string | null; align: "left" | "right" }) {
   const content = (
-    <div className={`flex min-w-0 flex-1 items-center gap-2.5 ${align === "right" ? "flex-row-reverse text-right" : ""}`}>
+    <div className={`flex min-w-0 flex-1 items-center gap-1.5 ${align === "right" ? "flex-row-reverse text-right" : ""}`}>
       {crestUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={crestUrl} alt="" className="size-8 shrink-0 rounded-full border border-border/60 object-cover shadow-sm" />
+        <img src={crestUrl} alt="" className="size-6 shrink-0 rounded-full border border-border/60 object-cover" />
       ) : (
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-[8px] font-bold text-muted-foreground">
           {name.slice(0, 2).toUpperCase()}
         </span>
       )}
-      <span className="truncate text-sm font-semibold text-foreground">{name}</span>
+      <span className="truncate text-xs font-semibold text-foreground">{name}</span>
     </div>
   );
 
@@ -61,36 +61,32 @@ function TeamCell({ name, crestUrl, slug, align }: { name: string; crestUrl: str
   );
 }
 
-function ScheduleRow({ entry }: { entry: ScheduleEntry }) {
+// Linha compacta de UM confronto, pensada pra caber dentro do card do dia (DayCard) sem esticar a
+// altura — brasão pequeno, times numa linha só, placar/horário no meio. A rodada vira um selinho
+// inline em vez de uma faixa própria (era o que deixava o widget "um listão").
+function CompactMatchRow({ entry }: { entry: ScheduleEntry }) {
   return (
-    <div className="rounded-panel border border-border bg-card px-4 py-3 shadow-sm transition hover:border-primary/40">
-      {entry.roundLabel && (
-        <div className="mb-2 flex items-center gap-2">
-          <span className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-primary-foreground">
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        {entry.roundLabel && (
+          <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
             {entry.roundLabel}
           </span>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{phaseTag(entry)}</span>
-        </div>
-      )}
-      <div className="flex items-center gap-3">
-        <TeamCell name={entry.homeName} crestUrl={entry.homeCrestUrl} slug={entry.homeSlug} align="left" />
-
-        <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
-          {entry.played ? (
-            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
-              {formatScore(entry.homeScore ?? 0)}-{formatScore(entry.awayScore ?? 0)}
-            </span>
-          ) : (
-            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-              {entry.scheduledAt ? formatTime(entry.scheduledAt) : "vs"}
-            </span>
-          )}
-          {!entry.roundLabel && (
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{phaseTag(entry)}</span>
-          )}
-        </div>
-
-        <TeamCell name={entry.awayName} crestUrl={entry.awayCrestUrl} slug={entry.awaySlug} align="right" />
+        )}
+        <span className="truncate text-[9px] font-medium uppercase tracking-wide text-muted-foreground">{phaseTag(entry)}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <TeamChip name={entry.homeName} crestUrl={entry.homeCrestUrl} slug={entry.homeSlug} align="left" />
+        {entry.played ? (
+          <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold tabular-nums text-primary">
+            {formatScore(entry.homeScore ?? 0)}-{formatScore(entry.awayScore ?? 0)}
+          </span>
+        ) : (
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+            {entry.scheduledAt ? formatTime(entry.scheduledAt) : "vs"}
+          </span>
+        )}
+        <TeamChip name={entry.awayName} crestUrl={entry.awayCrestUrl} slug={entry.awaySlug} align="right" />
       </div>
     </div>
   );
@@ -123,13 +119,17 @@ export async function ErastoLeagueScheduleBlock({ block }: BlockRendererProps) {
     <div className="space-y-6">
       {title && <h2 className="text-2xl font-semibold text-foreground">{title}</h2>}
 
-      <div className="space-y-6">
+      {/* Grade de "cards de dia" (2-3 colunas) em vez de uma lista única empilhada — ainda
+          ordenado/agrupado por data, só que organizado em blocos curtos em vez de um listão. */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {groups.map((group) => (
-          <div key={group.key} className="space-y-2">
+          <div key={group.key} className="space-y-3 rounded-panel border border-border bg-card p-4 shadow-sm">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{group.heading}</h3>
-            <div className="space-y-2">
-              {group.entries.map((entry) => (
-                <ScheduleRow key={entry.id} entry={entry} />
+            <div className="space-y-3 divide-y divide-border/60">
+              {group.entries.map((entry, index) => (
+                <div key={entry.id} className={index > 0 ? "pt-3" : undefined}>
+                  <CompactMatchRow entry={entry} />
+                </div>
               ))}
             </div>
           </div>
