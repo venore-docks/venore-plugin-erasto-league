@@ -10,6 +10,13 @@ function formatTime(epochMs: number): string {
   return new Date(epochMs).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 }
 
+// Pedido explícito: a data precisa continuar visível em cada jogo (sumiu quando a agenda trocou
+// de "agrupada por dia" pra "em abas por rodada" — uma rodada pode ter jogos em dias diferentes).
+function formatDate(epochMs: number): string {
+  const label = new Date(epochMs).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 function phaseTag(entry: ScheduleEntry): string {
   if (entry.phase === "group" && entry.groupName) return `Grupo ${entry.groupName}`;
   return FIXTURE_PHASE_LABEL[entry.phase];
@@ -42,13 +49,18 @@ function TeamCell({ name, crestUrl, slug, align }: { name: string; crestUrl: str
 function ScheduleRow({ entry }: { entry: ScheduleEntry }) {
   return (
     <div className="rounded-panel border border-border bg-card px-4 py-3 shadow-sm transition hover:border-primary/40">
-      <div className="mb-2 flex items-center gap-2">
-        {entry.roundLabel && (
-          <span className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-primary-foreground">
-            {entry.roundLabel}
-          </span>
-        )}
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{phaseTag(entry)}</span>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {entry.roundLabel && (
+            <span className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-primary-foreground">
+              {entry.roundLabel}
+            </span>
+          )}
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{phaseTag(entry)}</span>
+        </div>
+        <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">
+          {entry.scheduledAt ? formatDate(entry.scheduledAt) : "Data a definir"}
+        </span>
       </div>
       <div className="flex items-center gap-3">
         <TeamCell name={entry.homeName} crestUrl={entry.homeCrestUrl} slug={entry.homeSlug} align="left" />

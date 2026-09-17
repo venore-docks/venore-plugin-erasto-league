@@ -78,25 +78,25 @@ export async function ErastoLeagueBracketBlock({ block }: BlockRendererProps) {
               <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">Grupo {group.name}</h3>
 
               {group.standings.length > 0 && (
-                <table className="w-full text-xs">
+                <table className="w-full table-fixed text-xs">
                   <thead>
                     <tr className="text-muted-foreground">
-                      <th className="pb-1 text-left font-medium">Time</th>
-                      <th className="pb-1 text-center font-medium">J</th>
-                      <th className="pb-1 text-center font-medium">SG</th>
-                      <th className="pb-1 text-center font-medium" title="Cartões amarelos">
+                      <th className="w-full pb-1 text-left font-medium">Time</th>
+                      <th className="w-5 pb-1 text-center font-medium">J</th>
+                      <th className="w-5 pb-1 text-center font-medium">SG</th>
+                      <th className="w-5 pb-1 text-center font-medium" title="Cartões amarelos">
                         CA
                       </th>
-                      <th className="pb-1 text-center font-medium" title="Cartões vermelhos">
+                      <th className="w-5 pb-1 text-center font-medium" title="Cartões vermelhos">
                         CV
                       </th>
-                      <th className="pb-1 text-center font-medium">Pts</th>
+                      <th className="w-6 pb-1 text-center font-medium">Pts</th>
                     </tr>
                   </thead>
                   <tbody>
                     {group.standings.map((row) => (
                       <tr key={row.teamId} className="border-t border-border/60">
-                        <td className="max-w-0 truncate py-1 pr-2 text-foreground">{row.name}</td>
+                        <td className="py-1 pr-2 text-foreground">{row.name}</td>
                         <td className="py-1 text-center text-muted-foreground">{row.played}</td>
                         <td className="py-1 text-center text-muted-foreground">{row.goalsFor - row.goalsAgainst}</td>
                         <td className="py-1 text-center text-amber-500">{row.yellowCards}</td>

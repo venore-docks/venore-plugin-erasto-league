@@ -87,3 +87,20 @@ export async function linkFixtureToMatch(fixtureId: string, matchId: string | nu
 export async function deleteAllFixtures(): Promise<void> {
   await db.delete(fixturesTable);
 }
+
+// Correção pontual (uma vez só) do bug de fuso: confrontos importados/editados antes de
+// shared/timezone.ts existir ficaram gravados 3h adiantados (CSV import e o form de edição
+// interpretavam "10:30" como 10:30 UTC em vez de horário de Brasília). Soma 3h em todo
+// scheduledAt já gravado, sem mexer em mais nada (grupo/rodada/times/vínculo com partida
+// continuam intactos) — chamado por um botão só-uso-único em /admin/erasto-league/fixtures.
+export async function shiftAllScheduledAtBy3Hours(): Promise<number> {
+  const rows = await db.select({ id: fixturesTable.id, scheduledAt: fixturesTable.scheduledAt }).from(fixturesTable);
+  const toFix = rows.filter((row) => row.scheduledAt !== null);
+
+  for (const row of toFix) {
+    const corrected = new Date(row.scheduledAt!.getTime() + 3 * 60 * 60 * 1000);
+    await db.update(fixturesTable).set({ scheduledAt: corrected, updatedAt: new Date() }).where(eq(fixturesTable.id, row.id));
+  }
+
+  return toFix.length;
+}

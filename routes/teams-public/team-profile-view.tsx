@@ -26,6 +26,11 @@ const CSS = `
     background: radial-gradient(120% 90% at 15% 0%, color-mix(in srgb, var(--secondary, #0f172a) 55%, transparent), transparent 60%);
   }
   .el-tp-head { position: relative; display: flex; align-items: center; gap: 18px; max-width: 1040px; margin: 0 auto; }
+  .el-tp-back {
+    position: relative; display: inline-flex; align-items: center; gap: 6px; margin: 0 auto 20px;
+    max-width: 1040px; width: 100%; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6); text-decoration: none;
+  }
+  .el-tp-back:hover { color: #fff; }
   .el-tp-crest {
     width: 84px; height: 84px; border-radius: 20px; object-fit: cover; flex-shrink: 0;
     border: 2px solid rgba(255,255,255,0.18); box-shadow: 0 16px 32px -10px rgba(0,0,0,0.6);
@@ -123,7 +128,7 @@ function formatFoundedDate(iso: string | null): string | null {
 }
 
 function formatMatchDate(epochMs: number): string {
-  return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
 }
 
 export function TeamProfileView({
@@ -148,6 +153,9 @@ export function TeamProfileView({
       <style>{CSS}</style>
       <div className="el-tp-wrap" style={vars}>
         <div className="el-tp-cover">
+          <Link href="/ext/erasto-league/teams" className="el-tp-back">
+            ← Todos os times
+          </Link>
           <div className="el-tp-head">
             {team.crestUrl ? (
               // eslint-disable-next-line @next/next/no-img-element

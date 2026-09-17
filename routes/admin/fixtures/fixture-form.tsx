@@ -4,6 +4,7 @@ import { useActionState, type ReactNode } from "react";
 import { Button, Input, useActionToast } from "@venore/plugin-sdk/ui";
 import { saveFixtureFormAction, type FixtureActionState } from "./actions";
 import { FIXTURE_PHASE_LABEL, FIXTURE_PHASE_ORDER } from "../../../shared/fixture-phase";
+import { epochToSaoPauloParts } from "../../../shared/timezone";
 import type { Fixture, TeamProfile } from "../../../contracts/types";
 
 const initialState: FixtureActionState = { error: null, fixtureId: null };
@@ -18,13 +19,13 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-// epoch ms -> valor de <input type="datetime-local"> ("YYYY-MM-DDTHH:mm"), em horário local —
-// mesma ideia de create-match-form.tsx (parseLocalDate), só que preservando a hora também.
+// epoch ms -> valor de <input type="datetime-local"> ("YYYY-MM-DDTHH:mm"), sempre em horário de
+// Brasília (não o fuso do dispositivo de quem abriu o formulário — ver shared/timezone.ts).
 function toDatetimeLocalValue(epochMs: number | null): string {
   if (!epochMs) return "";
-  const date = new Date(epochMs);
+  const { year, month, day, hours, minutes } = epochToSaoPauloParts(epochMs);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${year}-${pad(month)}-${pad(day)}T${pad(hours)}:${pad(minutes)}`;
 }
 
 export function FixtureForm({ fixture, teams }: { fixture: Fixture | null; teams: TeamProfile[] }) {

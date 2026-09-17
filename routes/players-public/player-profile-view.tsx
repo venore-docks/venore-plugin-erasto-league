@@ -91,7 +91,7 @@ const CSS = `
 `;
 
 function formatMatchDate(epochMs: number): string {
-  return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
 }
 
 export function PlayerProfileView({

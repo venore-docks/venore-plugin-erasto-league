@@ -8,7 +8,7 @@ import { formatScore } from "../../../shared/score";
 import { MATCH_STATUS_BADGE_VARIANT, MATCH_STATUS_LABEL } from "../../../shared/match-status";
 
 function formatMatchDate(epochMs: number): string {
-  return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Sao_Paulo" });
 }
 
 // Súmula: lista de partidas (/admin/erasto-league/matches), mais recente primeiro. Cada linha

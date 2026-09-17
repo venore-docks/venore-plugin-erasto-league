@@ -1,4 +1,5 @@
 import { csvToObjects } from "../shared/csv";
+import { saoPauloPartsToEpoch } from "../shared/timezone";
 import { createTeamWithId, getTeam, getTeamByName, updateTeam, upsertTeamByName, type TeamInput } from "./teams";
 import { createFixture, deleteAllFixtures } from "./fixtures";
 import type { FixturePhase } from "../contracts/types";
@@ -127,8 +128,8 @@ function parseFlexibleDate(dateRaw: string, timeRaw: string): number | null {
     minutes = Number(timeMatch[2]);
   }
 
-  const date = new Date(year, month - 1, day, hours, minutes);
-  return Number.isNaN(date.getTime()) ? null : date.getTime();
+  const epoch = saoPauloPartsToEpoch(year, month, day, hours, minutes);
+  return Number.isNaN(epoch) ? null : epoch;
 }
 
 type TeamRefResult = { ok: true; teamId: string | null } | { ok: false; message: string };

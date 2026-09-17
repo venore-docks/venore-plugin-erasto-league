@@ -8,6 +8,7 @@ import { listMatchesBetweenTeams } from "../../../runtime/matches";
 import { FIXTURE_PHASE_LABEL, FIXTURE_PHASE_ORDER } from "../../../shared/fixture-phase";
 import { formatScore } from "../../../shared/score";
 import { linkFixtureFormAction, deleteFixtureFormAction } from "./actions";
+import { FixTimezoneButton } from "./fix-timezone-button";
 import type { Fixture, FixturePhase, TeamProfile } from "../../../contracts/types";
 
 function formatDate(epochMs: number | null): string {
@@ -18,6 +19,7 @@ function formatDate(epochMs: number | null): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
   });
 }
 
@@ -100,6 +102,7 @@ export default async function FixturesAdminPage() {
         description="Confrontos agendados (grupos + eliminatórias) — importados via CSV, vinculados à partida real quando jogados."
         actions={
           <>
+            <FixTimezoneButton />
             <Button asChild variant="outline">
               <Link href="/admin/erasto-league/import">Importar CSV</Link>
             </Button>

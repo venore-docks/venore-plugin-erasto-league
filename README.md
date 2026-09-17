@@ -66,7 +66,8 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     time (slug configurável) com recorde — pra "time campeão", destaque do mês, etc.
   - **Erasto League — Fases** (`erasto-league.bracket`) — pra formato copa (grupos +
     eliminatórias), que a classificação/últimos resultados sozinhos não cobrem: mini-classificação
-    por grupo (agora com colunas de **CA/CV — cartões amarelos/vermelhos**, além de J/SG/Pts) mais
+    por grupo (nome do time sempre por inteiro, nunca mais truncado — são as colunas numéricas
+    J/SG/CA/CV/Pts que apertam, não o nome; **CA/CV** = cartões amarelos/vermelhos) mais
     chaveamento de quartas/semi/final. Não lista mais os confrontos do grupo linha a linha (isso é
     o bloco de agenda, abaixo) — só a tabela. Alimentado por `fixtures` (confrontos agendados, ver
     abaixo) + `runtime/standings.ts` (cartões agregados de `match_events`), não por `matches`
@@ -84,6 +85,13 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     (`/ext/erasto-league/tv`, sempre primeiro no rodízio), alimentadas pelo mesmo dado
     (`runtime/bracket.ts` `getNextFixture`) — o próximo confronto ainda não jogado, em ordem
     cronológica.
+- **Fuso horário** — data/hora de jogo é sempre horário de Brasília (`shared/timezone.ts`,
+  UTC-3 fixo — Brasil não tem mais horário de verão desde 2019). CSV import e o form de fixtures
+  usavam `new Date(...)`/`<input type="datetime-local">` direto, que pega o fuso de quem EXECUTA o
+  código (o servidor, UTC em produção) em vez de América/São Paulo — todo horário digitado
+  aparecia 3h adiantado (ex: "10:30" virava "07:30"). Corrigido; `/admin/erasto-league/fixtures`
+  tem um botão só-uso-único ("Corrigir fuso") pra somar as 3h que faltam em confrontos já
+  gravados antes do fix.
 - **Fixtures (confrontos agendados) + import CSV** — `erasto_league.fixtures`: um confronto pode
   existir ANTES de qualquer partida (importado via `/admin/erasto-league/import` OU criado/editado
   direto em `/admin/erasto-league/fixtures/new` e `/fixtures/:id` — fase, grupo, **rodada**, os

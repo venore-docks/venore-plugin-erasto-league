@@ -3,9 +3,18 @@
 import { useActionState } from "react";
 import { Button, Input, useActionToast } from "@venore/plugin-sdk/ui";
 import { createMatchFormAction, type CreateMatchActionState } from "./actions";
+import { epochToSaoPauloParts } from "../../../shared/timezone";
 import type { TeamProfile } from "../../../contracts/types";
 
 const initialState: CreateMatchActionState = { error: null };
+
+// "Hoje" em horário de Brasília, não em UTC (new Date().toISOString() pega o fuso errado perto da
+// meia-noite — mesmo motivo de shared/timezone.ts).
+function todayInSaoPaulo(): string {
+  const { year, month, day } = epochToSaoPauloParts(Date.now());
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${year}-${pad(month)}-${pad(day)}`;
+}
 
 export function CreateMatchForm({ teams }: { teams: TeamProfile[] }) {
   const [state, formAction, pending] = useActionState(createMatchFormAction, initialState);
@@ -51,7 +60,7 @@ export function CreateMatchForm({ teams }: { teams: TeamProfile[] }) {
 
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-foreground">Data do jogo</label>
-        <Input name="playedOn" type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
+        <Input name="playedOn" type="date" defaultValue={todayInSaoPaulo()} />
       </div>
 
       <p className="text-xs text-muted-foreground">
