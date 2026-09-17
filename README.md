@@ -79,12 +79,16 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     só em eliminatória) cai numa aba própria pela fase. Alimentado por `runtime/bracket.ts`
     (`getScheduleView`), mesma fonte do bloco de fases.
   - **Erasto League — Próximo jogo (ad 16:9)** (`erasto-league.next-game-ad`) — card promocional
-    de largura/altura fixa 16:9 (times, crista grande, rodada, data/hora) — pra usar como destaque
-    na página inicial. Fundo nas **cores do tema** (não dos times — cor de cada time fica só no
-    anel da crista e no traço sob o nome). A mesma "página" aparece também na view de TV
+    de proporção fixa 16:9 (times, crista grande, rodada, data/hora) — pra usar como destaque na
+    página inicial. Fundo nas **cores do tema** (não dos times — cor de cada time fica só no anel
+    da crista e no traço sob o nome). A mesma "página" aparece também na view de TV
     (`/ext/erasto-league/tv`, sempre primeiro no rodízio), alimentadas pelo mesmo dado
     (`runtime/bracket.ts` `getNextFixture`) — o próximo confronto ainda não jogado, em ordem
-    cronológica.
+    cronológica. **Responsivo por container, não por viewport** (`@container` + variantes
+    `@sm`/`@md`/`@lg`/`@xl`, Tailwind v4 nativo): a largura real deste bloco depende de onde o
+    admin o colocou no construtor de páginas (largura cheia vs. dentro de uma "Linha" com colunas
+    estreitas), e o viewport do navegador não diz nada sobre isso — crista, nome, "VS" e as pílulas
+    de rodada/data escalam a partir da largura renderizada do próprio card.
 - **Data e hora do confronto são colunas SEPARADAS** (`fixtures.scheduled_date` +
   `fixtures.scheduled_time`, não um `timestamptz` combinado) — um `<input type="datetime-local">`
   só aceita o valor quando as duas partes estão preenchidas, então editar só a hora de um
