@@ -40,7 +40,7 @@ export async function ErastoLeagueStandingsBlock({ block }: BlockRendererProps) 
                 <TableRow key={row.teamId} className={index === 0 ? "bg-accent/8" : undefined}>
                   <TableCell className="text-muted-foreground">{index + 1}</TableCell>
                   <TableCell className="font-medium">
-                    <Link href={`/ext/erasto-league/teams/${row.slug}`} className="flex items-center gap-2 hover:underline">
+                    <Link href={`/erasto-league/teams/${row.slug}`} className="flex items-center gap-2 hover:underline">
                       {row.crestUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={row.crestUrl} alt="" className="size-6 shrink-0 rounded object-cover" />

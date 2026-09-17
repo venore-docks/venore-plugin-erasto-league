@@ -5,7 +5,8 @@ import { getTeam, listTeams } from "../../runtime/teams";
 import { getPlayerStats, listRecentMatchesForPlayer } from "../../runtime/stats";
 import { PlayerProfileView } from "./player-profile-view";
 
-// Perfil público do jogador (/ext/erasto-league/players/:slug) — só leitura, sem PIN.
+// Perfil público do jogador (/erasto-league/players/:slug) — só leitura, sem PIN. Rota "public"
+// (ver routes/route-table.ts): renderiza DENTRO da shell/tema do host, não mais em /ext/.
 export default async function PlayerProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   if (!(await isPluginActive("erasto-league"))) {
     notFound();

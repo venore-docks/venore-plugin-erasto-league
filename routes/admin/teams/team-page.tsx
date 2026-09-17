@@ -47,7 +47,7 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ id:
           team && (
             <>
               <Button asChild variant="outline">
-                <Link href={`/ext/erasto-league/teams/${team.slug}`} target="_blank" rel="noreferrer">
+                <Link href={`/erasto-league/teams/${team.slug}`} target="_blank" rel="noreferrer">
                   Ver página pública ↗
                 </Link>
               </Button>

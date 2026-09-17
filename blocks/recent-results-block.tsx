@@ -22,7 +22,7 @@ function formatMatchDate(epochMs: number): string {
 function TeamChip({ team, align }: { team: TeamProfile; align: "left" | "right" }) {
   return (
     <Link
-      href={`/ext/erasto-league/teams/${team.slug}`}
+      href={`/erasto-league/teams/${team.slug}`}
       className={`flex min-w-0 flex-1 items-center gap-2 hover:opacity-80 ${align === "right" ? "flex-row-reverse text-right" : ""}`}
     >
       {team.crestUrl ? (

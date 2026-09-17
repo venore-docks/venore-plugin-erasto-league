@@ -59,10 +59,10 @@ export async function ErastoLeagueTopScorersBlock({ block }: BlockRendererProps)
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <Link href={`/ext/erasto-league/players/${scorer.slug}`} className="block truncate text-sm font-semibold text-foreground hover:underline">
+                <Link href={`/erasto-league/players/${scorer.slug}`} className="block truncate text-sm font-semibold text-foreground hover:underline">
                   {scorer.name}
                 </Link>
-                <Link href={`/ext/erasto-league/teams/${scorer.teamSlug}`} className="block truncate text-xs text-muted-foreground hover:underline">
+                <Link href={`/erasto-league/teams/${scorer.teamSlug}`} className="block truncate text-xs text-muted-foreground hover:underline">
                   {scorer.teamName}
                 </Link>
               </div>

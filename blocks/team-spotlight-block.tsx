@@ -32,7 +32,7 @@ export async function ErastoLeagueTeamSpotlightBlock({ block, mode }: BlockRende
 
   return (
     <Link
-      href={`/ext/erasto-league/teams/${team.slug}`}
+      href={`/erasto-league/teams/${team.slug}`}
       className="group flex items-center gap-4 overflow-hidden rounded-panel border border-border bg-card p-5 transition-colors hover:border-ring"
     >
       {team.crestUrl ? (

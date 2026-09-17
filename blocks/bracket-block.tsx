@@ -27,7 +27,7 @@ function TeamRow({ name, crestUrl, slug, score, won }: { name: string; crestUrl:
   return (
     <div className="flex items-center gap-2 py-1">
       {slug ? (
-        <Link href={`/ext/erasto-league/teams/${slug}`} className="flex min-w-0 flex-1 hover:underline">
+        <Link href={`/erasto-league/teams/${slug}`} className="flex min-w-0 flex-1 hover:underline">
           {content}
         </Link>
       ) : (

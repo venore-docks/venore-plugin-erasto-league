@@ -36,7 +36,7 @@ function TeamCell({ name, crestUrl, slug, align }: { name: string; crestUrl: str
   );
 
   return slug ? (
-    <Link href={`/ext/erasto-league/teams/${slug}`} className="flex min-w-0 flex-1 hover:opacity-80">
+    <Link href={`/erasto-league/teams/${slug}`} className="flex min-w-0 flex-1 hover:opacity-80">
       {content}
     </Link>
   ) : (

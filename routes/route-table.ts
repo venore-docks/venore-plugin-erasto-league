@@ -12,7 +12,6 @@ import ImportAdminPage from "./admin/import/page";
 import OverlayPage from "./overlay/page";
 import ControlPage from "./control/page";
 import TvPage from "./tv/page";
-import TeamsListPage from "./teams-public/teams-list-page";
 import TeamProfilePage from "./teams-public/page";
 import PlayerProfilePage from "./players-public/page";
 import { GET as eventsGET } from "./api/events/route";
@@ -20,11 +19,15 @@ import { GET as stateGET } from "./api/state/route";
 
 // - admin      -> /admin/erasto-league          (config + atalhos; link vem do manifest.navigation)
 //                 /admin/erasto-league/teams(/:id), /players(/:id) — cadastro (admin-only)
-// - overlay    -> /ext/erasto-league/overlay    (fonte de navegador do OBS)
+// - overlay    -> /ext/erasto-league/overlay    (fonte de navegador do OBS, sem shell — mesmo
+//                 motivo de sempre: precisa de fundo transparente pro OBS)
 // - control    -> /ext/erasto-league/control    (celular, gate por login/permissão de admin)
 // - tv         -> /ext/erasto-league/tv         (view pra TV/projetor com as tabelas)
-// - times      -> /ext/erasto-league/teams       (lista pública de times)
-// - perfis     -> /ext/erasto-league/teams/:slug, /players/:slug (público, só leitura)
+// - perfis     -> /erasto-league/teams/:slug, /players/:slug — DENTRO da shell/tema do host
+//                 (rota "public", casada pelo catch-all do CMS — não mais /ext/, que tirava a
+//                 shell). Lista de todos os times não é mais uma rota fixa: virou o bloco
+//                 "erasto-league.teams" pro CMS (blocks/teams-block.tsx), o admin decide em que
+//                 página ele aparece.
 // - eventos    -> /api/erasto-league/events     (SSE)
 // - estado     -> /api/erasto-league/state      (snapshot JSON — fallback do SSE)
 export const erastoLeagueRouteTable: PluginRouteTable = {
@@ -40,13 +43,14 @@ export const erastoLeagueRouteTable: PluginRouteTable = {
     { pattern: "fixtures/:id", Component: asPluginPage(FixtureDetailPage) },
     { pattern: "import", Component: asPluginPage(ImportAdminPage) },
   ],
+  public: [
+    { pattern: "erasto-league/teams/:slug", Component: asPluginPage(TeamProfilePage) },
+    { pattern: "erasto-league/players/:slug", Component: asPluginPage(PlayerProfilePage) },
+  ],
   standalone: [
     { pattern: "erasto-league/overlay", Component: asPluginPage(OverlayPage) },
     { pattern: "erasto-league/control", Component: asPluginPage(ControlPage) },
     { pattern: "erasto-league/tv", Component: asPluginPage(TvPage) },
-    { pattern: "erasto-league/teams", Component: asPluginPage(TeamsListPage) },
-    { pattern: "erasto-league/teams/:slug", Component: asPluginPage(TeamProfilePage) },
-    { pattern: "erasto-league/players/:slug", Component: asPluginPage(PlayerProfilePage) },
   ],
   api: [
     { pattern: "events", handlers: { GET: asPluginApiHandler(eventsGET) } },

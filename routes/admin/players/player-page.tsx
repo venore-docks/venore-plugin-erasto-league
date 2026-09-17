@@ -43,7 +43,7 @@ export default async function PlayerDetailPage({
           player && (
             <>
               <Button asChild variant="outline">
-                <Link href={`/ext/erasto-league/players/${player.slug}`} target="_blank" rel="noreferrer">
+                <Link href={`/erasto-league/players/${player.slug}`} target="_blank" rel="noreferrer">
                   Ver página pública ↗
                 </Link>
               </Button>

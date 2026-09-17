@@ -27,14 +27,15 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
 - **Cadastro de times e jogadores** — `/admin/erasto-league/teams` e `/players`, sempre mantido
   por um admin (nunca pelos alunos). Time: nome, brasão (upload via `MediaPickerField`, sistema de
   mídia do host), cores, descrição/história, data de fundação. Jogador: time, nome, número, gênero
-  (opcional, só pra sinalizar), capitão (flag), foto, bio. **Lista pública de times**
-  (`/ext/erasto-league/teams`) — mesma informação da tela admin (brasão, cor, elenco, recorde
-  V/E/D), aberta pra qualquer visitante. Perfis públicos em `/ext/erasto-league/teams/:slug` e
-  `/players/:slug` — capa, recorde (V/E/D/saldo/pontos) e últimos jogos encerrados pro time;
-  gols/cartões e últimos jogos pro jogador (capitão aparece com um selo "C"). Excluir time/jogador
-  é seguro: bloqueado de verdade se o time tem partida registrada (senão o histórico quebra);
-  jogador sempre pode ser excluído — os eventos dele só perdem a atribuição (`runtime/teams.ts`
-  `deleteTeam`, `runtime/players.ts` `deletePlayer`).
+  (opcional, só pra sinalizar), capitão (flag), foto, bio. Perfis públicos em
+  `/erasto-league/teams/:slug` e `/erasto-league/players/:slug` — DENTRO da shell/tema do site
+  (rota "public", não mais `/ext/`): capa, recorde (V/E/D/saldo/pontos) e últimos jogos encerrados
+  pro time; gols/cartões e últimos jogos pro jogador (capitão aparece com um selo "C"). A lista de
+  todos os times não é mais uma rota fixa — virou o bloco **Erasto League — Times**
+  (`erasto-league.teams`, ver lista de blocos abaixo), pra o admin colocar em qualquer página.
+  Excluir time/jogador é seguro: bloqueado de verdade se o time tem partida registrada (senão o
+  histórico quebra); jogador sempre pode ser excluído — os eventos dele só perdem a atribuição
+  (`runtime/teams.ts` `deleteTeam`, `runtime/players.ts` `deletePlayer`).
 - **Partida como entidade** — cada partida (`matches`) tem uma trilha de eventos (`match_events`:
   gol/cartão/falta, cada um podendo apontar pro jogador) em vez de só um contador — placar de cada
   lado é a soma dos eventos "goal". Times/jogador podem ficar sem atribuição no calor do jogo.
@@ -64,6 +65,10 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     com foto (placeholder de avatar quando não há foto) e time abaixo do nome.
   - **Erasto League — Time em destaque** (`erasto-league.team-spotlight`) — card compacto de UM
     time (slug configurável) com recorde — pra "time campeão", destaque do mês, etc.
+  - **Erasto League — Times** (`erasto-league.teams`) — grade com TODOS os times cadastrados, um
+    cartão por time: crista/cor, quantidade de jogadores no elenco e recorde (V/E/D + cartões
+    amarelo/vermelho, agregados de `match_events` via `runtime/standings.ts`). Substitui a antiga
+    rota fixa `/ext/erasto-league/teams` — agora o admin decide em que página do site ela aparece.
   - **Erasto League — Fases** (`erasto-league.bracket`) — pra formato copa (grupos +
     eliminatórias), que a classificação/últimos resultados sozinhos não cobrem: mini-classificação
     por grupo (nome do time sempre por inteiro, nunca mais truncado — são as colunas numéricas
