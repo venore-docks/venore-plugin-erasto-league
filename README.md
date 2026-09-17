@@ -45,11 +45,15 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   controle ao vivo — pra jogo que já aconteceu (atrasou o cadastro, ou é histórico anterior ao
   plugin): escolhe os times, o placar final e a data, e cai direto na súmula do jogo criado pra
   detalhar/atribuir os gols a jogadores específicos.
-- **Power boosts** — catálogo MOCKADO de 5 exemplos (`shared/power-boosts.ts`, troca fácil pela
-  lista real quando o campeonato mandar) — cada time pode usar um ou mais boosts durante a partida;
-  registrado direto no controle ao vivo (`erasto_league.match_boosts`, um evento por uso, sem
-  limite de quantidade), **removível no próprio controle** (toca no selo do boost pra tirar — "usei
-  por engano") além de corrigível/completável na súmula.
+- **Power boosts** — catálogo **editável pelo admin** em `/admin/erasto-league/power-boosts`
+  (`erasto_league.power_boosts`: acrescentar, editar rótulo/emoji/descrição, remover — a "key"
+  interna gravada nos usos segue o rótulo sozinha na criação e não muda em edições depois, ver
+  `runtime/power-boosts.ts`). Cada time pode usar um ou mais boosts durante a partida; registrado
+  direto no controle ao vivo (`erasto_league.match_boosts`, um evento por uso, sem limite de
+  quantidade), **removível no próprio controle** (toca no selo do boost pra tirar — "usei por
+  engano") além de corrigível/completável na súmula. Excluir um boost do catálogo não apaga usos já
+  registrados (sem FK de propósito, mesma filosofia de excluir jogador) — eles só perdem o
+  rótulo/emoji bonito e caem pra key crua na exibição.
 - **Classificação** — `runtime/standings.ts` agrega as partidas encerradas por time (V=3/E=1/D=0,
   saldo de gols), semeada com todo time cadastrado mesmo sem jogo ainda.
 - **Blocos de page-builder** — contribuídos via `contributions.ts` (`blocks/`), aparecem no

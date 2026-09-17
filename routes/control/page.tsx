@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { isPluginActive } from "@venore/plugin-sdk";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { getMatchState } from "../../runtime/match-actions";
+import { listPowerBoosts } from "../../runtime/power-boosts";
 import { listTeams } from "../../runtime/teams";
 import { resolveErastoLeagueConfig } from "../../shared/config";
 import { ControlAccessDenied } from "./access-denied";
@@ -22,12 +23,13 @@ export default async function ControlPage() {
   }
 
   const config = await resolveErastoLeagueConfig();
-  const [initialState, teams] = await Promise.all([getMatchState(), listTeams()]);
+  const [initialState, teams, powerBoosts] = await Promise.all([getMatchState(), listTeams(), listPowerBoosts()]);
 
   return (
     <Console
       initialState={initialState}
       teams={teams}
+      powerBoosts={powerBoosts}
       accentColor={config.accentColor}
       periodMs={config.periodMs}
       periodCount={config.periodCount}

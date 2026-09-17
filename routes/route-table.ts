@@ -8,6 +8,7 @@ import MatchesAdminPage from "./admin/matches/page";
 import MatchDetailPage from "./admin/matches/match-page";
 import FixturesAdminPage from "./admin/fixtures/page";
 import FixtureDetailPage from "./admin/fixtures/fixture-page";
+import PowerBoostsAdminPage from "./admin/power-boosts/page";
 import ImportAdminPage from "./admin/import/page";
 import OverlayPage from "./overlay/page";
 import ControlPage from "./control/page";
@@ -41,6 +42,7 @@ export const erastoLeagueRouteTable: PluginRouteTable = {
     { pattern: "matches/:id", Component: asPluginPage(MatchDetailPage) },
     { pattern: "fixtures", Component: asPluginPage(FixturesAdminPage) },
     { pattern: "fixtures/:id", Component: asPluginPage(FixtureDetailPage) },
+    { pattern: "power-boosts", Component: asPluginPage(PowerBoostsAdminPage) },
     { pattern: "import", Component: asPluginPage(ImportAdminPage) },
   ],
   public: [

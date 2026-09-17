@@ -6,9 +6,19 @@ export type MatchSide = "home" | "away";
 export type MatchStatus = "in_progress" | "finished" | "cancelled";
 export type EventKind = "goal" | "yellow_card" | "red_card" | "foul";
 
-// Catálogo MOCKADO (5 exemplos, pedido explícito) até a lista real dos "power boosts" do
-// campeonato chegar — ver shared/power-boosts.ts. Chave estável mesmo se o rótulo mudar depois.
-export type PowerBoostKey = "double_goal" | "extra_sub" | "iron_wall" | "time_freeze" | "wildcard";
+// Identificador estável de um power boost do catálogo (power_boosts.key) — segue o rótulo na
+// criação, não muda com edições de rótulo depois (ver runtime/power-boosts.ts).
+export type PowerBoostKey = string;
+
+// Catálogo de power boosts, editável pelo admin (/admin/erasto-league/power-boosts,
+// runtime/power-boosts.ts) — antes era uma lista mockada de 5 exemplos.
+export type PowerBoost = {
+  id: string;
+  key: PowerBoostKey;
+  label: string;
+  emoji: string;
+  description: string;
+};
 
 export type PowerBoostUse = {
   id: string;

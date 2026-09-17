@@ -78,6 +78,13 @@
       "when": 1789650565294,
       "tag": "0010_fixtures_drop_scheduled_at",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789664039483,
+      "tag": "0011_power_boosts",
+      "breakpoints": true
     }
   ]
 }

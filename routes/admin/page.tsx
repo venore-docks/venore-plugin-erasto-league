@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Award, CalendarDays, ClipboardList, MonitorPlay, Radio, Shield, Smartphone, Tv, Upload, Users } from "lucide-react";
+import { Award, CalendarDays, ClipboardList, MonitorPlay, Radio, Shield, Smartphone, Tv, Upload, Users, Zap } from "lucide-react";
 import { AdminAccessDenied, AdminPageHeader, AdminStatTile, Badge, Button } from "@venore/plugin-sdk/ui";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { resolveErastoLeagueConfig } from "../../shared/config";
@@ -78,6 +78,11 @@ export default async function ErastoLeagueAdminPage() {
           <Button asChild variant="outline" size="sm">
             <Link href="/admin/erasto-league/fixtures">
               <CalendarDays className="size-4" /> Tabela de jogos
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/erasto-league/power-boosts">
+              <Zap className="size-4" /> Power boosts
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm">

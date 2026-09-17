@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition, type CSSProperties } from "react";
-import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile, PowerBoostUse, TeamProfile } from "../../contracts/types";
+import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile, PowerBoost, PowerBoostUse, TeamProfile } from "../../contracts/types";
 import { computeElapsedMs, formatClock } from "../../shared/clock";
-import { POWER_BOOST_CATALOG } from "../../shared/power-boosts";
 import { formatScore } from "../../shared/score";
 import { useMatchState, useTick } from "../../shared/use-match-state";
 import { TeamPicker } from "./team-picker";
@@ -187,12 +186,14 @@ const EVENT_LABEL: Record<EventKind, string> = {
 export function Console({
   initialState,
   teams,
+  powerBoosts,
   accentColor,
   periodMs,
   periodCount,
 }: {
   initialState: MatchState;
   teams: TeamProfile[];
+  powerBoosts: PowerBoost[];
   accentColor: string;
   periodMs: number;
   periodCount: number;
@@ -242,7 +243,7 @@ export function Console({
     };
   }, [state.currentMatchId]);
 
-  function useBoost(side: MatchSide, boostKey: (typeof POWER_BOOST_CATALOG)[number]["key"]) {
+  function useBoost(side: MatchSide, boostKey: string) {
     startTransition(async () => {
       const result = await recordBoostAction(side, boostKey);
       if (!result.ok) {
@@ -459,7 +460,7 @@ export function Console({
               <div className="el-c-boosts">
                 <span className="el-c-boosts-label">Power boosts</span>
                 <div className="el-c-boost-row">
-                  {POWER_BOOST_CATALOG.map((boost) => (
+                  {powerBoosts.map((boost) => (
                     <button
                       key={boost.key}
                       type="button"
@@ -477,7 +478,7 @@ export function Console({
                     {boosts
                       .filter((boost) => boost.side === side)
                       .map((boost) => {
-                        const catalogEntry = POWER_BOOST_CATALOG.find((entry) => entry.key === boost.boostKey);
+                        const catalogEntry = powerBoosts.find((entry) => entry.key === boost.boostKey);
                         return (
                           <button
                             key={boost.id}

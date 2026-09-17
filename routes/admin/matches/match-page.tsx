@@ -6,9 +6,9 @@ import { getTeam, listTeams } from "../../../runtime/teams";
 import { listPlayersByTeam } from "../../../runtime/players";
 import { listEventsByMatch } from "../../../runtime/match-events";
 import { listBoostsByMatch } from "../../../runtime/match-boosts";
+import { listPowerBoosts } from "../../../runtime/power-boosts";
 import { formatScore } from "../../../shared/score";
 import { MATCH_STATUS_BADGE_VARIANT, MATCH_STATUS_LABEL } from "../../../shared/match-status";
-import { POWER_BOOST_CATALOG } from "../../../shared/power-boosts";
 import { addBoostFormAction, addEventFormAction, deleteBoostFormAction, deleteEventFormAction, updateEventFormAction } from "./actions";
 import { CreateMatchForm } from "./create-match-form";
 import type { EventKind, MatchEvent, PlayerProfile, TeamProfile } from "../../../contracts/types";
@@ -136,13 +136,14 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
     notFound();
   }
 
-  const [homeTeam, awayTeam, events, homeRoster, awayRoster, boosts] = await Promise.all([
+  const [homeTeam, awayTeam, events, homeRoster, awayRoster, boosts, powerBoosts] = await Promise.all([
     getTeam(match.homeTeamId),
     getTeam(match.awayTeamId),
     listEventsByMatch(id),
     listPlayersByTeam(match.homeTeamId),
     listPlayersByTeam(match.awayTeamId),
     listBoostsByMatch(id),
+    listPowerBoosts(),
   ]);
   const playerById = new Map([...homeRoster, ...awayRoster].map((player) => [player.id, player]));
 
@@ -213,7 +214,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
         ) : (
           <div className="space-y-2">
             {boosts.map((boost) => {
-              const catalogEntry = POWER_BOOST_CATALOG.find((entry) => entry.key === boost.boostKey);
+              const catalogEntry = powerBoosts.find((entry) => entry.key === boost.boostKey);
               const side = boost.side === "home" ? homeTeam : awayTeam;
               return (
                 <div key={boost.id} className="flex flex-wrap items-center gap-3 rounded-panel border border-border bg-card p-3">
@@ -234,21 +235,31 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
           </div>
         )}
 
-        <form action={addBoostFormAction} className="flex flex-wrap items-center gap-2 rounded-panel border border-border bg-card p-3">
-          <input type="hidden" name="matchId" value={id} />
-          <select name="side" defaultValue="home" className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground">
-            <option value="home">{homeTeam?.name ?? "Casa"}</option>
-            <option value="away">{awayTeam?.name ?? "Visitante"}</option>
-          </select>
-          <select name="boostKey" defaultValue={POWER_BOOST_CATALOG[0].key} className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground">
-            {POWER_BOOST_CATALOG.map((boost) => (
-              <option key={boost.key} value={boost.key}>
-                {boost.emoji} {boost.label}
-              </option>
-            ))}
-          </select>
-          <Button type="submit">Adicionar</Button>
-        </form>
+        {powerBoosts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Nenhum power boost cadastrado ainda —{" "}
+            <a href="/admin/erasto-league/power-boosts" className="underline">
+              cadastre o catálogo
+            </a>{" "}
+            antes de registrar um uso.
+          </p>
+        ) : (
+          <form action={addBoostFormAction} className="flex flex-wrap items-center gap-2 rounded-panel border border-border bg-card p-3">
+            <input type="hidden" name="matchId" value={id} />
+            <select name="side" defaultValue="home" className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground">
+              <option value="home">{homeTeam?.name ?? "Casa"}</option>
+              <option value="away">{awayTeam?.name ?? "Visitante"}</option>
+            </select>
+            <select name="boostKey" defaultValue={powerBoosts[0].key} className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground">
+              {powerBoosts.map((boost) => (
+                <option key={boost.key} value={boost.key}>
+                  {boost.emoji} {boost.label}
+                </option>
+              ))}
+            </select>
+            <Button type="submit">Adicionar</Button>
+          </form>
+        )}
       </section>
     </div>
   );
