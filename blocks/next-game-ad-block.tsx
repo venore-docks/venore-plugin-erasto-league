@@ -6,13 +6,11 @@ function readString(data: Record<string, unknown>, key: string, fallback = ""): 
   return typeof value === "string" ? value : fallback;
 }
 
-function formatDateTime(epochMs: number | null): { date: string; time: string } | null {
-  if (!epochMs) return null;
-  const d = new Date(epochMs);
-  return {
-    date: d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "long", timeZone: "America/Sao_Paulo" }),
-    time: d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }),
-  };
+// scheduledDate/scheduledTime já chegam como texto puro — só formata pra exibição, nenhuma
+// conversão de fuso (ver shared/timezone.ts).
+function formatDateLabel(date: string): string {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "long" });
 }
 
 function TeamSide({ name, crestUrl, color, align }: { name: string; crestUrl: string | null; color: string | null; align: "left" | "right" }) {
@@ -56,7 +54,7 @@ export async function ErastoLeagueNextGameAdBlock({ block }: BlockRendererProps)
     return <p className="text-sm text-muted-foreground">Nenhum próximo jogo agendado.</p>;
   }
 
-  const when = formatDateTime(next.scheduledAt);
+  const dateLabel = next.scheduledDate ? formatDateLabel(next.scheduledDate) : null;
 
   return (
     <div className="relative aspect-video w-full overflow-hidden rounded-panel border-t-4 border-primary bg-gradient-to-br from-card via-card to-muted shadow-xl">
@@ -82,7 +80,7 @@ export async function ErastoLeagueNextGameAdBlock({ block }: BlockRendererProps)
 
         <div className="flex items-center justify-center gap-3 pb-4 sm:pb-6">
           <span className="rounded-full bg-muted px-4 py-1.5 text-xs font-bold text-foreground sm:text-sm">
-            {when ? `${when.date} · ${when.time}` : "Data a definir"}
+            {dateLabel ? `${dateLabel}${next.scheduledTime ? ` · ${next.scheduledTime}` : ""}` : "Data a definir"}
           </span>
         </div>
       </div>

@@ -85,13 +85,20 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     (`/ext/erasto-league/tv`, sempre primeiro no rodízio), alimentadas pelo mesmo dado
     (`runtime/bracket.ts` `getNextFixture`) — o próximo confronto ainda não jogado, em ordem
     cronológica.
-- **Fuso horário** — data/hora de jogo é sempre horário de Brasília (`shared/timezone.ts`,
-  UTC-3 fixo — Brasil não tem mais horário de verão desde 2019). CSV import e o form de fixtures
-  usavam `new Date(...)`/`<input type="datetime-local">` direto, que pega o fuso de quem EXECUTA o
-  código (o servidor, UTC em produção) em vez de América/São Paulo — todo horário digitado
-  aparecia 3h adiantado (ex: "10:30" virava "07:30"). Corrigido; `/admin/erasto-league/fixtures`
-  tem um botão só-uso-único ("Corrigir fuso") pra somar as 3h que faltam em confrontos já
-  gravados antes do fix.
+- **Data e hora do confronto são colunas SEPARADAS** (`fixtures.scheduled_date` +
+  `fixtures.scheduled_time`, não um `timestamptz` combinado) — um `<input type="datetime-local">`
+  só aceita o valor quando as duas partes estão preenchidas, então editar só a hora de um
+  confronto sem data ficava "preso" esperando uma data; um timestamp único também não consegue
+  representar "dia já marcado, horário ainda a definir" sem ambiguidade (meia-noite vira
+  indistinguível de "sem hora"). `/admin/erasto-league/fixtures/:id` tem dois `<input>`
+  independentes (`type="date"` + `type="time"`). Efeito colateral bom: como as duas colunas
+  guardam texto puro ("YYYY-MM-DD"/"HH:mm"), nenhuma conversão de fuso acontece na escrita —
+  elimina de vez a classe de bug que existia com o timestamp combinado (CSV import e o form
+  usavam `new Date(...)`/`<input type="datetime-local">` direto, que pegava o fuso de quem
+  EXECUTA o código — o servidor, UTC em produção — em vez de horário de Brasília; um jogo
+  marcado "10:30" virava "07:30"). `shared/timezone.ts` só entra pra ORDENAR cronologicamente
+  (`fixtureDateTimeToEpoch`, nunca gravado) e pra formulários que ainda usam data+hora combinada
+  (súmula manual, `runtime/matches.ts`).
 - **Fixtures (confrontos agendados) + import CSV** — `erasto_league.fixtures`: um confronto pode
   existir ANTES de qualquer partida (importado via `/admin/erasto-league/import` OU criado/editado
   direto em `/admin/erasto-league/fixtures/new` e `/fixtures/:id` — fase, grupo, **rodada**, os

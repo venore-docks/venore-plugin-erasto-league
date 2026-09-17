@@ -3,6 +3,7 @@ import { listTeams } from "./teams";
 import { computeStandings } from "./standings";
 import { getMatch } from "./matches";
 import { FIXTURE_PHASE_ORDER } from "../shared/fixture-phase";
+import { fixtureDateTimeToEpoch } from "../shared/timezone";
 import type { Fixture, FixturePhase, MatchSummary, TeamStanding } from "../contracts/types";
 
 export type FixtureView = {
@@ -15,7 +16,11 @@ export type FixtureView = {
   awaySlug: string | null;
   homeScore: number | null;
   awayScore: number | null;
-  scheduledAt: number | null;
+  // Colunas separadas (não um epoch combinado) — ver database/schema/fixtures.ts e
+  // shared/timezone.ts. Quem exibe formata a partir daqui; quem precisa ORDENAR usa
+  // fixtureDateTimeToEpoch (só como chave de comparação, nunca gravado).
+  scheduledDate: string | null;
+  scheduledTime: string | null;
   roundLabel: string | null;
   played: boolean;
 };
@@ -34,6 +39,15 @@ export type BracketView = {
   groups: GroupView[];
   knockout: { phase: FixturePhase; fixtures: FixtureView[] }[];
 };
+
+function compareBySchedule(a: Fixture, b: Fixture): number {
+  const epochA = fixtureDateTimeToEpoch(a.scheduledDate, a.scheduledTime);
+  const epochB = fixtureDateTimeToEpoch(b.scheduledDate, b.scheduledTime);
+  if (epochA == null && epochB == null) return 0;
+  if (epochA == null) return 1;
+  if (epochB == null) return -1;
+  return epochA - epochB;
+}
 
 // Busca fixtures + times + partidas ligadas e devolve um `toView` pronto — reaproveitado pelo
 // chaveamento (getBracketView) e pela agenda cronológica (getScheduleView), pra não duplicar o
@@ -61,7 +75,8 @@ async function loadFixtureViewData() {
       awaySlug: away?.slug ?? null,
       homeScore: match ? match.homeScore : null,
       awayScore: match ? match.awayScore : null,
-      scheduledAt: fixture.scheduledAt,
+      scheduledDate: fixture.scheduledDate,
+      scheduledTime: fixture.scheduledTime,
       roundLabel: fixture.roundLabel,
       played: Boolean(match && match.status === "finished"),
     };
@@ -111,12 +126,7 @@ export async function getBracketView(): Promise<BracketView> {
 export async function getScheduleView(limit?: number): Promise<ScheduleEntry[]> {
   const { fixtures, toView } = await loadFixtureViewData();
 
-  const sorted = [...fixtures].sort((a, b) => {
-    if (a.scheduledAt == null && b.scheduledAt == null) return 0;
-    if (a.scheduledAt == null) return 1;
-    if (b.scheduledAt == null) return -1;
-    return a.scheduledAt - b.scheduledAt;
-  });
+  const sorted = [...fixtures].sort(compareBySchedule);
 
   const entries: ScheduleEntry[] = sorted.map((fixture) => ({ ...toView(fixture), phase: fixture.phase, groupName: fixture.groupName }));
   return typeof limit === "number" && limit > 0 ? entries.slice(0, limit) : entries;
@@ -136,12 +146,7 @@ export async function getNextFixture(): Promise<NextGameView | null> {
   const matches = await Promise.all(matchIds.map((id) => getMatch(id)));
   const matchById = new Map(matches.filter((match): match is MatchSummary => Boolean(match)).map((match) => [match.id, match]));
 
-  const sorted = [...fixtures].sort((a, b) => {
-    if (a.scheduledAt == null && b.scheduledAt == null) return 0;
-    if (a.scheduledAt == null) return 1;
-    if (b.scheduledAt == null) return -1;
-    return a.scheduledAt - b.scheduledAt;
-  });
+  const sorted = [...fixtures].sort(compareBySchedule);
 
   const next = sorted.find((fixture) => {
     const match = fixture.matchId ? matchById.get(fixture.matchId) : null;
@@ -165,7 +170,8 @@ export async function getNextFixture(): Promise<NextGameView | null> {
     awayColor: away?.primaryColor ?? null,
     homeScore: match ? match.homeScore : null,
     awayScore: match ? match.awayScore : null,
-    scheduledAt: next.scheduledAt,
+    scheduledDate: next.scheduledDate,
+    scheduledTime: next.scheduledTime,
     roundLabel: next.roundLabel,
     played: Boolean(match && match.status === "finished"),
   };

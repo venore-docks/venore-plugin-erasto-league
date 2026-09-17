@@ -4,7 +4,6 @@ import { useActionState, type ReactNode } from "react";
 import { Button, Input, useActionToast } from "@venore/plugin-sdk/ui";
 import { saveFixtureFormAction, type FixtureActionState } from "./actions";
 import { FIXTURE_PHASE_LABEL, FIXTURE_PHASE_ORDER } from "../../../shared/fixture-phase";
-import { epochToSaoPauloParts } from "../../../shared/timezone";
 import type { Fixture, TeamProfile } from "../../../contracts/types";
 
 const initialState: FixtureActionState = { error: null, fixtureId: null };
@@ -17,15 +16,6 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
       {children}
     </div>
   );
-}
-
-// epoch ms -> valor de <input type="datetime-local"> ("YYYY-MM-DDTHH:mm"), sempre em horário de
-// Brasília (não o fuso do dispositivo de quem abriu o formulário — ver shared/timezone.ts).
-function toDatetimeLocalValue(epochMs: number | null): string {
-  if (!epochMs) return "";
-  const { year, month, day, hours, minutes } = epochToSaoPauloParts(epochMs);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${year}-${pad(month)}-${pad(day)}T${pad(hours)}:${pad(minutes)}`;
 }
 
 export function FixtureForm({ fixture, teams }: { fixture: Fixture | null; teams: TeamProfile[] }) {
@@ -99,9 +89,19 @@ export function FixtureForm({ fixture, teams }: { fixture: Fixture | null; teams
         </Field>
       </div>
 
-      <Field label="Data e hora" hint="Em branco = a definir.">
-        <Input name="scheduledAt" type="datetime-local" defaultValue={toDatetimeLocalValue(fixture?.scheduledAt ?? null)} />
-      </Field>
+      {/* Dois campos independentes (não um <input type="datetime-local"> só) — pedido explícito:
+          o datetime-local só aceita o valor quando AS DUAS partes estão preenchidas, então editar
+          só a hora de um confronto sem data ficava "preso" esperando uma data. Com dois <input>
+          separados dá pra marcar o dia sem hora ainda definida, ou ajustar só a hora sem mexer no
+          dia. */}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Data" hint="Em branco = a definir.">
+          <Input name="scheduledDate" type="date" defaultValue={fixture?.scheduledDate ?? ""} />
+        </Field>
+        <Field label="Hora" hint="Opcional — dá pra marcar o dia sem hora ainda.">
+          <Input name="scheduledTime" type="time" defaultValue={fixture?.scheduledTime ?? ""} />
+        </Field>
+      </div>
 
       <Button type="submit" disabled={pending}>
         {pending ? "Salvando…" : fixture ? "Salvar alterações" : "Criar confronto"}

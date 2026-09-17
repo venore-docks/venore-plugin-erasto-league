@@ -8,19 +8,15 @@ import { listMatchesBetweenTeams } from "../../../runtime/matches";
 import { FIXTURE_PHASE_LABEL, FIXTURE_PHASE_ORDER } from "../../../shared/fixture-phase";
 import { formatScore } from "../../../shared/score";
 import { linkFixtureFormAction, deleteFixtureFormAction } from "./actions";
-import { FixTimezoneButton } from "./fix-timezone-button";
 import type { Fixture, FixturePhase, TeamProfile } from "../../../contracts/types";
 
-function formatDate(epochMs: number | null): string {
-  if (!epochMs) return "Data a definir";
-  return new Date(epochMs).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  });
+// scheduledDate/scheduledTime já chegam como texto puro — só formata pra exibição, nenhuma
+// conversão de fuso (ver shared/timezone.ts).
+function formatDate(date: string | null, time: string | null): string {
+  if (!date) return "Data a definir";
+  const [year, month, day] = date.split("-").map(Number);
+  const dateLabel = new Date(year, month - 1, day).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return time ? `${dateLabel} ${time}` : dateLabel;
 }
 
 // Linha de um confronto — async porque busca as partidas candidatas pra vincular (só quando os
@@ -37,7 +33,7 @@ async function FixtureRow({ fixture, teamById }: { fixture: Fixture; teamById: M
         <span className="text-muted-foreground">×</span>
         <span className="truncate font-medium">{away?.name ?? fixture.awayLabel ?? "A definir"}</span>
       </div>
-      <span className="shrink-0 text-xs text-muted-foreground">{formatDate(fixture.scheduledAt)}</span>
+      <span className="shrink-0 text-xs text-muted-foreground">{formatDate(fixture.scheduledDate, fixture.scheduledTime)}</span>
       {fixture.roundLabel && (
         <Badge className="shrink-0 bg-primary/15 font-bold text-primary hover:bg-primary/15">{fixture.roundLabel}</Badge>
       )}
@@ -102,7 +98,6 @@ export default async function FixturesAdminPage() {
         description="Confrontos agendados (grupos + eliminatórias) — importados via CSV, vinculados à partida real quando jogados."
         actions={
           <>
-            <FixTimezoneButton />
             <Button asChild variant="outline">
               <Link href="/admin/erasto-league/import">Importar CSV</Link>
             </Button>

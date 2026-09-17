@@ -1,4 +1,4 @@
-import { integer, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { date, integer, text, time, timestamp, uuid } from "drizzle-orm/pg-core";
 import { erastoLeagueSchema } from "./schema";
 import { teams } from "./teams";
 import { matches } from "./matches";
@@ -19,7 +19,17 @@ export const fixtures = erastoLeagueSchema.table("fixtures", {
   homeLabel: text("home_label"),
   awayLabel: text("away_label"),
 
-  scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+  // Data e hora SEPARADAS de propósito (não timestamptz) — pedido explícito: um <input
+  // type="datetime-local"> exige as duas partes preenchidas antes de aceitar qualquer uma
+  // (editar só a hora ficava "preso" esperando uma data), e um timestamp combinado não consegue
+  // representar "data já sabida, hora ainda não" sem ambiguidade (meia-noite vira indistinguível
+  // de "sem hora"). Como texto puro (YYYY-MM-DD / HH:mm), nenhuma conversão de fuso acontece no
+  // caminho de escrita — elimina de vez a classe de bug corrigida em shared/timezone.ts (que
+  // existia só por causa do timestamptz + new Date(string) pegando o fuso de quem executa o
+  // código). scheduledTime só faz sentido com scheduledDate preenchido; scheduledDate sozinho =
+  // "dia marcado, horário a definir" (estado que um timestamp não conseguia expressar).
+  scheduledDate: date("scheduled_date"),
+  scheduledTime: time("scheduled_time"),
   matchId: uuid("match_id").references(() => matches.id),
   sortOrder: integer("sort_order").notNull().default(0),
 

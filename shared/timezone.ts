@@ -32,3 +32,17 @@ export function epochToSaoPauloParts(epochMs: number): SaoPauloDateTimeParts {
   const get = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
   return { year: get("year"), month: get("month"), day: get("day"), hours: get("hour"), minutes: get("minute") };
 }
+
+// Combina fixtures.scheduledDate ("YYYY-MM-DD") + scheduledTime ("HH:mm" ou "HH:mm:ss", como o
+// Postgres devolve) num epoch — só pra ORDENAR/comparar cronologicamente, nunca é o que fica
+// gravado (o dado de verdade continua as duas colunas separadas, ver database/schema/fixtures.ts).
+// Sem hora, meia-noite entra só como desempate de ordenação — quem exibe decide não mostrar
+// "00:00" quando scheduledTime é null (mesma distinção que motivou separar as colunas: "dia
+// marcado, horário a definir" != "meia-noite").
+export function fixtureDateTimeToEpoch(date: string | null, time: string | null): number | null {
+  if (!date) return null;
+  const [year, month, day] = date.split("-").map(Number);
+  if (!time) return saoPauloPartsToEpoch(year, month, day, 0, 0);
+  const [hours, minutes] = time.split(":").map(Number);
+  return saoPauloPartsToEpoch(year, month, day, hours, minutes);
+}

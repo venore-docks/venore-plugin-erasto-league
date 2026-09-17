@@ -64,6 +64,20 @@
       "when": 1789587756454,
       "tag": "0008_match_boosts",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789650555776,
+      "tag": "0009_fixtures_add_date_time_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789650565294,
+      "tag": "0010_fixtures_drop_scheduled_at",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "erasto_league"."fixtures" DROP COLUMN "scheduled_at";

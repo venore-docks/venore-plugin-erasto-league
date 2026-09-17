@@ -4,16 +4,14 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ScheduleEntry } from "../runtime/bracket";
 import { FIXTURE_PHASE_LABEL } from "../shared/fixture-phase";
+import { fixtureDateTimeToEpoch } from "../shared/timezone";
 import { formatScore } from "../shared/score";
 
-function formatTime(epochMs: number): string {
-  return new Date(epochMs).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
-}
-
-// Pedido explícito: a data precisa continuar visível em cada jogo (sumiu quando a agenda trocou
-// de "agrupada por dia" pra "em abas por rodada" — uma rodada pode ter jogos em dias diferentes).
-function formatDate(epochMs: number): string {
-  const label = new Date(epochMs).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
+// scheduledDate/scheduledTime já chegam como texto puro ("YYYY-MM-DD"/"HH:mm") — nenhuma
+// conversão de fuso é necessária pra exibir (só pra ORDENAR, ver fixtureDateTimeToEpoch abaixo).
+function formatDate(date: string): string {
+  const [year, month, day] = date.split("-").map(Number);
+  const label = new Date(year, month - 1, day).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
@@ -59,7 +57,7 @@ function ScheduleRow({ entry }: { entry: ScheduleEntry }) {
           <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{phaseTag(entry)}</span>
         </div>
         <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">
-          {entry.scheduledAt ? formatDate(entry.scheduledAt) : "Data a definir"}
+          {entry.scheduledDate ? formatDate(entry.scheduledDate) : "Data a definir"}
         </span>
       </div>
       <div className="flex items-center gap-3">
@@ -71,9 +69,7 @@ function ScheduleRow({ entry }: { entry: ScheduleEntry }) {
               {formatScore(entry.homeScore ?? 0)}-{formatScore(entry.awayScore ?? 0)}
             </span>
           ) : (
-            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-              {entry.scheduledAt ? formatTime(entry.scheduledAt) : "vs"}
-            </span>
+            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{entry.scheduledTime ?? "vs"}</span>
           )}
         </div>
 
@@ -102,11 +98,10 @@ function groupByRound(entries: ScheduleEntry[]): RoundGroup[] {
     }
   }
 
-  return [...byKey.values()].sort((a, b) => {
-    const earliestA = Math.min(...a.entries.map((entry) => entry.scheduledAt ?? Infinity));
-    const earliestB = Math.min(...b.entries.map((entry) => entry.scheduledAt ?? Infinity));
-    return earliestA - earliestB;
-  });
+  const earliestEpoch = (group: RoundGroup) =>
+    Math.min(...group.entries.map((entry) => fixtureDateTimeToEpoch(entry.scheduledDate, entry.scheduledTime) ?? Infinity));
+
+  return [...byKey.values()].sort((a, b) => earliestEpoch(a) - earliestEpoch(b));
 }
 
 // Pedido explícito: manter o card de confronto "cheio" (o formato anterior, que já estava bom),

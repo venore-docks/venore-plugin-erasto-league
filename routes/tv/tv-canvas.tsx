@@ -116,12 +116,13 @@ function pageTitle(page: TvPage): string {
   return "Eliminatórias";
 }
 
-function formatNextGameWhen(epochMs: number | null): string {
-  if (!epochMs) return "Data a definir";
-  const d = new Date(epochMs);
-  const date = d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "long", timeZone: "America/Sao_Paulo" });
-  const time = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
-  return `${date} · ${time}`;
+// scheduledDate/scheduledTime já chegam como texto puro — só formata pra exibição, nenhuma
+// conversão de fuso (ver shared/timezone.ts).
+function formatNextGameWhen(date: string | null, time: string | null): string {
+  if (!date) return "Data a definir";
+  const [year, month, day] = date.split("-").map(Number);
+  const dateLabel = new Date(year, month - 1, day).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "long" });
+  return time ? `${dateLabel} · ${time}` : dateLabel;
 }
 
 // Mesmo espírito do bloco erasto-league.next-game-ad (página inicial) — fundo split com a cor de
@@ -159,7 +160,7 @@ function NextGamePage({ nextGame }: { nextGame: NextGameView }) {
           <span className="el-tv-next-name-bar" />
         </div>
       </div>
-      <p className="el-tv-next-when">{formatNextGameWhen(nextGame.scheduledAt)}</p>
+      <p className="el-tv-next-when">{formatNextGameWhen(nextGame.scheduledDate, nextGame.scheduledTime)}</p>
     </div>
   );
 }

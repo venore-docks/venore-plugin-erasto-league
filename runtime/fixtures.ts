@@ -5,6 +5,12 @@ import type { Fixture, FixturePhase } from "../contracts/types";
 
 type FixtureRow = typeof fixturesTable.$inferSelect;
 
+// Postgres devolve "time" como "HH:mm:ss" — corta os segundos, que ninguém digita/usa aqui
+// (mesmo formato de <input type="time">, "HH:mm").
+function trimSeconds(time: string | null): string | null {
+  return time ? time.slice(0, 5) : null;
+}
+
 function rowToFixture(row: FixtureRow): Fixture {
   return {
     id: row.id,
@@ -15,17 +21,22 @@ function rowToFixture(row: FixtureRow): Fixture {
     awayTeamId: row.awayTeamId,
     homeLabel: row.homeLabel,
     awayLabel: row.awayLabel,
-    scheduledAt: row.scheduledAt?.getTime() ?? null,
+    scheduledDate: row.scheduledDate,
+    scheduledTime: trimSeconds(row.scheduledTime),
     matchId: row.matchId,
     sortOrder: row.sortOrder,
   };
 }
 
-// Ordem de apresentação: por data (Postgres já põe NULL — "a definir" — por último num ASC),
-// sortOrder só como desempate pra confrontos no mesmo dia ou igualmente sem data (ordem que veio
-// do CSV/criação). Pedido explícito: a ordem tem que ser por data, não pela ordem de importação.
+// Ordem de apresentação: por data e hora (Postgres já põe NULL — "a definir" — por último num
+// ASC), sortOrder só como desempate pra confrontos no mesmo dia/horário ou igualmente sem data
+// (ordem que veio do CSV/criação). Pedido explícito: a ordem tem que ser por data, não pela ordem
+// de importação.
 export async function listFixtures(): Promise<Fixture[]> {
-  const rows = await db.select().from(fixturesTable).orderBy(asc(fixturesTable.scheduledAt), asc(fixturesTable.sortOrder));
+  const rows = await db
+    .select()
+    .from(fixturesTable)
+    .orderBy(asc(fixturesTable.scheduledDate), asc(fixturesTable.scheduledTime), asc(fixturesTable.sortOrder));
   return rows.map(rowToFixture);
 }
 
@@ -34,7 +45,7 @@ export async function listFixturesByPhase(phase: FixturePhase): Promise<Fixture[
     .select()
     .from(fixturesTable)
     .where(eq(fixturesTable.phase, phase))
-    .orderBy(asc(fixturesTable.scheduledAt), asc(fixturesTable.sortOrder));
+    .orderBy(asc(fixturesTable.scheduledDate), asc(fixturesTable.scheduledTime), asc(fixturesTable.sortOrder));
   return rows.map(rowToFixture);
 }
 
@@ -51,14 +62,22 @@ export type FixtureInput = {
   awayTeamId: string | null;
   homeLabel: string | null;
   awayLabel: string | null;
-  scheduledAt: number | null;
+  // Colunas separadas (não um timestamp combinado) — ver database/schema/fixtures.ts. scheduledTime
+  // sem scheduledDate é descartado na escrita (não faz sentido sozinho).
+  scheduledDate: string | null;
+  scheduledTime: string | null;
   sortOrder: number;
 };
+
+function normalizeSchedule(input: FixtureInput): { scheduledDate: string | null; scheduledTime: string | null } {
+  if (!input.scheduledDate) return { scheduledDate: null, scheduledTime: null };
+  return { scheduledDate: input.scheduledDate, scheduledTime: input.scheduledTime };
+}
 
 export async function createFixture(input: FixtureInput): Promise<Fixture> {
   const [row] = await db
     .insert(fixturesTable)
-    .values({ ...input, scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null, updatedAt: new Date() })
+    .values({ ...input, ...normalizeSchedule(input), updatedAt: new Date() })
     .returning();
   return rowToFixture(row);
 }
@@ -66,7 +85,7 @@ export async function createFixture(input: FixtureInput): Promise<Fixture> {
 export async function updateFixture(id: string, input: FixtureInput): Promise<Fixture> {
   const [row] = await db
     .update(fixturesTable)
-    .set({ ...input, scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null, updatedAt: new Date() })
+    .set({ ...input, ...normalizeSchedule(input), updatedAt: new Date() })
     .where(eq(fixturesTable.id, id))
     .returning();
   return rowToFixture(row);
@@ -86,21 +105,4 @@ export async function linkFixtureToMatch(fixtureId: string, matchId: string | nu
 
 export async function deleteAllFixtures(): Promise<void> {
   await db.delete(fixturesTable);
-}
-
-// Correção pontual (uma vez só) do bug de fuso: confrontos importados/editados antes de
-// shared/timezone.ts existir ficaram gravados 3h adiantados (CSV import e o form de edição
-// interpretavam "10:30" como 10:30 UTC em vez de horário de Brasília). Soma 3h em todo
-// scheduledAt já gravado, sem mexer em mais nada (grupo/rodada/times/vínculo com partida
-// continuam intactos) — chamado por um botão só-uso-único em /admin/erasto-league/fixtures.
-export async function shiftAllScheduledAtBy3Hours(): Promise<number> {
-  const rows = await db.select({ id: fixturesTable.id, scheduledAt: fixturesTable.scheduledAt }).from(fixturesTable);
-  const toFix = rows.filter((row) => row.scheduledAt !== null);
-
-  for (const row of toFix) {
-    const corrected = new Date(row.scheduledAt!.getTime() + 3 * 60 * 60 * 1000);
-    await db.update(fixturesTable).set({ scheduledAt: corrected, updatedAt: new Date() }).where(eq(fixturesTable.id, row.id));
-  }
-
-  return toFix.length;
 }

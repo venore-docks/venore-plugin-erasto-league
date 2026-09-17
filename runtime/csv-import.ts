@@ -1,5 +1,4 @@
 import { csvToObjects } from "../shared/csv";
-import { saoPauloPartsToEpoch } from "../shared/timezone";
 import { createTeamWithId, getTeam, getTeamByName, updateTeam, upsertTeamByName, type TeamInput } from "./teams";
 import { createFixture, deleteAllFixtures } from "./fixtures";
 import type { FixturePhase } from "../contracts/types";
@@ -98,9 +97,11 @@ function normalizePhase(raw: string): FixturePhase | null {
 }
 
 // Aceita "dd/mm/aaaa" (formato das artes) ou "aaaa-mm-dd" (ISO); hora "HH:mm" opcional, junto ou
-// separada. Sem data válida = null (fixture "sem data marcada" — o widget mostra "a definir").
-function parseFlexibleDate(dateRaw: string, timeRaw: string): number | null {
-  if (!dateRaw) return null;
+// separada. Sem data válida = tudo null (fixture "sem data marcada" — o widget mostra "a
+// definir"). Devolve as duas colunas já como texto puro — nenhuma conversão de fuso acontece
+// aqui (database/schema/fixtures.ts guarda data e hora separadas exatamente pra isso).
+function parseFlexibleDate(dateRaw: string, timeRaw: string): { scheduledDate: string | null; scheduledTime: string | null } {
+  if (!dateRaw) return { scheduledDate: null, scheduledTime: null };
 
   let year: number;
   let month: number;
@@ -117,19 +118,16 @@ function parseFlexibleDate(dateRaw: string, timeRaw: string): number | null {
     month = Number(isoMatch[2]);
     day = Number(isoMatch[3]);
   } else {
-    return null;
+    return { scheduledDate: null, scheduledTime: null };
   }
 
-  let hours = 0;
-  let minutes = 0;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const scheduledDate = `${year}-${pad(month)}-${pad(day)}`;
+
   const timeMatch = timeRaw.match(/^(\d{1,2}):(\d{2})/);
-  if (timeMatch) {
-    hours = Number(timeMatch[1]);
-    minutes = Number(timeMatch[2]);
-  }
+  const scheduledTime = timeMatch ? `${pad(Number(timeMatch[1]))}:${timeMatch[2]}` : null;
 
-  const epoch = saoPauloPartsToEpoch(year, month, day, hours, minutes);
-  return Number.isNaN(epoch) ? null : epoch;
+  return { scheduledDate, scheduledTime };
 }
 
 type TeamRefResult = { ok: true; teamId: string | null } | { ok: false; message: string };
@@ -206,7 +204,7 @@ export async function importFixturesCsv(csvText: string, options: { replaceAll?:
         awayTeamId: away.teamId,
         homeLabel: optionalCell(row, "homelabel"),
         awayLabel: optionalCell(row, "awaylabel"),
-        scheduledAt: parseFlexibleDate(cell(row, "date"), cell(row, "time")),
+        ...parseFlexibleDate(cell(row, "date"), cell(row, "time")),
         sortOrder: Number(cell(row, "order")) || 0,
       });
       result.created++;

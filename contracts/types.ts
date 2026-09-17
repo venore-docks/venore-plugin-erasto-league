@@ -157,7 +157,12 @@ export type Fixture = {
   awayTeamId: string | null;
   homeLabel: string | null;
   awayLabel: string | null;
-  scheduledAt: number | null;
+  // Data e hora SEPARADAS (não um timestamp combinado) — ver shared/timezone.ts pro motivo.
+  // "YYYY-MM-DD". null = "a definir".
+  scheduledDate: string | null;
+  // "HH:mm" (sem segundos, mesmo formato de <input type="time">). Só faz sentido com
+  // scheduledDate preenchido; null = "dia marcado, horário a definir".
+  scheduledTime: string | null;
   // Preenchido quando o confronto já foi jogado — vínculo manual (tela de fixtures do admin),
   // não automático.
   matchId: string | null;
