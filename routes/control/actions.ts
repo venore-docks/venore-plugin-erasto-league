@@ -16,6 +16,7 @@ import {
 import { attributePlayer } from "../../runtime/match-events";
 import { deleteBoostUse, listBoostsByMatch } from "../../runtime/match-boosts";
 import { listPlayersByTeam } from "../../runtime/players";
+import { setMatchMvp } from "../../runtime/matches";
 import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile, PowerBoostKey, PowerBoostUse } from "../../contracts/types";
 
 export type ScoreActionResult = { ok: true; state: MatchState } | { ok: false; error: string };
@@ -142,4 +143,14 @@ export async function clockAction(command: ClockCommand): Promise<ScoreActionRes
   const denied = await requireGate();
   if (denied) return denied;
   return { ok: true, state: await applyClockCommand(command) };
+}
+
+// MVP da partida — perguntado logo depois de "Encerrar partida" (routes/control/console.tsx), com
+// opção de pular. Chamado com o id da partida que acabou de ser encerrada (currentMatchId já virou
+// null no estado ao vivo nesse ponto, por isso não vem daqui).
+export async function setMatchMvpAction(matchId: string, playerId: string | null, note: string | null): Promise<{ ok: boolean; error?: string }> {
+  const denied = await requireGate();
+  if (denied) return { ok: false, error: denied.error };
+  await setMatchMvp(matchId, playerId, note);
+  return { ok: true };
 }

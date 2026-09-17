@@ -7,6 +7,7 @@ import { getTeam } from "./teams";
 import { readMatchRow, readMatchState, writeMatchState } from "./match-store";
 import { recordEvent } from "./match-events";
 import { recordBoostUse } from "./match-boosts";
+import { findUnlinkedFixtureForTeams, linkFixtureToMatch } from "./fixtures";
 
 // Mutators do estado da partida — mesma API mental de antes, agora em cima de partida como
 // entidade (matches/match_events, runtime/match-events.ts) em vez de contador direto. Sem
@@ -53,6 +54,17 @@ async function endCurrentMatch(status: "finished" | "cancelled"): Promise<MatchS
       .update(matchesTable)
       .set({ status, finishedAt: new Date() })
       .where(eq(matchesTable.id, row.currentMatchId));
+
+    // Auto-link com a tabela de jogos: se existe exatamente um confronto pendente com esse par de
+    // times, liga sozinho (ver comentário em findUnlinkedFixtureForTeams) — sem isso "próximo jogo"/
+    // agenda ficavam presos no primeiro confronto sempre que o admin esquecia de linkar manualmente
+    // em /admin/erasto-league/fixtures depois de encerrar a partida no controle.
+    if (status === "finished" && row.homeTeamId && row.awayTeamId) {
+      const fixture = await findUnlinkedFixtureForTeams(row.homeTeamId, row.awayTeamId);
+      if (fixture) {
+        await linkFixtureToMatch(fixture.id, row.currentMatchId);
+      }
+    }
   }
 
   return writeMatchState({

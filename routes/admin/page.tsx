@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Award, CalendarDays, ClipboardList, MonitorPlay, Radio, Shield, Smartphone, Tv, Upload, Users, Zap } from "lucide-react";
 import { AdminAccessDenied, AdminPageHeader, AdminStatTile, Badge, Button } from "@venore/plugin-sdk/ui";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
+import { getMediaAsset } from "@venore/plugin-sdk/media";
 import { resolveErastoLeagueConfig } from "../../shared/config";
 import { formatClock } from "../../shared/clock";
 import { getMatchState } from "../../runtime/match-actions";
@@ -25,6 +26,8 @@ export default async function ErastoLeagueAdminPage() {
     listPlayers(),
     listFinishedMatches(),
   ]);
+  const logoMediaResult = config.logoMediaId ? await getMediaAsset({ id: config.logoMediaId }) : null;
+  const logoMedia = logoMediaResult?.success ? logoMediaResult.data : null;
 
   return (
     <div className="space-y-6">
@@ -132,7 +135,7 @@ export default async function ErastoLeagueAdminPage() {
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Configurações</h2>
-        <SettingsForm config={config} />
+        <SettingsForm config={config} logoMedia={logoMedia} />
       </section>
     </div>
   );

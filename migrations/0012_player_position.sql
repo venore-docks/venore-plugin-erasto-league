@@ -1,0 +1,1 @@
+ALTER TABLE "erasto_league"."players" ADD COLUMN "position" text;

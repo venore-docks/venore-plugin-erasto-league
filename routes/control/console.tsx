@@ -19,6 +19,7 @@ import {
   recordEventAction,
   resetMatchAction,
   setLabelAction,
+  setMatchMvpAction,
   type EventActionResult,
   type ScoreActionResult,
 } from "./actions";
@@ -167,6 +168,25 @@ const CSS = `
   .el-c-sheet-name { font-size: 11px; font-weight: 700; text-align: center; line-height: 1.2;
     overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .el-c-sheet-empty { font-size: 12px; color: rgba(255,255,255,0.4); text-align: center; padding: 12px 0; }
+  .el-c-sheet-player.selected { background: color-mix(in srgb, var(--accent, #22c55e) 22%, transparent);
+    border-color: var(--accent, #22c55e); }
+  .el-c-sheet-group-label { font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+    color: rgba(255,255,255,0.4); margin: 10px 0 6px; }
+  .el-c-sheet-note {
+    width: 100%; height: 40px; padding: 0 12px; font-size: 14px; margin-top: 12px;
+    background: #161d26; color: #fff; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; outline: none;
+  }
+  .el-c-sheet-note:focus { border-color: var(--accent, #22c55e); }
+  .el-c-sheet-actions { display: flex; gap: 10px; margin-top: 12px; }
+  .el-c-sheet-save {
+    flex: 1; height: 44px; font-size: 14px; font-weight: 800; border: 0; border-radius: 12px; cursor: pointer;
+    background: var(--accent, #22c55e); color: #04170a;
+  }
+  .el-c-sheet-save:disabled { opacity: 0.4; cursor: default; }
+  .el-c-sheet-skip-btn {
+    flex: 1; height: 44px; font-size: 14px; font-weight: 700; border-radius: 12px; cursor: pointer;
+    background: transparent; color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.2);
+  }
 
   @keyframes el-c-fade { from { opacity: 0; } to { opacity: 1; } }
   @keyframes el-c-rise { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -206,6 +226,14 @@ export function Console({
   const [attribution, setAttribution] = useState<Attribution | null>(null);
   const [roster, setRoster] = useState<{ home: PlayerProfile[]; away: PlayerProfile[] }>({ home: [], away: [] });
   const [boosts, setBoosts] = useState<PowerBoostUse[]>([]);
+  const [mvpPrompt, setMvpPrompt] = useState<{
+    matchId: string;
+    roster: { home: PlayerProfile[]; away: PlayerProfile[] };
+    homeName: string;
+    awayName: string;
+  } | null>(null);
+  const [mvpSelected, setMvpSelected] = useState<string | null>(null);
+  const [mvpNote, setMvpNote] = useState("");
 
   useEffect(() => {
     setOverlayUrl(`${window.location.origin}/ext/erasto-league/overlay`);
@@ -298,6 +326,20 @@ export function Console({
     const { eventId } = attribution;
     setAttribution(null);
     void attributePlayerAction(eventId, playerId);
+  }
+
+  function closeMvpPrompt() {
+    setMvpPrompt(null);
+    setMvpSelected(null);
+    setMvpNote("");
+  }
+
+  function saveMvp() {
+    if (!mvpPrompt || !mvpSelected) return;
+    const { matchId } = mvpPrompt;
+    const note = mvpNote.trim() || null;
+    closeMvpPrompt();
+    void setMatchMvpAction(matchId, mvpSelected, note);
   }
 
   function commitLabel(value: string) {
@@ -510,6 +552,15 @@ export function Console({
             disabled={pending}
             onClick={() => {
               if (window.confirm("Encerrar a partida e salvar o placar no histórico?")) {
+                // Captura ANTES de chamar a action: assim que a partida encerra, currentMatchId
+                // some do estado (fica null) e o useEffect de elenco zera `roster` — sem esse
+                // snapshot a folha de MVP abriria sem jogador nenhum pra escolher.
+                const matchId = state.currentMatchId;
+                if (matchId) {
+                  setMvpPrompt({ matchId, roster, homeName: state.home.name, awayName: state.away.name });
+                  setMvpSelected(null);
+                  setMvpNote("");
+                }
                 run(() => finishMatchAction());
               }
             }}
@@ -567,6 +618,71 @@ export function Console({
                   </button>
                 ))}
               </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {mvpPrompt && (
+        <>
+          <div className="el-c-sheet-backdrop" onClick={closeMvpPrompt} />
+          <div className="el-c-sheet">
+            <div className="el-c-sheet-head">
+              <p className="el-c-sheet-title">MVP da partida?</p>
+              <button type="button" className="el-c-sheet-skip" onClick={closeMvpPrompt}>
+                Pular
+              </button>
+            </div>
+
+            {mvpPrompt.roster.home.length === 0 && mvpPrompt.roster.away.length === 0 ? (
+              <p className="el-c-sheet-empty">Nenhum jogador cadastrado nesses times ainda — dá pra escolher depois na súmula.</p>
+            ) : (
+              <>
+                {(["home", "away"] as const).map((side) =>
+                  mvpPrompt.roster[side].length > 0 ? (
+                    <div key={side}>
+                      <p className="el-c-sheet-group-label">{side === "home" ? mvpPrompt.homeName : mvpPrompt.awayName}</p>
+                      <div className="el-c-sheet-grid">
+                        {mvpPrompt.roster[side].map((player) => (
+                          <button
+                            key={player.id}
+                            type="button"
+                            className={`el-c-sheet-player ${mvpSelected === player.id ? "selected" : ""}`}
+                            onClick={() => setMvpSelected(player.id)}
+                          >
+                            {player.photoUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img className="el-c-sheet-avatar" src={player.photoUrl} alt="" />
+                            ) : (
+                              <div className="el-c-sheet-mono">{player.name.slice(0, 2).toUpperCase()}</div>
+                            )}
+                            <span className="el-c-sheet-name">
+                              {player.number != null ? `#${player.number} ` : ""}
+                              {player.name}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null,
+                )}
+
+                <input
+                  className="el-c-sheet-note"
+                  value={mvpNote}
+                  onChange={(e) => setMvpNote(e.target.value)}
+                  placeholder="Descrição (opcional) — ex: decisivo no 2º tempo"
+                  maxLength={140}
+                />
+                <div className="el-c-sheet-actions">
+                  <button type="button" className="el-c-sheet-skip-btn" onClick={closeMvpPrompt}>
+                    Sem MVP
+                  </button>
+                  <button type="button" className="el-c-sheet-save" disabled={!mvpSelected} onClick={saveMvp}>
+                    Salvar MVP
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </>

@@ -15,6 +15,8 @@ import ControlPage from "./control/page";
 import TvPage from "./tv/page";
 import TeamProfilePage from "./teams-public/page";
 import PlayerProfilePage from "./players-public/page";
+import ArtilleryPage from "./artillery-public/page";
+import MvpPage from "./mvp-public/page";
 import { GET as eventsGET } from "./api/events/route";
 import { GET as stateGET } from "./api/state/route";
 
@@ -48,6 +50,8 @@ export const erastoLeagueRouteTable: PluginRouteTable = {
   public: [
     { pattern: "erasto-league/teams/:slug", Component: asPluginPage(TeamProfilePage) },
     { pattern: "erasto-league/players/:slug", Component: asPluginPage(PlayerProfilePage) },
+    { pattern: "erasto-league/artilharia", Component: asPluginPage(ArtilleryPage) },
+    { pattern: "erasto-league/mvps", Component: asPluginPage(MvpPage) },
   ],
   standalone: [
     { pattern: "erasto-league/overlay", Component: asPluginPage(OverlayPage) },

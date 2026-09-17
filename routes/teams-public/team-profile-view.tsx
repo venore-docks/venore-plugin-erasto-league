@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { MatchSummary, PlayerProfile, TeamProfile, TeamStanding } from "../../contracts/types";
 import { formatScore } from "../../shared/score";
+import { playerGenderAccent } from "../../shared/player-gender";
 
 function formatFoundedDate(iso: string | null): string | null {
   if (!iso) return null;
@@ -125,7 +126,9 @@ export function TeamProfileView({
           <p className="text-sm text-muted-foreground">Nenhum jogador cadastrado ainda.</p>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-3">
-            {roster.map((player) => (
+            {roster.map((player) => {
+              const accent = playerGenderAccent(player.gender);
+              return (
               <Link
                 key={player.id}
                 href={`/erasto-league/players/${player.slug}`}
@@ -133,9 +136,17 @@ export function TeamProfileView({
               >
                 {player.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={player.photoUrl} alt="" className="size-12 shrink-0 rounded-full object-cover" />
+                  <img
+                    src={player.photoUrl}
+                    alt=""
+                    className="size-12 shrink-0 rounded-full border-2 object-cover"
+                    style={{ borderColor: accent ?? "transparent" }}
+                  />
                 ) : (
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold text-muted-foreground">
+                  <div
+                    className="flex size-12 shrink-0 items-center justify-center rounded-full border-2 bg-muted text-sm font-bold text-muted-foreground"
+                    style={{ borderColor: accent ?? "transparent" }}
+                  >
                     {player.name.slice(0, 2).toUpperCase()}
                   </div>
                 )}
@@ -152,7 +163,8 @@ export function TeamProfileView({
                 </span>
                 {player.number != null && <span className="text-xs font-bold tabular-nums text-muted-foreground">#{player.number}</span>}
               </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

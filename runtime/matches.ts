@@ -19,7 +19,21 @@ export function rowToSummary(row: MatchRow): MatchSummary {
     status: row.status,
     startedAt: row.startedAt.getTime(),
     finishedAt: row.finishedAt?.getTime() ?? null,
+    mvpPlayerId: row.mvpPlayerId,
+    mvpNote: row.mvpNote,
   };
+}
+
+// MVP da partida (súmula em routes/admin/matches, e o passo opcional no controle ao vivo depois de
+// encerrar — routes/control/console.tsx) — sempre substitui a escolha anterior (não há histórico de
+// MVP por partida, só o atual).
+export async function setMatchMvp(matchId: string, playerId: string | null, note: string | null): Promise<MatchSummary> {
+  const [row] = await db
+    .update(matchesTable)
+    .set({ mvpPlayerId: playerId, mvpNote: note })
+    .where(eq(matchesTable.id, matchId))
+    .returning();
+  return rowToSummary(row);
 }
 
 // Lista todas as partidas (súmula: /admin/erasto-league/matches) — mais recente primeiro.

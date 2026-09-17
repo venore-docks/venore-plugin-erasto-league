@@ -113,6 +113,10 @@ export type MatchSummary = {
   status: MatchStatus;
   startedAt: number;
   finishedAt: number | null;
+  // MVP da partida — escolhido manualmente (súmula ou controle), nunca calculado. Ver
+  // runtime/matches.ts::setMatchMvp.
+  mvpPlayerId: string | null;
+  mvpNote: string | null;
 };
 
 // Cadastro de times/jogadores (Fase 1) — sempre mantido por um admin. crestUrl/photoUrl já vêm
@@ -135,6 +139,10 @@ export type TeamProfile = {
 
 export type PlayerGender = "male" | "female";
 
+// Posição de jogo (futsal/society) — nullable como gender: não trava cadastro de quem já existe
+// sem essa info. Ver shared/player-position.ts pros rótulos.
+export type PlayerPosition = "goleiro" | "fixo" | "ala" | "pivo";
+
 export type PlayerProfile = {
   id: string;
   slug: string;
@@ -142,6 +150,7 @@ export type PlayerProfile = {
   name: string;
   number: number | null;
   gender: PlayerGender | null;
+  position: PlayerPosition | null;
   isCaptain: boolean;
   photoMediaId: string | null;
   photoUrl: string | null;

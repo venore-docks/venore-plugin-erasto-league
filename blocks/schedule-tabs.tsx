@@ -44,32 +44,41 @@ function TeamCell({ name, crestUrl, slug, align }: { name: string; crestUrl: str
   );
 }
 
+// Pedido explícito: data e hora (não só a hora) evidentes no CENTRO do card — a rodada, que antes
+// era uma badge colorida chamando mais atenção que a própria data, vira texto neutro junto da fase.
 function ScheduleRow({ entry }: { entry: ScheduleEntry }) {
+  const dateLabel = entry.scheduledDate ? formatDate(entry.scheduledDate) : "Data a definir";
+
   return (
     <div className="rounded-panel border border-border bg-card px-4 py-3 shadow-sm transition hover:border-primary/40">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {entry.roundLabel && (
-            <span className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-primary-foreground">
-              {entry.roundLabel}
-            </span>
-          )}
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{phaseTag(entry)}</span>
-        </div>
-        <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">
-          {entry.scheduledDate ? formatDate(entry.scheduledDate) : "Data a definir"}
-        </span>
+      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span>{phaseTag(entry)}</span>
+        {entry.roundLabel && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span>{entry.roundLabel}</span>
+          </>
+        )}
       </div>
       <div className="flex items-center gap-3">
         <TeamCell name={entry.homeName} crestUrl={entry.homeCrestUrl} slug={entry.homeSlug} align="left" />
 
-        <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
+        <div className="flex shrink-0 flex-col items-center gap-1 px-1">
           {entry.played ? (
-            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
-              {formatScore(entry.homeScore ?? 0)}-{formatScore(entry.awayScore ?? 0)}
-            </span>
+            <>
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
+                {formatScore(entry.homeScore ?? 0)}-{formatScore(entry.awayScore ?? 0)}
+              </span>
+              <span className="text-center text-[10px] font-medium text-muted-foreground">
+                {dateLabel}
+                {entry.scheduledTime ? ` · ${entry.scheduledTime}` : ""}
+              </span>
+            </>
           ) : (
-            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">{entry.scheduledTime ?? "vs"}</span>
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-sm font-extrabold text-foreground">{dateLabel}</span>
+              <span className="text-sm font-bold tabular-nums text-primary">{entry.scheduledTime ?? "Hora a definir"}</span>
+            </div>
           )}
         </div>
 

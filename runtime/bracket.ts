@@ -138,6 +138,20 @@ export type NextGameView = FixtureView & { homeColor: string | null; awayColor: 
 
 // Próximo jogo ainda não realizado, em ordem cronológica (mesma fonte de getScheduleView) — null
 // quando não há nenhum confronto pendente (campeonato encerrado ou tabela ainda não importada).
+// Confronto sem match linkada (matchId null) cujo horário marcado já passou há mais que essa folga
+// não pode continuar sendo o "próximo jogo" pra sempre — normalmente o auto-link em
+// runtime/match-actions.ts já resolve isso ao encerrar a partida, mas fixtures de antes dessa
+// correção (ou o raro caso sem match nenhum registrado) ficariam travando "próximo jogo" no
+// confronto mais antigo indefinidamente sem esse limite. Só afeta a ESCOLHA de qual é o próximo —
+// não faz esse confronto aparecer como "jogado"/com placar em nenhum outro lugar (getScheduleView
+// continua mostrando "a definir", nunca inventa um resultado).
+const STALE_UNLINKED_FIXTURE_GRACE_MS = 3 * 60 * 60 * 1000;
+
+function isStaleUnlinkedFixture(fixture: Fixture): boolean {
+  const epoch = fixtureDateTimeToEpoch(fixture.scheduledDate, fixture.scheduledTime);
+  return epoch != null && Date.now() - epoch > STALE_UNLINKED_FIXTURE_GRACE_MS;
+}
+
 export async function getNextFixture(): Promise<NextGameView | null> {
   const [fixtures, teams] = await Promise.all([listFixtures(), listTeams()]);
   const teamById = new Map(teams.map((team) => [team.id, team]));
@@ -150,7 +164,9 @@ export async function getNextFixture(): Promise<NextGameView | null> {
 
   const next = sorted.find((fixture) => {
     const match = fixture.matchId ? matchById.get(fixture.matchId) : null;
-    return !(match && match.status === "finished");
+    if (match && match.status === "finished") return false;
+    if (!fixture.matchId && isStaleUnlinkedFixture(fixture)) return false;
+    return true;
   });
   if (!next) return null;
 

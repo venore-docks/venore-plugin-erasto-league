@@ -37,7 +37,8 @@ export async function saveErastoLeagueSettingsAction(
     setSetting({ key: S.periodMinutes.key, value: periodMinutes }),
     setSetting({ key: S.periodCount.key, value: periodCount }),
     setSetting({ key: S.accentColor.key, value: accentColor }),
-    setSetting({ key: S.logoUrl.key, value: str(formData, "logoUrl") || S.logoUrl.defaultValue }),
+    setSetting({ key: S.logoMediaId.key, value: str(formData, "logoMediaId") }),
+    setSetting({ key: S.youtubeChannelId.key, value: str(formData, "youtubeChannelId") }),
   ];
 
   const results = await Promise.all(writes);

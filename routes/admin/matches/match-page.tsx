@@ -9,7 +9,14 @@ import { listBoostsByMatch } from "../../../runtime/match-boosts";
 import { listPowerBoosts } from "../../../runtime/power-boosts";
 import { formatScore } from "../../../shared/score";
 import { MATCH_STATUS_BADGE_VARIANT, MATCH_STATUS_LABEL } from "../../../shared/match-status";
-import { addBoostFormAction, addEventFormAction, deleteBoostFormAction, deleteEventFormAction, updateEventFormAction } from "./actions";
+import {
+  addBoostFormAction,
+  addEventFormAction,
+  deleteBoostFormAction,
+  deleteEventFormAction,
+  setMatchMvpFormAction,
+  updateEventFormAction,
+} from "./actions";
 import { CreateMatchForm } from "./create-match-form";
 import type { EventKind, MatchEvent, PlayerProfile, TeamProfile } from "../../../contracts/types";
 
@@ -155,6 +162,34 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
           <Badge variant={MATCH_STATUS_BADGE_VARIANT[match.status]}>{MATCH_STATUS_LABEL[match.status]}</Badge>
         }
       />
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-foreground">MVP da partida</h2>
+        {match.mvpPlayerId && (
+          <p className="text-xs text-muted-foreground">
+            Atual: <span className="font-semibold text-foreground">{playerById.get(match.mvpPlayerId)?.name ?? "—"}</span>
+            {match.mvpNote ? ` — "${match.mvpNote}"` : ""}
+          </p>
+        )}
+        <form action={setMatchMvpFormAction} className="flex flex-wrap items-center gap-2 rounded-panel border border-border bg-card p-3">
+          <input type="hidden" name="matchId" value={id} />
+          <select
+            name="mvpPlayerId"
+            defaultValue={match.mvpPlayerId ?? ""}
+            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+          >
+            <PlayerOptions homeTeam={homeTeam} homeRoster={homeRoster} awayTeam={awayTeam} awayRoster={awayRoster} />
+          </select>
+          <input
+            name="mvpNote"
+            defaultValue={match.mvpNote ?? ""}
+            placeholder="Descrição (opcional)"
+            maxLength={140}
+            className="h-9 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+          />
+          <Button type="submit">Salvar MVP</Button>
+        </form>
+      </section>
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Eventos</h2>

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { deleteEvent, recordEvent, updateEvent } from "../../../runtime/match-events";
 import { deleteBoostUse, recordBoostUse } from "../../../runtime/match-boosts";
-import { createManualMatch } from "../../../runtime/matches";
+import { createManualMatch, setMatchMvp } from "../../../runtime/matches";
 import type { EventKind, MatchSide, PowerBoostKey } from "../../../contracts/types";
 
 // Súmula (Fase 3): corrige/completa ao vivo o que o controle deixou passar — mesmos mutators de
@@ -91,5 +91,16 @@ export async function deleteBoostFormAction(formData: FormData): Promise<void> {
   const boostId = String(formData.get("boostId"));
   const matchId = String(formData.get("matchId"));
   await deleteBoostUse(boostId);
+  revalidatePath(`/admin/erasto-league/matches/${matchId}`);
+}
+
+// MVP da partida — mesmo gate de admin dos demais mutators desta súmula. playerId vazio limpa a
+// escolha (ex.: admin marcou por engano).
+export async function setMatchMvpFormAction(formData: FormData): Promise<void> {
+  await requireGate();
+  const matchId = String(formData.get("matchId"));
+  const playerId = String(formData.get("mvpPlayerId") ?? "") || null;
+  const note = String(formData.get("mvpNote") ?? "").trim() || null;
+  await setMatchMvp(matchId, playerId, note);
   revalidatePath(`/admin/erasto-league/matches/${matchId}`);
 }

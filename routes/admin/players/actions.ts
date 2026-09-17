@@ -12,7 +12,8 @@ import {
   type PlayerDeleteImpact,
   type PlayerInput,
 } from "../../../runtime/players";
-import type { PlayerGender } from "../../../contracts/types";
+import type { PlayerGender, PlayerPosition } from "../../../contracts/types";
+import { PLAYER_POSITION_LABEL } from "../../../shared/player-position";
 
 export type PlayerActionState = { error: string | null; playerId: string | null };
 
@@ -46,11 +47,15 @@ export async function savePlayerAction(_prev: PlayerActionState, formData: FormD
   const genderRaw = nullableStr(formData, "gender");
   const gender: PlayerGender | null = genderRaw === "male" || genderRaw === "female" ? genderRaw : null;
 
+  const positionRaw = nullableStr(formData, "position");
+  const position: PlayerPosition | null = positionRaw && positionRaw in PLAYER_POSITION_LABEL ? (positionRaw as PlayerPosition) : null;
+
   const input: PlayerInput = {
     teamId,
     name,
     number: number != null && Number.isFinite(number) ? number : null,
     gender,
+    position,
     isCaptain: formData.get("isCaptain") === "on",
     photoMediaId: nullableStr(formData, "photoMediaId"),
     bio: nullableStr(formData, "bio"),

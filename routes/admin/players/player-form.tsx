@@ -4,6 +4,7 @@ import { useActionState, type ReactNode } from "react";
 import { Button, Input, MediaPickerField, Textarea, useActionToast, type PickableMedia } from "@venore/plugin-sdk/ui";
 import { savePlayerAction, type PlayerActionState } from "./actions";
 import { PLAYER_GENDER_LABEL } from "../../../shared/player-gender";
+import { PLAYER_POSITION_LABEL } from "../../../shared/player-position";
 import type { PlayerProfile, TeamProfile } from "../../../contracts/types";
 
 const initialState: PlayerActionState = { error: null, playerId: null };
@@ -62,7 +63,7 @@ export function PlayerForm({
         </Field>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-3">
         <Field label="Gênero (opcional)">
           <select
             name="gender"
@@ -71,6 +72,20 @@ export function PlayerForm({
           >
             <option value="">— não informado —</option>
             {Object.entries(PLAYER_GENDER_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Posição (opcional)">
+          <select
+            name="position"
+            defaultValue={player?.position ?? ""}
+            className="h-9 w-full rounded-md border border-border bg-card px-2 text-sm text-foreground"
+          >
+            <option value="">— não informado —</option>
+            {Object.entries(PLAYER_POSITION_LABEL).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>

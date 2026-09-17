@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { MatchSummary, PlayerProfile, TeamProfile } from "../../contracts/types";
 import type { PlayerStats } from "../../runtime/stats";
 import { formatScore } from "../../shared/score";
+import { PLAYER_POSITION_LABEL } from "../../shared/player-position";
 
 function formatMatchDate(epochMs: number): string {
   return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
@@ -60,6 +61,7 @@ export function PlayerProfileView({
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             {player.number != null && <span className="font-bold tabular-nums text-foreground">#{player.number}</span>}
+            {player.position && <span>{PLAYER_POSITION_LABEL[player.position]}</span>}
             {team && (
               <Link href={`/erasto-league/teams/${team.slug}`} className="ui-motion-base hover:text-foreground hover:underline">
                 {team.name}
@@ -70,10 +72,11 @@ export function PlayerProfileView({
       </div>
 
       {stats.matchesPlayed > 0 && (
-        <div className="grid grid-cols-4 gap-px overflow-hidden rounded-panel border border-border bg-border">
+        <div className="grid grid-cols-3 gap-px overflow-hidden rounded-panel border border-border bg-border sm:grid-cols-5">
           {[
             { label: "Gols", value: formatScore(stats.goals) },
             { label: "Jogos", value: stats.matchesPlayed },
+            { label: "MVPs", value: stats.mvpCount },
             { label: "🟨 Amarelos", value: stats.yellowCards },
             { label: "🟥 Vermelhos", value: stats.redCards },
           ].map((stat) => (

@@ -21,14 +21,21 @@ export const ERASTO_LEAGUE_SETTINGS = {
     defaultValue: "#22c55e",
     label: "Cor de destaque do placar",
   },
-  // Caminho da logo da liga exibida no medalhão central do placar. Servida pelo HOST a partir de
-  // public/ (o plugin é um pacote npm e não empacota asset estático). Vazio ou arquivo ausente →
-  // o medalhão cai no monograma. Aceita um caminho relativo à raiz do site ("/erasto_league.png")
-  // ou uma URL absoluta.
-  logoUrl: {
-    key: "erasto-league.logoUrl",
-    defaultValue: "/erasto_league.png",
-    label: "Logo da liga (caminho ou URL)",
+  // Id de mídia (sistema de mídia do host, @venore/plugin-sdk/media — mesmo padrão de
+  // teams.crestMediaId/players.photoMediaId) da logo exibida no medalhão central do placar. Vazio
+  // ou mídia removida → o medalhão cai no monograma "EL".
+  logoMediaId: {
+    key: "erasto-league.logoMediaId",
+    defaultValue: "",
+    label: "Logo da liga",
+  },
+  // Id do canal do YouTube (não a URL inteira) — alimenta o bloco erasto-league.broadcast, que
+  // embeda .../embed/live_stream?channel=<id> (resolve sozinho pra live atual do canal, sem API
+  // key). Vazio = bloco não mostra nada (transmissão não configurada).
+  youtubeChannelId: {
+    key: "erasto-league.youtubeChannelId",
+    defaultValue: "",
+    label: "Id do canal do YouTube da transmissão",
   },
 } as const;
 
@@ -39,7 +46,12 @@ export type ErastoLeagueConfig = {
   periodMs: number;
   periodCount: number;
   accentColor: string;
+  // logoMediaId: bruto (pro MediaPickerField do form de config nascer preenchido, mesmo padrão de
+  // TeamProfile.crestMediaId). logoUrl: já resolvido (@venore/plugin-sdk/media), o que o overlay
+  // consome direto sem saber de media id.
+  logoMediaId: string;
   logoUrl: string;
+  youtubeChannelId: string;
 };
 
 const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;

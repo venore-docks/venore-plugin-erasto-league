@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
 import { matchEvents as matchEventsTable, matches as matchesTable, players as playersTable, teams as teamsTable } from "../database/schema";
@@ -16,16 +16,23 @@ export type PlayerStats = {
   yellowCards: number;
   redCards: number;
   fouls: number;
+  mvpCount: number;
 };
 
 export async function getPlayerStats(playerId: string): Promise<PlayerStats> {
-  const rows = await db
-    .select({ kind: matchEventsTable.kind, matchId: matchEventsTable.matchId, amount: matchEventsTable.amount })
-    .from(matchEventsTable)
-    .innerJoin(matchesTable, eq(matchEventsTable.matchId, matchesTable.id))
-    .where(and(eq(matchEventsTable.playerId, playerId), eq(matchesTable.status, "finished")));
+  const [rows, mvpRows] = await Promise.all([
+    db
+      .select({ kind: matchEventsTable.kind, matchId: matchEventsTable.matchId, amount: matchEventsTable.amount })
+      .from(matchEventsTable)
+      .innerJoin(matchesTable, eq(matchEventsTable.matchId, matchesTable.id))
+      .where(and(eq(matchEventsTable.playerId, playerId), eq(matchesTable.status, "finished"))),
+    db
+      .select({ count: count() })
+      .from(matchesTable)
+      .where(and(eq(matchesTable.mvpPlayerId, playerId), eq(matchesTable.status, "finished"))),
+  ]);
 
-  const stats: PlayerStats = { matchesPlayed: 0, goals: 0, yellowCards: 0, redCards: 0, fouls: 0 };
+  const stats: PlayerStats = { matchesPlayed: 0, goals: 0, yellowCards: 0, redCards: 0, fouls: 0, mvpCount: mvpRows[0]?.count ?? 0 };
   const matchIds = new Set<string>();
   for (const row of rows) {
     matchIds.add(row.matchId);
@@ -73,8 +80,10 @@ export type ScorerEntry = {
 // Artilharia (bloco erasto-league.top-scorers) — soma de gols (kind "goal") por jogador, só
 // partidas encerradas. group by leva todas as colunas não-agregadas junto (mesmo padrão SQL de
 // sempre) — o SUM vem via sql<string> porque o driver devolve numeric como string.
-export async function listTopScorers(limit = 10): Promise<ScorerEntry[]> {
-  const rows = await db
+// limit omitido = lista inteira (usado por /erasto-league/artilharia, routes/artillery-public —
+// o bloco erasto-league.top-scorers sempre passa um limit).
+export async function listTopScorers(limit?: number): Promise<ScorerEntry[]> {
+  const base = db
     .select({
       playerId: playersTable.id,
       slug: playersTable.slug,
@@ -101,8 +110,9 @@ export async function listTopScorers(limit = 10): Promise<ScorerEntry[]> {
       teamsTable.name,
       teamsTable.slug,
     )
-    .orderBy(desc(sql`sum(${matchEventsTable.amount})`))
-    .limit(limit);
+    .orderBy(desc(sql`sum(${matchEventsTable.amount})`));
+
+  const rows = typeof limit === "number" ? await base.limit(limit) : await base;
 
   const entries = await Promise.all(
     rows.map(async (row) => {
@@ -123,4 +133,57 @@ export async function listTopScorers(limit = 10): Promise<ScorerEntry[]> {
   );
 
   return entries.filter((entry) => entry.goals > 0);
+}
+
+export type MvpEntry = {
+  playerId: string;
+  slug: string;
+  name: string;
+  photoUrl: string | null;
+  teamId: string;
+  teamName: string;
+  teamSlug: string;
+  mvpCount: number;
+};
+
+// Ranking de MVPs (bloco erasto-league.mvp-scorers) — mesma filosofia/estrutura de listTopScorers,
+// mas contando partidas em que o jogador foi escolhido MVP (matches.mvp_player_id) em vez de somar
+// gols. limit omitido = lista inteira (usado por /erasto-league/mvps, routes/mvp-public).
+export async function listTopMvps(limit?: number): Promise<MvpEntry[]> {
+  const base = db
+    .select({
+      playerId: playersTable.id,
+      slug: playersTable.slug,
+      name: playersTable.name,
+      photoMediaId: playersTable.photoMediaId,
+      teamId: teamsTable.id,
+      teamName: teamsTable.name,
+      teamSlug: teamsTable.slug,
+      mvpCount: count(matchesTable.id),
+    })
+    .from(matchesTable)
+    .innerJoin(playersTable, eq(matchesTable.mvpPlayerId, playersTable.id))
+    .innerJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(and(isNotNull(matchesTable.mvpPlayerId), eq(matchesTable.status, "finished")))
+    .groupBy(playersTable.id, playersTable.slug, playersTable.name, playersTable.photoMediaId, teamsTable.id, teamsTable.name, teamsTable.slug)
+    .orderBy(desc(count(matchesTable.id)));
+
+  const rows = typeof limit === "number" ? await base.limit(limit) : await base;
+
+  return Promise.all(
+    rows.map(async (row) => {
+      const photoResult = row.photoMediaId ? await getMediaAsset({ id: row.photoMediaId }) : null;
+      const photoUrl = photoResult?.success && photoResult.data ? photoResult.data.url : null;
+      return {
+        playerId: row.playerId,
+        slug: row.slug,
+        name: row.name,
+        photoUrl,
+        teamId: row.teamId,
+        teamName: row.teamName,
+        teamSlug: row.teamSlug,
+        mvpCount: row.mvpCount,
+      };
+    }),
+  );
 }

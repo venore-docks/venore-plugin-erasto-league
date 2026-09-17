@@ -94,9 +94,12 @@ export async function ErastoLeagueBracketBlock({ block }: BlockRendererProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {group.standings.map((row) => (
+                    {group.standings.map((row, index) => (
                       <tr key={row.teamId} className="border-t border-border/60">
-                        <td className="py-1 pr-2 text-foreground">{row.name}</td>
+                        <td className="py-1 pr-2 text-foreground">
+                          <span className="mr-1.5 inline-block w-3 text-right text-[10px] font-bold tabular-nums text-muted-foreground">{index + 1}</span>
+                          {row.name}
+                        </td>
                         <td className="py-1 text-center text-muted-foreground">{row.played}</td>
                         <td className="py-1 text-center text-muted-foreground">{row.goalsFor - row.goalsAgainst}</td>
                         <td className="py-1 text-center text-amber-500">{row.yellowCards}</td>

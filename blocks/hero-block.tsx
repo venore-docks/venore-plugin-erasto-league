@@ -45,7 +45,7 @@ export async function ErastoLeagueHeroBlock({ block }: BlockRendererProps) {
 
       {ctaLabel && ctaHref && (
         <div className="mt-8">
-          <Button asChild size="lg" style={{ background: config.accentColor, color: "#04170a" }}>
+          <Button asChild size="lg" className="text-background" style={{ background: config.accentColor }}>
             <Link href={ctaHref}>{ctaLabel}</Link>
           </Button>
         </div>

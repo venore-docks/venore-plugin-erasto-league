@@ -162,7 +162,8 @@ Tudo em `/admin/erasto-league` (contexts/settings do host):
 | `erasto-league.periodMinutes` | 10 | Duração de um tempo. |
 | `erasto-league.periodCount` | 2 | Número de tempos (10 × 2 = jogo de 20min). |
 | `erasto-league.accentColor` | `#22c55e` | Cor da placa/halo/relógio no overlay. |
-| `erasto-league.logoUrl` | `/erasto_league.png` | Logo no medalhão. Caminho no `public/` do host ou URL. Ausente → monograma "EL". |
+| `erasto-league.logoMediaId` | (vazio) | Logo no medalhão, via sistema de mídia do host (MediaPickerField). Ausente → monograma "EL". |
+| `erasto-league.youtubeChannelId` | (vazio) | Id do canal do YouTube da transmissão (bloco `erasto-league.broadcast`). |
 
 ## Relógio
 
