@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition, type CSSProperties } from "react";
-import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile, PowerBoost, PowerBoostUse, TeamProfile } from "../../contracts/types";
+import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile, PowerBoost, TeamProfile } from "../../contracts/types";
 import { computeElapsedMs, formatClock } from "../../shared/clock";
 import { formatScore } from "../../shared/score";
 import { useMatchState, useTick } from "../../shared/use-match-state";
@@ -12,8 +12,8 @@ import {
   cancelMatchAction,
   clockAction,
   deleteBoostAction,
+  deleteEventAction,
   finishMatchAction,
-  listBoostsAction,
   listRosterAction,
   recordBoostAction,
   recordEventAction,
@@ -114,6 +114,8 @@ const CSS = `
     border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.03); color: rgba(255,255,255,0.75);
     display: flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;
   }
+  /* Mesma pílula pros três tipos de marcação (gol/cartão/power play) — só a cor muda por
+     modificador (.yellow/.red), gol e power play ficam na cor de destaque (--accent). */
   .el-c-boost-used { display: flex; flex-wrap: wrap; gap: 4px; }
   .el-c-boost-pill {
     display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 6px 0 8px; border-radius: 999px; border: 0; cursor: pointer;
@@ -124,6 +126,10 @@ const CSS = `
     background: color-mix(in srgb, var(--accent, #22c55e) 35%, transparent); font-size: 10px; line-height: 1;
   }
   .el-c-boost-pill:disabled { opacity: 0.5; cursor: default; }
+  .el-c-boost-pill.yellow { background: rgba(234,179,8,0.18); color: #eab308; }
+  .el-c-boost-pill.yellow .el-c-boost-pill-x { background: rgba(234,179,8,0.32); }
+  .el-c-boost-pill.red { background: rgba(239,68,68,0.18); color: #f87171; }
+  .el-c-boost-pill.red .el-c-boost-pill-x { background: rgba(239,68,68,0.32); }
 
   .el-c-plus:disabled, .el-c-half:disabled, .el-c-minus:disabled, .el-c-chip:disabled, .el-c-reset:disabled,
   .el-c-startbtn:disabled, .el-c-tbtn:disabled, .el-c-finish:disabled, .el-c-infra:disabled, .el-c-cancel:disabled { opacity: 0.5; cursor: default; }
@@ -203,6 +209,40 @@ const EVENT_LABEL: Record<EventKind, string> = {
   foul: "a falta",
 };
 
+const CARD_ICON: Record<"yellow_card" | "red_card", string> = { yellow_card: "🟨", red_card: "🟥" };
+const CARD_TONE: Record<"yellow_card" | "red_card", "yellow" | "red"> = { yellow_card: "yellow", red_card: "red" };
+
+// Pílula com botão × — mesmo esquema pros três tipos de marcação da partida (gol/cartão/power
+// play): mostra quem foi marcado e dá pra tirar direto daqui se precisar corrigir, sem abrir a
+// súmula. `tone` só existe pra cartão (cor amarela/vermelha); gol e power play ficam na cor de
+// destaque padrão (--accent).
+function MarkerPill({
+  icon,
+  label,
+  tone,
+  disabled,
+  onRemove,
+}: {
+  icon: string;
+  label: string;
+  tone?: "yellow" | "red";
+  disabled: boolean;
+  onRemove: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`el-c-boost-pill ${tone ?? ""}`}
+      disabled={disabled}
+      title="Tirar (coloquei por engano)"
+      onClick={onRemove}
+    >
+      {icon} {label}
+      <span className="el-c-boost-pill-x">×</span>
+    </button>
+  );
+}
+
 export function Console({
   initialState,
   teams,
@@ -225,7 +265,6 @@ export function Console({
   const [overlayUrl, setOverlayUrl] = useState("/ext/erasto-league/overlay");
   const [attribution, setAttribution] = useState<Attribution | null>(null);
   const [roster, setRoster] = useState<{ home: PlayerProfile[]; away: PlayerProfile[] }>({ home: [], away: [] });
-  const [boosts, setBoosts] = useState<PowerBoostUse[]>([]);
   const [mvpPrompt, setMvpPrompt] = useState<{
     matchId: string;
     roster: { home: PlayerProfile[]; away: PlayerProfile[] };
@@ -254,45 +293,6 @@ export function Console({
       cancelled = true;
     };
   }, [state.homeTeamId, state.awayTeamId]);
-
-  // Power boosts já usados nesta partida — buscado quando a partida atual muda (mesmo espírito do
-  // elenco acima); atualizado otimisticamente a cada novo uso em vez de refazer a busca inteira.
-  useEffect(() => {
-    if (!state.currentMatchId) {
-      setBoosts([]);
-      return;
-    }
-    let cancelled = false;
-    listBoostsAction(state.currentMatchId).then((result) => {
-      if (!cancelled) setBoosts(result);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [state.currentMatchId]);
-
-  function useBoost(side: MatchSide, boostKey: string) {
-    startTransition(async () => {
-      const result = await recordBoostAction(side, boostKey);
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      setError(null);
-      setBoosts((prev) => [...prev, result.boost]);
-    });
-  }
-
-  // "Coloquei por engano" — tira otimisticamente da lista e confirma no servidor.
-  function removeBoost(boostId: string) {
-    setBoosts((prev) => prev.filter((boost) => boost.id !== boostId));
-    startTransition(async () => {
-      const result = await deleteBoostAction(boostId);
-      if (!result.ok) {
-        setError(result.error ?? "Falha ao remover o boost.");
-      }
-    });
-  }
 
   function run(action: () => Promise<ScoreActionResult>) {
     startTransition(async () => {
@@ -325,7 +325,12 @@ export function Console({
     if (!attribution) return;
     const { eventId } = attribution;
     setAttribution(null);
-    void attributePlayerAction(eventId, playerId);
+    run(() => attributePlayerAction(eventId, playerId));
+  }
+
+  // "Tirei por engano" — mesmo botão × pros três tipos de marcação (gol/cartão/power play).
+  function removeEvent(eventId: string) {
+    run(() => deleteEventAction(eventId));
   }
 
   function closeMvpPrompt() {
@@ -454,6 +459,21 @@ export function Console({
               >
                 +0,5
               </button>
+              {state.goals.filter((goal) => goal.side === side).length > 0 && (
+                <div className="el-c-boost-used">
+                  {state.goals
+                    .filter((goal) => goal.side === side)
+                    .map((goal) => (
+                      <MarkerPill
+                        key={goal.id}
+                        icon="⚽"
+                        label={`${goal.playerName ?? "Sem jogador"}${goal.amount !== 1 ? ` (${formatScore(goal.amount)})` : ""}`}
+                        disabled={pending}
+                        onRemove={() => removeEvent(goal.id)}
+                      />
+                    ))}
+                </div>
+              )}
               <div className="el-c-minus-row">
                 <button
                   type="button"
@@ -498,9 +518,25 @@ export function Console({
                   Falta
                 </button>
               </div>
+              {state.cards.filter((card) => card.side === side).length > 0 && (
+                <div className="el-c-boost-used">
+                  {state.cards
+                    .filter((card) => card.side === side)
+                    .map((card) => (
+                      <MarkerPill
+                        key={card.id}
+                        icon={CARD_ICON[card.kind]}
+                        tone={CARD_TONE[card.kind]}
+                        label={card.playerName ?? "Sem jogador"}
+                        disabled={pending}
+                        onRemove={() => removeEvent(card.id)}
+                      />
+                    ))}
+                </div>
+              )}
 
               <div className="el-c-boosts">
-                <span className="el-c-boosts-label">Power boosts</span>
+                <span className="el-c-boosts-label">Power play</span>
                 <div className="el-c-boost-row">
                   {powerBoosts.map((boost) => (
                     <button
@@ -509,32 +545,25 @@ export function Console({
                       className="el-c-boost-btn"
                       disabled={pending}
                       title={boost.description}
-                      onClick={() => useBoost(side, boost.key)}
+                      onClick={() => run(() => recordBoostAction(side, boost.key))}
                     >
                       {boost.emoji} {boost.label}
                     </button>
                   ))}
                 </div>
-                {boosts.filter((boost) => boost.side === side).length > 0 && (
+                {state.boosts.filter((boost) => boost.side === side).length > 0 && (
                   <div className="el-c-boost-used">
-                    {boosts
+                    {state.boosts
                       .filter((boost) => boost.side === side)
-                      .map((boost) => {
-                        const catalogEntry = powerBoosts.find((entry) => entry.key === boost.boostKey);
-                        return (
-                          <button
-                            key={boost.id}
-                            type="button"
-                            className="el-c-boost-pill"
-                            disabled={pending}
-                            title="Tirar (coloquei por engano)"
-                            onClick={() => removeBoost(boost.id)}
-                          >
-                            {catalogEntry?.emoji} {catalogEntry?.label ?? boost.boostKey}
-                            <span className="el-c-boost-pill-x">×</span>
-                          </button>
-                        );
-                      })}
+                      .map((boost) => (
+                        <MarkerPill
+                          key={boost.id}
+                          icon={boost.emoji}
+                          label={boost.label}
+                          disabled={pending}
+                          onRemove={() => run(() => deleteBoostAction(boost.id))}
+                        />
+                      ))}
                   </div>
                 )}
               </div>

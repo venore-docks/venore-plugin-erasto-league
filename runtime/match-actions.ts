@@ -8,6 +8,7 @@ import { readMatchRow, readMatchState, writeMatchState } from "./match-store";
 import { recordEvent } from "./match-events";
 import { recordBoostUse } from "./match-boosts";
 import { findUnlinkedFixtureForTeams, linkFixtureToMatch } from "./fixtures";
+import { hardDeleteMatchCascade } from "./matches";
 
 // Mutators do estado da partida — mesma API mental de antes, agora em cima de partida como
 // entidade (matches/match_events, runtime/match-events.ts) em vez de contador direto. Sem
@@ -44,30 +45,31 @@ export async function startMatch(homeTeamId: string, awayTeamId: string): Promis
   });
 }
 
-// Encerra a partida atual com o status dado e volta o cache ao vivo pro estado ocioso — usado
-// tanto por "Encerrar partida e salvar placar" (finished, conta na súmula/classificação) quanto
-// por "Cancelar partida" (cancelled, some do estado ao vivo sem contar em lugar nenhum).
+// Encerra a partida atual e volta o cache ao vivo pro estado ocioso — "Encerrar partida e salvar
+// placar" marca finished (conta na súmula/classificação) e mantém a partida; "Cancelar partida"
+// apaga a partida de vez (ver cancelMatch abaixo, pedido explícito: não deve sobrar registro na
+// súmula). currentMatchId é nulado ANTES do hard-delete (não depois): match_state.current_match_id
+// referencia matches.id, então apagar a partida com o cache ainda apontando pra ela violaria a FK.
 async function endCurrentMatch(status: "finished" | "cancelled"): Promise<MatchState> {
   const row = await readMatchRow();
-  if (row.currentMatchId) {
-    await db
-      .update(matchesTable)
-      .set({ status, finishedAt: new Date() })
-      .where(eq(matchesTable.id, row.currentMatchId));
+  const matchId = row.currentMatchId;
+
+  if (matchId && status === "finished") {
+    await db.update(matchesTable).set({ status, finishedAt: new Date() }).where(eq(matchesTable.id, matchId));
 
     // Auto-link com a tabela de jogos: se existe exatamente um confronto pendente com esse par de
     // times, liga sozinho (ver comentário em findUnlinkedFixtureForTeams) — sem isso "próximo jogo"/
     // agenda ficavam presos no primeiro confronto sempre que o admin esquecia de linkar manualmente
     // em /admin/erasto-league/fixtures depois de encerrar a partida no controle.
-    if (status === "finished" && row.homeTeamId && row.awayTeamId) {
+    if (row.homeTeamId && row.awayTeamId) {
       const fixture = await findUnlinkedFixtureForTeams(row.homeTeamId, row.awayTeamId);
       if (fixture) {
-        await linkFixtureToMatch(fixture.id, row.currentMatchId);
+        await linkFixtureToMatch(fixture.id, matchId);
       }
     }
   }
 
-  return writeMatchState({
+  const nextState = await writeMatchState({
     currentMatchId: null,
     homeTeamId: null,
     awayTeamId: null,
@@ -77,6 +79,12 @@ async function endCurrentMatch(status: "finished" | "cancelled"): Promise<MatchS
     clockAnchorMs: null,
     clockAccumulatedMs: 0,
   });
+
+  if (matchId && status === "cancelled") {
+    await hardDeleteMatchCascade(matchId);
+  }
+
+  return nextState;
 }
 
 // "Encerrar partida e salvar placar" — marca a partida atual como finished (fica na súmula/
@@ -85,10 +93,11 @@ export async function finishMatch(): Promise<MatchState> {
   return endCurrentMatch("finished");
 }
 
-// "Cancelar partida" — pra quando o operador começou por engano (time errado, teste, etc.) e não
-// quer que isso conte em lugar nenhum. Marca "cancelled": some do súmula-como-resultado e da
-// classificação (que só olham status "finished"), mas o registro fica no banco pra auditoria —
-// nada é apagado.
+// "Cancelar partida" — pra quando o operador começou por engano (time errado, teste, etc.). Apaga
+// a partida e os eventos/boosts dela (hardDeleteMatchCascade, runtime/matches.ts) — não fica
+// "cancelled" no banco nem aparece na súmula (pedido explícito: cancelar não deve salvar nada).
+// "cancelled" continua existindo em MatchStatus só por compatibilidade com registros antigos de
+// antes desta mudança.
 export async function cancelMatch(): Promise<MatchState> {
   return endCurrentMatch("cancelled");
 }

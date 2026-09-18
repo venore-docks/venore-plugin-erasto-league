@@ -1,8 +1,9 @@
 export type MatchSide = "home" | "away";
 
-// Fase 2 — partida como entidade viva. "cancelled" = descartada pelo controle (operador errou o
-// time, testou, etc.) — sai do estado ao vivo sem contar pra súmula/classificação/resultados
-// (o filtro já é por status "finished" em runtime/matches.ts e runtime/standings.ts).
+// Fase 2 — partida como entidade viva. "cancelled" nunca é mais escrito (runtime/match-actions.ts
+// cancelMatch apaga a partida de vez, ver hardDeleteMatchCascade em runtime/matches.ts — pedido
+// explícito: cancelar não deve deixar registro na súmula) — o valor só continua no union por
+// compatibilidade com partidas cancelled de antes dessa mudança que ainda possam existir no banco.
 export type MatchStatus = "in_progress" | "finished" | "cancelled";
 export type EventKind = "goal" | "yellow_card" | "red_card" | "foul";
 
@@ -27,6 +28,38 @@ export type PowerBoostUse = {
   boostKey: PowerBoostKey;
   minuteMs: number | null;
   createdAt: number;
+};
+
+// Marcadores da partida ao vivo (MatchState.goals/cards/boosts abaixo) — versão "pronta pra
+// exibir" dos match_events/match_boosts da partida atual: nome do jogador e rótulo/emoji do
+// catálogo já resolvidos, pra nem o overlay (sem sessão, não pode chamar as mesmas queries que o
+// controle) nem o controle precisarem resolver isso sozinhos. Sempre recalculados na hora (ver
+// runtime/match-store.ts), nunca persistidos como tal.
+export type GoalMarker = {
+  id: string;
+  side: MatchSide;
+  playerId: string | null;
+  playerName: string | null;
+  // 1 (gol) ou 0.5 (meio gol) — nunca negativo aqui (correção −1/−0,5 não entra na lista, ver
+  // runtime/match-store.ts).
+  amount: number;
+  occurredAt: number;
+};
+
+export type CardMarker = {
+  id: string;
+  side: MatchSide;
+  kind: "yellow_card" | "red_card";
+  playerId: string | null;
+  playerName: string | null;
+};
+
+export type BoostMarker = {
+  id: string;
+  side: MatchSide;
+  boostKey: PowerBoostKey;
+  label: string;
+  emoji: string;
 };
 
 export type Team = {
@@ -67,6 +100,13 @@ export type MatchState = {
   // transparente sem nada, como sempre foi.
   preMatchMessage: string | null;
   clock: MatchClock;
+  // Marcadores da partida atual, sempre os da partida referenciada por currentMatchId (recalculados
+  // do zero a cada leitura, ver runtime/match-store.ts) — [] quando currentMatchId é null. goals é
+  // usado pelo overlay só pro "flash" de 10s de quem fez o último gol (o mais recente do array);
+  // cards/boosts ficam visíveis o tempo todo (acima do nome do time), ver routes/overlay/scoreboard.tsx.
+  goals: GoalMarker[];
+  cards: CardMarker[];
+  boosts: BoostMarker[];
   // Epoch ms da última alteração — o SSE usa pra decidir se empurra um snapshot novo.
   updatedAt: number;
 };

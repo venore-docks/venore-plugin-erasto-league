@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
-import type { MatchState } from "../../contracts/types";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import type { CardMarker, GoalMarker, MatchState } from "../../contracts/types";
 import { computeElapsedMs, formatClock } from "../../shared/clock";
 import { formatScore } from "../../shared/score";
 import { useMatchState, useTick } from "../../shared/use-match-state";
@@ -49,6 +49,43 @@ const CSS = `
     background: linear-gradient(90deg, transparent, var(--accent), transparent);
     border-radius: 999px;
   }
+
+  /* Marcações "acima do nome do time" — cartão/power play ficam até serem tirados (mesmo esquema
+     de remoção do controle, ver routes/control/console.tsx), o gol só passa por aqui pro flash de
+     10s (el-goal-flash-row) e desaparece sozinho. column-reverse: o primeiro filho no DOM
+     (el-markers-row) fica mais perto da barra, o flash de gol (quando existe) empilha por cima. */
+  .el-overhead {
+    position: absolute; left: 0; right: 0; bottom: 100%; padding-bottom: 10px;
+    display: flex; flex-direction: column-reverse; gap: 10px;
+  }
+  .el-markers-row { display: flex; justify-content: space-between; padding: 0 30px; gap: 10px; }
+  .el-markers-side { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; max-width: 46%; }
+  .el-markers-side.home { justify-content: flex-end; }
+  .el-markers-side.away { justify-content: flex-start; }
+  .el-marker-badge {
+    display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 11px; border-radius: 999px;
+    background: rgba(9,12,16,0.85); border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.4); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    color: #fff; font-size: 13px; font-weight: 800; white-space: nowrap;
+    animation: el-fade 260ms ease-out both;
+  }
+  .el-marker-badge.yellow { border-color: rgba(234,179,8,0.55); color: #eab308; }
+  .el-marker-badge.red { border-color: rgba(239,68,68,0.55); color: #f87171; }
+  .el-marker-badge-text { max-width: 96px; overflow: hidden; text-overflow: ellipsis; }
+
+  .el-goal-flash-row { display: flex; justify-content: center; }
+  .el-goal-flash {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 26px; border-radius: 999px;
+    background: linear-gradient(180deg, rgba(15,20,26,0.94), rgba(8,11,15,0.96));
+    border: 1px solid rgba(255,255,255,0.12); border-top-color: rgba(255,255,255,0.26);
+    box-shadow: 0 26px 60px rgba(0,0,0,0.55), 0 8px 22px color-mix(in srgb, var(--accent) 22%, transparent);
+    color: #fff; font-size: 22px; font-weight: 900; letter-spacing: 0.3px; white-space: nowrap;
+    animation: el-goal-rise 320ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+  }
+  .el-goal-flash-ball { font-size: 24px; }
+  .el-goal-flash-tag { color: var(--accent); }
+  @keyframes el-goal-rise { from { opacity: 0; transform: translateY(14px) scale(0.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
   .el-name {
     display: flex; align-items: center;
@@ -162,6 +199,42 @@ const TEASER_CSS = `
   @keyframes el-teaser-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 `;
 
+const CARD_ICON: Record<CardMarker["kind"], string> = { yellow_card: "🟨", red_card: "🟥" };
+const CARD_TONE: Record<CardMarker["kind"], "yellow" | "red"> = { yellow_card: "yellow", red_card: "red" };
+
+function MarkerBadge({ icon, label, tone }: { icon: string; label: string | null; tone?: "yellow" | "red" }) {
+  return (
+    <span className={`el-marker-badge ${tone ?? ""}`}>
+      <span aria-hidden="true">{icon}</span>
+      {label && <span className="el-marker-badge-text">{label}</span>}
+    </span>
+  );
+}
+
+// Flash de "quem fez o gol" por 10s (pedido explícito: só o gol some sozinho, cartão/power play
+// ficam até serem tirados no controle) — sempre o gol mais recente (goals.at(-1)), indexado por id
+// pra não reabrir o flash à toa quando o array chega de novo com o MESMO conteúdo (todo snapshot
+// do SSE é um array novo, mesmo sem mudança real). occurredAt (epoch do servidor, quando o evento
+// foi gravado) decide quanto tempo ainda falta mostrar — cobre o caso de o overlay recarregar
+// pouco depois do gol em vez de sempre reabrir os 10s inteiros.
+function useGoalFlash(goals: GoalMarker[]): GoalMarker | null {
+  const [visible, setVisible] = useState<GoalMarker | null>(null);
+  const lastIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const last = goals.length > 0 ? goals[goals.length - 1] : null;
+    if (!last || last.id === lastIdRef.current) return;
+    lastIdRef.current = last.id;
+    const remaining = 10_000 - (Date.now() - last.occurredAt);
+    if (remaining <= 0) return;
+    setVisible(last);
+    const timer = setTimeout(() => setVisible(null), remaining);
+    return () => clearTimeout(timer);
+  }, [goals]);
+
+  return visible;
+}
+
 export function Scoreboard({
   initialState,
   accentColor,
@@ -174,6 +247,9 @@ export function Scoreboard({
   const { state, live } = useMatchState(initialState);
   const now = useTick(200);
   const [logoOk, setLogoOk] = useState(Boolean(logoUrl));
+  // Hook incondicional (regra do React) mesmo a partida estando ociosa — state.goals é [] nesse
+  // caso (EMPTY_MARKERS, ver runtime/match-store.ts) e o flash simplesmente nunca aparece.
+  const goalFlash = useGoalFlash(state.goals);
 
   // Ocioso (nenhuma partida em andamento, ver runtime/match-actions.ts startMatch/finishMatch) —
   // some por completo (sem placar "fantasma" 0×0 entre partidas), a menos que o controle tenha
@@ -206,6 +282,42 @@ export function Scoreboard({
       <div className="el-wrap" style={{ "--accent": accentColor } as CSSProperties}>
         <div className="el-strip">
           <div className="el-bar">
+            <div className="el-overhead">
+              <div className="el-markers-row">
+                <div className="el-markers-side home">
+                  {state.cards
+                    .filter((card) => card.side === "home")
+                    .map((card) => (
+                      <MarkerBadge key={card.id} icon={CARD_ICON[card.kind]} tone={CARD_TONE[card.kind]} label={card.playerName} />
+                    ))}
+                  {state.boosts
+                    .filter((boost) => boost.side === "home")
+                    .map((boost) => <MarkerBadge key={boost.id} icon={boost.emoji} label={boost.label} />)}
+                </div>
+                <div className="el-markers-side away">
+                  {state.cards
+                    .filter((card) => card.side === "away")
+                    .map((card) => (
+                      <MarkerBadge key={card.id} icon={CARD_ICON[card.kind]} tone={CARD_TONE[card.kind]} label={card.playerName} />
+                    ))}
+                  {state.boosts
+                    .filter((boost) => boost.side === "away")
+                    .map((boost) => <MarkerBadge key={boost.id} icon={boost.emoji} label={boost.label} />)}
+                </div>
+              </div>
+              {goalFlash && (
+                <div className="el-goal-flash-row">
+                  <div className="el-goal-flash">
+                    <span className="el-goal-flash-ball" aria-hidden="true">
+                      ⚽
+                    </span>
+                    <span className="el-goal-flash-tag">GOL!</span>
+                    {(goalFlash.side === "home" ? state.home.name : state.away.name)}
+                    {goalFlash.playerName ? ` — ${goalFlash.playerName}` : ""}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="el-name home">{state.home.name}</div>
             <div className="el-plate">
               <span className="el-num home" key={`h-${state.home.score}`}>

@@ -1,7 +1,13 @@
-import { eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
-import { matchState as matchStateTable } from "../database/schema";
-import type { MatchClock, MatchState } from "../contracts/types";
+import {
+  matchBoosts as matchBoostsTable,
+  matchEvents as matchEventsTable,
+  matchState as matchStateTable,
+  players as playersTable,
+  powerBoosts as powerBoostsTable,
+} from "../database/schema";
+import type { BoostMarker, CardMarker, GoalMarker, MatchClock, MatchState } from "../contracts/types";
 
 // Persistência do estado da partida (linha única "singleton" em erasto_league.match_state) + um
 // pub/sub EM MEMÓRIA best-effort por processo. O banco é a fonte da verdade — o pub/sub só serve
@@ -13,7 +19,61 @@ const SINGLETON_ID = "singleton";
 
 type MatchRow = typeof matchStateTable.$inferSelect;
 
-function rowToState(row: MatchRow): MatchState {
+type LiveMarkers = { goals: GoalMarker[]; cards: CardMarker[]; boosts: BoostMarker[] };
+
+const EMPTY_MARKERS: LiveMarkers = { goals: [], cards: [], boosts: [] };
+
+// Gols/cartões/boosts da partida ATUAL, prontos pra exibir (nome do jogador, rótulo/emoji do
+// catálogo já resolvidos) — sempre recalculado do zero a partir de match_events/match_boosts, nunca
+// cacheado em match_state (que só guarda o placar, ver comentário no schema). Chamado a cada leitura
+// de MatchState (readMatchState/writeMatchState abaixo), então roda com bastante frequência (o
+// dbPoll de 1s do SSE, ver routes/api/events/route.ts) — aceitável pro volume de uma liga pequena,
+// não pensado pra escala maior.
+async function loadLiveMarkers(matchId: string): Promise<LiveMarkers> {
+  const [eventRows, boostRows, boostCatalog] = await Promise.all([
+    db.select().from(matchEventsTable).where(eq(matchEventsTable.matchId, matchId)).orderBy(asc(matchEventsTable.createdAt)),
+    db.select().from(matchBoostsTable).where(eq(matchBoostsTable.matchId, matchId)).orderBy(asc(matchBoostsTable.createdAt)),
+    db.select().from(powerBoostsTable),
+  ]);
+
+  const playerIds = [...new Set(eventRows.map((row) => row.playerId).filter((id): id is string => Boolean(id)))];
+  const playerRows = playerIds.length > 0 ? await db.select().from(playersTable).where(inArray(playersTable.id, playerIds)) : [];
+  const playerNameById = new Map(playerRows.map((player) => [player.id, player.name]));
+  const resolvePlayerName = (playerId: string | null) => (playerId ? playerNameById.get(playerId) ?? null : null);
+
+  const goals: GoalMarker[] = eventRows
+    .filter((row) => row.kind === "goal" && row.amount > 0)
+    .map((row) => ({
+      id: row.id,
+      side: row.side,
+      playerId: row.playerId,
+      playerName: resolvePlayerName(row.playerId),
+      amount: row.amount,
+      occurredAt: row.createdAt.getTime(),
+    }));
+
+  const cards: CardMarker[] = eventRows
+    .filter((row): row is typeof row & { kind: "yellow_card" | "red_card" } => row.kind === "yellow_card" || row.kind === "red_card")
+    .map((row) => ({
+      id: row.id,
+      side: row.side,
+      kind: row.kind,
+      playerId: row.playerId,
+      playerName: resolvePlayerName(row.playerId),
+    }));
+
+  const boostByKey = new Map(boostCatalog.map((boost) => [boost.key, boost]));
+  // Catálogo pode ter perdido a entrada (excluída depois do uso, ver runtime/power-boosts.ts) —
+  // cai pro key cru sem emoji em vez de sumir da lista.
+  const boosts: BoostMarker[] = boostRows.map((row) => {
+    const entry = boostByKey.get(row.boostKey);
+    return { id: row.id, side: row.side, boostKey: row.boostKey, label: entry?.label ?? row.boostKey, emoji: entry?.emoji ?? "" };
+  });
+
+  return { goals, cards, boosts };
+}
+
+function rowToState(row: MatchRow, markers: LiveMarkers): MatchState {
   const clock: MatchClock = {
     running: row.clockRunning,
     anchorMs: row.clockAnchorMs ?? null,
@@ -28,6 +88,9 @@ function rowToState(row: MatchRow): MatchState {
     label: row.label,
     preMatchMessage: row.preMatchMessage,
     clock,
+    goals: markers.goals,
+    cards: markers.cards,
+    boosts: markers.boosts,
     updatedAt: row.updatedAt.getTime(),
   };
 }
@@ -48,7 +111,9 @@ export async function readMatchRow(): Promise<MatchRow> {
 }
 
 export async function readMatchState(): Promise<MatchState> {
-  return rowToState(await readMatchRow());
+  const row = await readMatchRow();
+  const markers = row.currentMatchId ? await loadLiveMarkers(row.currentMatchId) : EMPTY_MARKERS;
+  return rowToState(row, markers);
 }
 
 type MatchPatch = Partial<
@@ -76,9 +141,22 @@ export async function writeMatchState(patch: MatchPatch): Promise<MatchState> {
     .set({ ...patch, updatedAt: new Date() })
     .where(eq(matchStateTable.id, SINGLETON_ID))
     .returning();
-  const state = rowToState(row);
+  const markers = row.currentMatchId ? await loadLiveMarkers(row.currentMatchId) : EMPTY_MARKERS;
+  const state = rowToState(row, markers);
   publish(state);
   return state;
+}
+
+// "Toca" o singleton (sem mudar nenhum campo, só updated_at) quando a mutação foi numa entidade
+// que match_state não cacheia diretamente (uso de power play; atribuição de jogador a um gol/
+// cartão já registrado) — sem isso o SSE nunca saberia que goals/cards/boosts mudaram: nenhum
+// campo da LINHA em si mudou, só o que loadLiveMarkers recalcula por fora dela. Vira NO-OP se a
+// partida em questão não é mais a que está ao vivo (ex: súmula de partida antiga).
+export async function touchMatchStateIfCurrent(matchId: string): Promise<void> {
+  const row = await readMatchRow();
+  if (row.currentMatchId === matchId) {
+    await writeMatchState({});
+  }
 }
 
 // --- pub/sub em memória (globalThis: Server Action e Route Handler podem cair em cópias de bundle

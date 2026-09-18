@@ -2,7 +2,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
 import { matchEvents as matchEventsTable, matches as matchesTable, matchState as matchStateTable } from "../database/schema";
 import { clampScore } from "../shared/score";
-import { readMatchState, writeMatchState } from "./match-store";
+import { readMatchState, touchMatchStateIfCurrent, writeMatchState } from "./match-store";
 import type { EventKind, MatchEvent, MatchSide, MatchState } from "../contracts/types";
 
 type EventRow = typeof matchEventsTable.$inferSelect;
@@ -76,7 +76,11 @@ export async function recordEvent(input: RecordEventInput): Promise<{ eventId: s
 }
 
 export async function attributePlayer(eventId: string, playerId: string | null): Promise<void> {
-  await db.update(matchEventsTable).set({ playerId }).where(eq(matchEventsTable.id, eventId));
+  const [row] = await db.update(matchEventsTable).set({ playerId }).where(eq(matchEventsTable.id, eventId)).returning();
+  // Nome do jogador só aparece em MatchState.goals/cards depois disso (loadLiveMarkers, ver
+  // runtime/match-store.ts) — sem tocar aqui, o overlay/controle ficariam com "sem jogador" até
+  // outra escrita qualquer da partida acontecer.
+  if (row) await touchMatchStateIfCurrent(row.matchId);
 }
 
 export async function listEventsByMatch(matchId: string): Promise<MatchEvent[]> {

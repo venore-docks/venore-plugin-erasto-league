@@ -7,7 +7,7 @@ import { createPowerBoost, deletePowerBoost, updatePowerBoost, type PowerBoostIn
 async function requireGate(): Promise<void> {
   const gate = await getPluginAdminPageData("erasto-league");
   if (!gate.granted) {
-    throw new Error("Você não tem permissão para editar o catálogo de power boosts.");
+    throw new Error("Você não tem permissão para editar o catálogo de power play.");
   }
 }
 

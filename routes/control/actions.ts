@@ -6,6 +6,7 @@ import {
   bumpScore,
   cancelMatch,
   finishMatch,
+  getMatchState,
   recordBoostForCurrentMatch,
   recordCardOrFoul,
   resetCurrentMatch,
@@ -13,11 +14,11 @@ import {
   setPreMatchMessage,
   startMatch,
 } from "../../runtime/match-actions";
-import { attributePlayer } from "../../runtime/match-events";
-import { deleteBoostUse, listBoostsByMatch } from "../../runtime/match-boosts";
+import { attributePlayer, deleteEvent } from "../../runtime/match-events";
+import { deleteBoostUse } from "../../runtime/match-boosts";
 import { listPlayersByTeam } from "../../runtime/players";
 import { setMatchMvp } from "../../runtime/matches";
-import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile, PowerBoostKey, PowerBoostUse } from "../../contracts/types";
+import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile, PowerBoostKey } from "../../contracts/types";
 
 export type ScoreActionResult = { ok: true; state: MatchState } | { ok: false; error: string };
 export type EventActionResult = { ok: true; state: MatchState; eventId: string } | { ok: false; error: string };
@@ -94,11 +95,25 @@ export async function recordEventAction(kind: Exclude<EventKind, "goal">, side: 
   }
 }
 
-export async function attributePlayerAction(eventId: string, playerId: string): Promise<{ ok: boolean }> {
+// Devolve o MatchState fresco (não só {ok:true}) igual a todo o resto das ações de partida — o
+// nome do jogador só aparece em state.goals/state.cards depois de recalculado (ver
+// runtime/match-store.ts loadLiveMarkers), então sem isso a pílula na parte de baixo do painel
+// (console.tsx) ficaria em "sem jogador" até a próxima escrita qualquer da partida.
+export async function attributePlayerAction(eventId: string, playerId: string): Promise<ScoreActionResult> {
   const denied = await requireGate();
-  if (denied) return { ok: false };
+  if (denied) return denied;
   await attributePlayer(eventId, playerId);
-  return { ok: true };
+  return { ok: true, state: await getMatchState() };
+}
+
+// "Tirei o gol/cartão por engano" (mesma UX do power play) — deleteEvent já recalcula o placar
+// (runtime/match-events.ts recalcAndSync), então o MatchState devolvido já vem com score/goals/
+// cards atualizados.
+export async function deleteEventAction(eventId: string): Promise<ScoreActionResult> {
+  const denied = await requireGate();
+  if (denied) return denied;
+  await deleteEvent(eventId);
+  return { ok: true, state: await getMatchState() };
 }
 
 export async function listRosterAction(teamId: string): Promise<PlayerProfile[]> {
@@ -107,30 +122,23 @@ export async function listRosterAction(teamId: string): Promise<PlayerProfile[]>
   return listPlayersByTeam(teamId);
 }
 
-export type BoostActionResult = { ok: true; boost: PowerBoostUse } | { ok: false; error: string };
-
-export async function recordBoostAction(side: MatchSide, boostKey: PowerBoostKey): Promise<BoostActionResult> {
+export async function recordBoostAction(side: MatchSide, boostKey: PowerBoostKey): Promise<ScoreActionResult> {
   const denied = await requireGate();
   if (denied) return denied;
   try {
-    return { ok: true, boost: await recordBoostForCurrentMatch(side, boostKey) };
+    await recordBoostForCurrentMatch(side, boostKey);
+    return { ok: true, state: await getMatchState() };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
   }
 }
 
-export async function listBoostsAction(matchId: string): Promise<PowerBoostUse[]> {
-  const denied = await requireGate();
-  if (denied) return [];
-  return listBoostsByMatch(matchId);
-}
-
 // "Coloquei por engano" — tira um boost já usado, sem precisar abrir a súmula depois.
-export async function deleteBoostAction(boostId: string): Promise<{ ok: boolean; error?: string }> {
+export async function deleteBoostAction(boostId: string): Promise<ScoreActionResult> {
   const denied = await requireGate();
-  if (denied) return { ok: false, error: denied.error };
+  if (denied) return denied;
   await deleteBoostUse(boostId);
-  return { ok: true };
+  return { ok: true, state: await getMatchState() };
 }
 
 export async function setLabelAction(label: string): Promise<ScoreActionResult> {

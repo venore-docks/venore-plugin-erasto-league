@@ -71,7 +71,7 @@ export function DeleteMatchControl({ matchId, matchLabel }: { matchId: string; m
             {impact && !blocked && (
               <>
                 Isso apaga {impact.eventCount} evento{impact.eventCount === 1 ? "" : "s"} (gol/cartão/falta)
-                {impact.boostCount > 0 ? ` e ${impact.boostCount} uso${impact.boostCount === 1 ? "" : "s"} de power boost` : ""} desta
+                {impact.boostCount > 0 ? ` e ${impact.boostCount} uso${impact.boostCount === 1 ? "" : "s"} de power play` : ""} desta
                 partida, some da súmula/classificação/artilharia, e não pode ser desfeito.
                 {impact.fixtureCount > 0
                   ? ` O confronto vinculado na tabela de jogos volta a ficar sem resultado (não é excluído).`

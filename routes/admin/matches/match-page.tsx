@@ -246,9 +246,9 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-foreground">Power boosts</h2>
+        <h2 className="text-sm font-semibold text-foreground">Power play</h2>
         {boosts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhum boost usado nesta partida.</p>
+          <p className="text-sm text-muted-foreground">Nenhum power play usado nesta partida.</p>
         ) : (
           <div className="space-y-2">
             {boosts.map((boost) => {
@@ -275,7 +275,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
 
         {powerBoosts.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Nenhum power boost cadastrado ainda —{" "}
+            Nenhum power play cadastrado ainda —{" "}
             <a href="/admin/erasto-league/power-boosts" className="underline">
               cadastre o catálogo
             </a>{" "}

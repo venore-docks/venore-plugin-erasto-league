@@ -85,7 +85,7 @@ export default async function ErastoLeagueAdminPage() {
           </Button>
           <Button asChild variant="outline" size="sm">
             <Link href="/admin/erasto-league/power-boosts">
-              <Zap className="size-4" /> Power boosts
+              <Zap className="size-4" /> Power play
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm">

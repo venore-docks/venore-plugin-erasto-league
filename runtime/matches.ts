@@ -148,19 +148,12 @@ export async function getMatchDeleteImpact(id: string): Promise<MatchDeleteImpac
 
 export type DeleteMatchResult = { ok: true } | { ok: false; error: string };
 
-// Exclusão de súmula — sem cascade no schema (matches.id é referenciado por match_events/
-// match_boosts sem onDelete, e por fixtures.match_id/match_state.current_match_id, nullable), então
-// quem apaga daqui precisa desfazer os vínculos na ordem certa antes do delete em si. Bloqueada só
-// pra partida em andamento: currentMatchId só aponta pra uma partida "in_progress" (startMatch a
-// escreve, endCurrentMatch em runtime/match-actions.ts a limpa ao encerrar/cancelar), então uma
-// partida "finished"/"cancelled" nunca é a match_state atual — não há nada pra desfazer ali, só
-// direciona o admin pro controle ao vivo (Encerrar/Cancelar) antes de poder excluir.
-export async function deleteMatch(id: string): Promise<DeleteMatchResult> {
-  const impact = await getMatchDeleteImpact(id);
-  if (impact.isLive) {
-    return { ok: false, error: "Esta partida está em andamento — encerre ou cancele no controle ao vivo antes de excluir." };
-  }
-
+// Desfaz os vínculos (matches.id é referenciado por match_events/match_boosts sem onDelete, e por
+// fixtures.match_id, nullable) e apaga a partida — sem o guard de "em andamento" de deleteMatch:
+// quem chama aqui já garantiu isso (deleteMatch abaixo checa antes de chamar; runtime/
+// match-actions.ts cancelMatch já tirou o match_state.current_match_id ANTES de chamar, senão a FK
+// dele bloquearia o delete). Exportada só pra esse segundo chamador, não é API pública do plugin.
+export async function hardDeleteMatchCascade(id: string): Promise<void> {
   const linkedFixtures = await db.select({ id: fixturesTable.id }).from(fixturesTable).where(eq(fixturesTable.matchId, id));
   for (const fixture of linkedFixtures) {
     await linkFixtureToMatch(fixture.id, null);
@@ -169,6 +162,19 @@ export async function deleteMatch(id: string): Promise<DeleteMatchResult> {
   await db.delete(matchBoostsTable).where(eq(matchBoostsTable.matchId, id));
   await db.delete(matchEventsTable).where(eq(matchEventsTable.matchId, id));
   await db.delete(matchesTable).where(eq(matchesTable.id, id));
+}
 
+// Exclusão de súmula (tela admin) — bloqueada só pra partida em andamento: currentMatchId só
+// aponta pra uma partida "in_progress" (startMatch a escreve, endCurrentMatch em
+// runtime/match-actions.ts a limpa ao encerrar/cancelar), então uma partida "finished" nunca é a
+// match_state atual — não há nada pra desfazer ali, só direciona o admin pro controle ao vivo
+// (Encerrar/Cancelar) antes de poder excluir.
+export async function deleteMatch(id: string): Promise<DeleteMatchResult> {
+  const impact = await getMatchDeleteImpact(id);
+  if (impact.isLive) {
+    return { ok: false, error: "Esta partida está em andamento — encerre ou cancele no controle ao vivo antes de excluir." };
+  }
+
+  await hardDeleteMatchCascade(id);
   return { ok: true };
 }

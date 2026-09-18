@@ -32,10 +32,11 @@ function PowerBoostRow({ boost }: { boost: PowerBoost }) {
   );
 }
 
-// Catálogo de power boosts (/admin/erasto-league/power-boosts) — antes mockado em
-// shared/power-boosts.ts, agora uma tabela editável de verdade: acrescentar, editar (rótulo/emoji/
-// descrição — a key interna segue o rótulo sozinha, ver runtime/power-boosts.ts) e remover.
-// Consumido pelo controle ao vivo (routes/control) e pela súmula (routes/admin/matches).
+// Catálogo de power play (/admin/erasto-league/power-boosts — rota/tabela/tipos internos mantêm o
+// nome antigo "power boost", só o rótulo visível mudou) — antes mockado em shared/power-boosts.ts,
+// agora uma tabela editável de verdade: acrescentar, editar (rótulo/emoji/descrição — a key interna
+// segue o rótulo sozinha, ver runtime/power-boosts.ts) e remover. Consumido pelo controle ao vivo
+// (routes/control) e pela súmula (routes/admin/matches).
 export default async function PowerBoostsAdminPage() {
   const gate = await getPluginAdminPageData("erasto-league");
   if (!gate.granted) {
@@ -47,14 +48,14 @@ export default async function PowerBoostsAdminPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        title="Power boosts"
+        title="Power play"
         description="Catálogo de reforços especiais que os times podem usar durante a partida, disponíveis no controle ao vivo e na súmula."
       />
 
       {powerBoosts.length === 0 ? (
         <EmptyState
           icon={<Zap className="size-8" strokeWidth={1.5} />}
-          title="Nenhum power boost cadastrado"
+          title="Nenhum power play cadastrado"
           description="Cadastre o primeiro boost pra ele aparecer no controle ao vivo."
         />
       ) : (
@@ -66,7 +67,7 @@ export default async function PowerBoostsAdminPage() {
       )}
 
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-foreground">Novo power boost</h2>
+        <h2 className="text-sm font-semibold text-foreground">Novo power play</h2>
         <form action={addPowerBoostFormAction} className="flex flex-wrap items-center gap-2 rounded-panel border border-border bg-card p-3">
           <input name="emoji" placeholder="🔥" maxLength={8} className={`${FIELD} w-14 text-center`} />
           <input name="label" placeholder="Nome do boost" required className={`${FIELD} w-40 flex-1 min-w-32`} />
