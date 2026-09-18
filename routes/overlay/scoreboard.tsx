@@ -237,21 +237,20 @@ function MarkerBadge({ icon, label, tone }: { icon: string; label: string | null
 // `hideAfterMs` — cartão/power play ficam até serem tirados no controle, ver
 // shared/settings.ts goalFlashSeconds) — sempre o gol mais recente (goals.at(-1)).
 //
-// Bug corrigido nesta versão: loadLiveMarkers (runtime/match-store.ts) devolve um array NOVO a
-// cada snapshot do SSE, mesmo sem gol novo (qualquer outro evento da partida já republica o
-// MatchState inteiro) — então este efeito reexecuta o tempo todo, não só quando um gol de fato
-// acontece. A versão antiga só (re)criava o timer de esconder quando `last.id` mudava e, se não
-// mudou, retornava sem devolver cleanup — mas o REACT MESMO ASSIM desmonta o cleanup do run
-// ANTERIOR antes de rodar o novo efeito, cancelando o timer de esconder sem recriar outro: um
-// único evento qualquer depois do gol (cartão, boost, outro gol) travava o flash pra sempre na
-// tela. Agora o timer só é (re)criado quando o id do gol muda de verdade (useRef guarda o handle
-// fora do ciclo de efeito), e o conteúdo mostrado (`setVisible(last)`) é sempre resincronizado —
-// é por isso que o nome do jogador, atribuído alguns segundos DEPOIS do gol (folha "quem fez?" do
-// controle), agora aparece assim que a atribuição chega, em vez de ficar congelado em "sem jogador".
+// loadLiveMarkers (runtime/match-store.ts) devolve um array NOVO em TODO snapshot do SSE, mesmo
+// sem gol novo (qualquer outro evento da partida — cartão, power play, atribuição de jogador —
+// já republica o MatchState inteiro), então este efeito reexecuta bem mais vezes do que "só
+// quando um gol acontece". `expiredRef` é o que impede uma dessas reexecuções de ressuscitar um
+// flash que já tinha sido escondido pelo timer: sem ele, a resincronização de conteúdo abaixo
+// (necessária pro nome do jogador aparecer quando a atribuição chega alguns segundos DEPOIS do
+// gol) chamava `setVisible(last)` de novo pro MESMO gol mesmo depois do timer já ter disparado —
+// e como o id não tinha mudado, nenhum timer novo era agendado pra escondê-lo de novo, travando o
+// flash de volta na tela pra sempre no primeiro cartão/power play seguinte.
 function useGoalFlash(goals: GoalMarker[], hideAfterMs: number): GoalMarker | null {
   const [visible, setVisible] = useState<GoalMarker | null>(null);
   const lastIdRef = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const expiredRef = useRef(false);
 
   const last = goals.length > 0 ? goals[goals.length - 1] : null;
 
@@ -260,25 +259,38 @@ function useGoalFlash(goals: GoalMarker[], hideAfterMs: number): GoalMarker | nu
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = null;
       lastIdRef.current = null;
+      expiredRef.current = false;
       setVisible(null);
       return;
     }
 
     if (last.id !== lastIdRef.current) {
+      // Gol novo (de verdade) — reinicia tudo, inclusive o timer.
       lastIdRef.current = last.id;
+      expiredRef.current = false;
       if (timerRef.current) clearTimeout(timerRef.current);
+
       const remaining = hideAfterMs - (Date.now() - last.occurredAt);
       if (remaining <= 0) {
         timerRef.current = null;
+        expiredRef.current = true;
         setVisible(null);
         return;
       }
-      timerRef.current = setTimeout(() => setVisible(null), remaining);
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        expiredRef.current = true;
+        setVisible(null);
+      }, remaining);
     }
 
-    // Mesmo gol de antes (ou acabou de aparecer) — sempre resincroniza o conteúdo (nome do
-    // jogador pode ter chegado só agora, via atribuição), sem tocar no timer já agendado acima.
-    setVisible(last);
+    // Mesmo gol de antes — só resincroniza o conteúdo (nome do jogador pode ter chegado só agora,
+    // via atribuição) enquanto ele ainda estiver dentro da janela de exibição. Depois de expirado,
+    // este mesmo `last` vai continuar chegando aqui a cada snapshot (nenhum gol novo aconteceu),
+    // mas não deve mais reaparecer.
+    if (!expiredRef.current) {
+      setVisible(last);
+    }
   }, [last, hideAfterMs]);
 
   // Desmonte real do overlay (não um re-render) — o timer não tem mais pra onde publicar.
