@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { deleteEvent, recordEvent, updateEvent } from "../../../runtime/match-events";
 import { deleteBoostUse, recordBoostUse } from "../../../runtime/match-boosts";
-import { createManualMatch, setMatchMvp } from "../../../runtime/matches";
+import { createManualMatch, deleteMatch, getMatchDeleteImpact, setMatchMvp, type MatchDeleteImpact } from "../../../runtime/matches";
 import type { EventKind, MatchSide, PowerBoostKey } from "../../../contracts/types";
 
 // Súmula (Fase 3): corrige/completa ao vivo o que o controle deixou passar — mesmos mutators de
@@ -103,4 +103,30 @@ export async function setMatchMvpFormAction(formData: FormData): Promise<void> {
   const note = String(formData.get("mvpNote") ?? "").trim() || null;
   await setMatchMvp(matchId, playerId, note);
   revalidatePath(`/admin/erasto-league/matches/${matchId}`);
+}
+
+// Excluir súmula (Fase 3) — mesma UX de confirmação com impacto de routes/admin/teams/actions.ts
+// (DeleteTeamControl): getMatchDeleteImpactAction alimenta o diálogo, deleteMatchAction só executa
+// depois de confirmado. Ver runtime/matches.ts deleteMatch pro porquê da ordem de desvínculo.
+export async function getMatchDeleteImpactAction(id: string): Promise<{ ok: true; data: MatchDeleteImpact } | { ok: false; error: string }> {
+  const gate = await getPluginAdminPageData("erasto-league");
+  if (!gate.granted) {
+    return { ok: false, error: "Você não tem permissão para configurar o Erasto League." };
+  }
+  return { ok: true, data: await getMatchDeleteImpact(id) };
+}
+
+export async function deleteMatchAction(id: string): Promise<{ ok: boolean; error?: string }> {
+  const gate = await getPluginAdminPageData("erasto-league");
+  if (!gate.granted) {
+    return { ok: false, error: "Você não tem permissão para configurar o Erasto League." };
+  }
+
+  const result = await deleteMatch(id);
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+
+  revalidatePath("/admin/erasto-league/matches");
+  redirect("/admin/erasto-league/matches");
 }

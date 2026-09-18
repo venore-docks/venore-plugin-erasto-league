@@ -1,7 +1,8 @@
 import { and, desc, eq, or } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
-import { matches as matchesTable } from "../database/schema";
+import { fixtures as fixturesTable, matchBoosts as matchBoostsTable, matchEvents as matchEventsTable, matches as matchesTable } from "../database/schema";
 import { recordEvent } from "./match-events";
+import { linkFixtureToMatch } from "./fixtures";
 import type { MatchSummary } from "../contracts/types";
 
 type MatchRow = typeof matchesTable.$inferSelect;
@@ -126,4 +127,48 @@ export async function listRecentMatchesForTeam(teamId: string, limit = 5): Promi
     .orderBy(desc(matchesTable.finishedAt))
     .limit(limit);
   return rows.map(rowToSummary);
+}
+
+export type MatchDeleteImpact = { eventCount: number; boostCount: number; fixtureCount: number; isLive: boolean };
+
+export async function getMatchDeleteImpact(id: string): Promise<MatchDeleteImpact> {
+  const [match, eventRows, boostRows, fixtureRows] = await Promise.all([
+    getMatch(id),
+    db.select({ id: matchEventsTable.id }).from(matchEventsTable).where(eq(matchEventsTable.matchId, id)),
+    db.select({ id: matchBoostsTable.id }).from(matchBoostsTable).where(eq(matchBoostsTable.matchId, id)),
+    db.select({ id: fixturesTable.id }).from(fixturesTable).where(eq(fixturesTable.matchId, id)),
+  ]);
+  return {
+    eventCount: eventRows.length,
+    boostCount: boostRows.length,
+    fixtureCount: fixtureRows.length,
+    isLive: match?.status === "in_progress",
+  };
+}
+
+export type DeleteMatchResult = { ok: true } | { ok: false; error: string };
+
+// Exclusão de súmula — sem cascade no schema (matches.id é referenciado por match_events/
+// match_boosts sem onDelete, e por fixtures.match_id/match_state.current_match_id, nullable), então
+// quem apaga daqui precisa desfazer os vínculos na ordem certa antes do delete em si. Bloqueada só
+// pra partida em andamento: currentMatchId só aponta pra uma partida "in_progress" (startMatch a
+// escreve, endCurrentMatch em runtime/match-actions.ts a limpa ao encerrar/cancelar), então uma
+// partida "finished"/"cancelled" nunca é a match_state atual — não há nada pra desfazer ali, só
+// direciona o admin pro controle ao vivo (Encerrar/Cancelar) antes de poder excluir.
+export async function deleteMatch(id: string): Promise<DeleteMatchResult> {
+  const impact = await getMatchDeleteImpact(id);
+  if (impact.isLive) {
+    return { ok: false, error: "Esta partida está em andamento — encerre ou cancele no controle ao vivo antes de excluir." };
+  }
+
+  const linkedFixtures = await db.select({ id: fixturesTable.id }).from(fixturesTable).where(eq(fixturesTable.matchId, id));
+  for (const fixture of linkedFixtures) {
+    await linkFixtureToMatch(fixture.id, null);
+  }
+
+  await db.delete(matchBoostsTable).where(eq(matchBoostsTable.matchId, id));
+  await db.delete(matchEventsTable).where(eq(matchEventsTable.matchId, id));
+  await db.delete(matchesTable).where(eq(matchesTable.id, id));
+
+  return { ok: true };
 }

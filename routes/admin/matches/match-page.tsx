@@ -18,6 +18,7 @@ import {
   updateEventFormAction,
 } from "./actions";
 import { CreateMatchForm } from "./create-match-form";
+import { DeleteMatchControl } from "./delete-match-control";
 import type { EventKind, MatchEvent, PlayerProfile, TeamProfile } from "../../../contracts/types";
 
 const EVENT_LABEL: Record<EventKind, string> = {
@@ -153,14 +154,16 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
     listPowerBoosts(),
   ]);
   const playerById = new Map([...homeRoster, ...awayRoster].map((player) => [player.id, player]));
+  const matchLabel = `${homeTeam?.name ?? "—"} ${formatScore(match.homeScore)} × ${formatScore(match.awayScore)} ${awayTeam?.name ?? "—"}`;
 
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        title={`${homeTeam?.name ?? "—"} ${formatScore(match.homeScore)} × ${formatScore(match.awayScore)} ${awayTeam?.name ?? "—"}`}
+        title={matchLabel}
         description={
           <Badge variant={MATCH_STATUS_BADGE_VARIANT[match.status]}>{MATCH_STATUS_LABEL[match.status]}</Badge>
         }
+        actions={<DeleteMatchControl matchId={id} matchLabel={matchLabel} />}
       />
 
       <section className="space-y-3">
