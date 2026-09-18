@@ -19,6 +19,7 @@ export default async function OverlayPage() {
       initialState={initialState}
       accentColor={config.accentColor}
       logoUrl={config.logoUrl}
+      goalFlashMs={config.goalFlashMs}
     />
   );
 }

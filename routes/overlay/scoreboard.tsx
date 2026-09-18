@@ -51,9 +51,10 @@ const CSS = `
   }
 
   /* Marcações "acima do nome do time" — cartão/power play ficam até serem tirados (mesmo esquema
-     de remoção do controle, ver routes/control/console.tsx), o gol só passa por aqui pro flash de
-     10s (el-goal-flash-row) e desaparece sozinho. column-reverse: o primeiro filho no DOM
-     (el-markers-row) fica mais perto da barra, o flash de gol (quando existe) empilha por cima. */
+     de remoção do controle, ver routes/control/console.tsx), o gol só passa por aqui pro flash
+     configurável (el-goal-flash-row, shared/settings.ts goalFlashSeconds) e desaparece sozinho.
+     column-reverse: o primeiro filho no DOM (el-markers-row) fica mais perto da barra, o flash de
+     gol (quando existe) empilha por cima. */
   .el-overhead {
     position: absolute; left: 0; right: 0; bottom: 100%; padding-bottom: 10px;
     display: flex; flex-direction: column-reverse; gap: 10px;
@@ -83,7 +84,7 @@ const CSS = `
     color: #fff; font-size: 22px; font-weight: 900; letter-spacing: 0.3px; white-space: nowrap;
     animation: el-goal-rise 320ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
   }
-  .el-goal-flash-ball { font-size: 24px; }
+  .el-goal-flash-ball { width: 24px; height: 24px; flex: none; }
   .el-goal-flash-tag { color: var(--accent); }
   @keyframes el-goal-rise { from { opacity: 0; transform: translateY(14px) scale(0.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
@@ -202,6 +203,27 @@ const TEASER_CSS = `
 const CARD_ICON: Record<CardMarker["kind"], string> = { yellow_card: "🟨", red_card: "🟥" };
 const CARD_TONE: Record<CardMarker["kind"], "yellow" | "red"> = { yellow_card: "yellow", red_card: "red" };
 
+// SVG inline (mesmo desenho de blocks/scorer-row.tsx BallIcon), não o emoji ⚽ — o browser embutido
+// do OBS (CEF) muitas vezes não tem a fonte de emoji colorida completa e cai num glifo genérico de
+// "globo" pra qualquer emoji sem glifo próprio (foi exatamente esse o bug reportado: bola virando
+// 🌐 na captura do OBS). Vetor com currentColor não depende de fonte nenhuma — sempre a mesma bola.
+function BallIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M12 7.6l3.3 2.4-1.25 3.9H9.95L8.7 10l3.3-2.4zM12 7.6V4.3M15.3 10l3.1-1.7M14.05 14l2.1 3.05M9.95 14l-2.1 3.05M8.7 10l-3.1-1.7"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        fill="currentColor"
+        fillOpacity="0.18"
+      />
+    </svg>
+  );
+}
+
 function MarkerBadge({ icon, label, tone }: { icon: string; label: string | null; tone?: "yellow" | "red" }) {
   return (
     <span className={`el-marker-badge ${tone ?? ""}`}>
@@ -211,26 +233,60 @@ function MarkerBadge({ icon, label, tone }: { icon: string; label: string | null
   );
 }
 
-// Flash de "quem fez o gol" por 10s (pedido explícito: só o gol some sozinho, cartão/power play
-// ficam até serem tirados no controle) — sempre o gol mais recente (goals.at(-1)), indexado por id
-// pra não reabrir o flash à toa quando o array chega de novo com o MESMO conteúdo (todo snapshot
-// do SSE é um array novo, mesmo sem mudança real). occurredAt (epoch do servidor, quando o evento
-// foi gravado) decide quanto tempo ainda falta mostrar — cobre o caso de o overlay recarregar
-// pouco depois do gol em vez de sempre reabrir os 10s inteiros.
-function useGoalFlash(goals: GoalMarker[]): GoalMarker | null {
+// Flash de "quem fez o gol" (pedido explícito: só o gol some sozinho, depois de
+// `hideAfterMs` — cartão/power play ficam até serem tirados no controle, ver
+// shared/settings.ts goalFlashSeconds) — sempre o gol mais recente (goals.at(-1)).
+//
+// Bug corrigido nesta versão: loadLiveMarkers (runtime/match-store.ts) devolve um array NOVO a
+// cada snapshot do SSE, mesmo sem gol novo (qualquer outro evento da partida já republica o
+// MatchState inteiro) — então este efeito reexecuta o tempo todo, não só quando um gol de fato
+// acontece. A versão antiga só (re)criava o timer de esconder quando `last.id` mudava e, se não
+// mudou, retornava sem devolver cleanup — mas o REACT MESMO ASSIM desmonta o cleanup do run
+// ANTERIOR antes de rodar o novo efeito, cancelando o timer de esconder sem recriar outro: um
+// único evento qualquer depois do gol (cartão, boost, outro gol) travava o flash pra sempre na
+// tela. Agora o timer só é (re)criado quando o id do gol muda de verdade (useRef guarda o handle
+// fora do ciclo de efeito), e o conteúdo mostrado (`setVisible(last)`) é sempre resincronizado —
+// é por isso que o nome do jogador, atribuído alguns segundos DEPOIS do gol (folha "quem fez?" do
+// controle), agora aparece assim que a atribuição chega, em vez de ficar congelado em "sem jogador".
+function useGoalFlash(goals: GoalMarker[], hideAfterMs: number): GoalMarker | null {
   const [visible, setVisible] = useState<GoalMarker | null>(null);
   const lastIdRef = useRef<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const last = goals.length > 0 ? goals[goals.length - 1] : null;
 
   useEffect(() => {
-    const last = goals.length > 0 ? goals[goals.length - 1] : null;
-    if (!last || last.id === lastIdRef.current) return;
-    lastIdRef.current = last.id;
-    const remaining = 10_000 - (Date.now() - last.occurredAt);
-    if (remaining <= 0) return;
+    if (!last) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = null;
+      lastIdRef.current = null;
+      setVisible(null);
+      return;
+    }
+
+    if (last.id !== lastIdRef.current) {
+      lastIdRef.current = last.id;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      const remaining = hideAfterMs - (Date.now() - last.occurredAt);
+      if (remaining <= 0) {
+        timerRef.current = null;
+        setVisible(null);
+        return;
+      }
+      timerRef.current = setTimeout(() => setVisible(null), remaining);
+    }
+
+    // Mesmo gol de antes (ou acabou de aparecer) — sempre resincroniza o conteúdo (nome do
+    // jogador pode ter chegado só agora, via atribuição), sem tocar no timer já agendado acima.
     setVisible(last);
-    const timer = setTimeout(() => setVisible(null), remaining);
-    return () => clearTimeout(timer);
-  }, [goals]);
+  }, [last, hideAfterMs]);
+
+  // Desmonte real do overlay (não um re-render) — o timer não tem mais pra onde publicar.
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   return visible;
 }
@@ -239,17 +295,19 @@ export function Scoreboard({
   initialState,
   accentColor,
   logoUrl,
+  goalFlashMs,
 }: {
   initialState: MatchState;
   accentColor: string;
   logoUrl: string;
+  goalFlashMs: number;
 }) {
   const { state, live } = useMatchState(initialState);
   const now = useTick(200);
   const [logoOk, setLogoOk] = useState(Boolean(logoUrl));
   // Hook incondicional (regra do React) mesmo a partida estando ociosa — state.goals é [] nesse
   // caso (EMPTY_MARKERS, ver runtime/match-store.ts) e o flash simplesmente nunca aparece.
-  const goalFlash = useGoalFlash(state.goals);
+  const goalFlash = useGoalFlash(state.goals, goalFlashMs);
 
   // Ocioso (nenhuma partida em andamento, ver runtime/match-actions.ts startMatch/finishMatch) —
   // some por completo (sem placar "fantasma" 0×0 entre partidas), a menos que o controle tenha
@@ -308,9 +366,7 @@ export function Scoreboard({
               {goalFlash && (
                 <div className="el-goal-flash-row">
                   <div className="el-goal-flash">
-                    <span className="el-goal-flash-ball" aria-hidden="true">
-                      ⚽
-                    </span>
+                    <BallIcon className="el-goal-flash-ball" />
                     <span className="el-goal-flash-tag">GOL!</span>
                     {(goalFlash.side === "home" ? state.home.name : state.away.name)}
                     {goalFlash.playerName ? ` — ${goalFlash.playerName}` : ""}

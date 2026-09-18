@@ -2,6 +2,7 @@ import { getSetting, type GetSettingResult } from "@venore/plugin-sdk/settings";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
 import {
   ERASTO_LEAGUE_SETTINGS,
+  clampGoalFlashSeconds,
   clampPeriodCount,
   clampPeriodMinutes,
   sanitizeAccentColor,
@@ -33,12 +34,13 @@ function asNumber(value: unknown, fallback: number): number {
 // admin consomem. Uma ida ao contexts/settings por chave, em paralelo.
 export async function resolveErastoLeagueConfig(): Promise<ErastoLeagueConfig> {
   const S = ERASTO_LEAGUE_SETTINGS;
-  const [periodMin, periodCount, accent, logoMedia, youtubeChannelId] = await Promise.all([
+  const [periodMin, periodCount, accent, logoMedia, youtubeChannelId, goalFlashSeconds] = await Promise.all([
     getSetting({ key: S.periodMinutes.key }),
     getSetting({ key: S.periodCount.key }),
     getSetting({ key: S.accentColor.key }),
     getSetting({ key: S.logoMediaId.key }),
     getSetting({ key: S.youtubeChannelId.key }),
+    getSetting({ key: S.goalFlashSeconds.key }),
   ]);
 
   const read = (r: GetSettingResult): unknown => (r.success && r.data ? r.data.value : undefined);
@@ -51,5 +53,6 @@ export async function resolveErastoLeagueConfig(): Promise<ErastoLeagueConfig> {
     logoMediaId,
     logoUrl: await resolveMediaUrl(logoMediaId),
     youtubeChannelId: asString(read(youtubeChannelId), S.youtubeChannelId.defaultValue).trim(),
+    goalFlashMs: clampGoalFlashSeconds(asNumber(read(goalFlashSeconds), S.goalFlashSeconds.defaultValue)) * 1_000,
   };
 }

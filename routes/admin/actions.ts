@@ -5,6 +5,7 @@ import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { setSetting } from "@venore/plugin-sdk/settings";
 import {
   ERASTO_LEAGUE_SETTINGS,
+  clampGoalFlashSeconds,
   clampPeriodCount,
   clampPeriodMinutes,
   sanitizeAccentColor,
@@ -32,6 +33,7 @@ export async function saveErastoLeagueSettingsAction(
   const periodMinutes = clampPeriodMinutes(Number(str(formData, "periodMinutes")));
   const periodCount = clampPeriodCount(Number(str(formData, "periodCount")));
   const accentColor = sanitizeAccentColor(str(formData, "accentColor"));
+  const goalFlashSeconds = clampGoalFlashSeconds(Number(str(formData, "goalFlashSeconds")));
 
   const writes = [
     setSetting({ key: S.periodMinutes.key, value: periodMinutes }),
@@ -39,6 +41,7 @@ export async function saveErastoLeagueSettingsAction(
     setSetting({ key: S.accentColor.key, value: accentColor }),
     setSetting({ key: S.logoMediaId.key, value: str(formData, "logoMediaId") }),
     setSetting({ key: S.youtubeChannelId.key, value: str(formData, "youtubeChannelId") }),
+    setSetting({ key: S.goalFlashSeconds.key, value: goalFlashSeconds }),
   ];
 
   const results = await Promise.all(writes);

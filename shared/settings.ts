@@ -37,6 +37,14 @@ export const ERASTO_LEAGUE_SETTINGS = {
     defaultValue: "",
     label: "Id do canal do YouTube da transmissão",
   },
+  // Quanto tempo o "flash" de gol (overlay, ⚽ GOL! + jogador) fica na tela antes de desaparecer
+  // sozinho — ver routes/overlay/scoreboard.tsx useGoalFlash. Cartão/power play não usam isso, só
+  // desaparecem quando tirados no controle.
+  goalFlashSeconds: {
+    key: "erasto-league.goalFlashSeconds",
+    defaultValue: 7,
+    label: "Duração do flash de gol no overlay (segundos)",
+  },
 } as const;
 
 export type ErastoLeagueSettingField = keyof typeof ERASTO_LEAGUE_SETTINGS;
@@ -52,6 +60,8 @@ export type ErastoLeagueConfig = {
   logoMediaId: string;
   logoUrl: string;
   youtubeChannelId: string;
+  // Em ms (mesmo padrão de periodMs vs. periodMinutes) — o overlay consome direto sem converter.
+  goalFlashMs: number;
 };
 
 const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
@@ -69,4 +79,9 @@ export function clampPeriodMinutes(raw: number): number {
 export function clampPeriodCount(raw: number): number {
   if (!Number.isFinite(raw)) return ERASTO_LEAGUE_SETTINGS.periodCount.defaultValue;
   return Math.min(4, Math.max(1, Math.round(raw)));
+}
+
+export function clampGoalFlashSeconds(raw: number): number {
+  if (!Number.isFinite(raw)) return ERASTO_LEAGUE_SETTINGS.goalFlashSeconds.defaultValue;
+  return Math.min(30, Math.max(2, Math.round(raw)));
 }

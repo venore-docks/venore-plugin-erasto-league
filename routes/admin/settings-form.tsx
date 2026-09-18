@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, type ReactNode } from "react";
-import { Clock3, Palette, Radio, Trophy, type LucideIcon } from "lucide-react";
+import { Clock3, Palette, Radio, Sparkles, Trophy, type LucideIcon } from "lucide-react";
 import { Button, Input, MediaPickerField, useActionToast, type PickableMedia } from "@venore/plugin-sdk/ui";
 import { saveErastoLeagueSettingsAction, type ErastoLeagueSettingsState } from "./actions";
 import { formatClock } from "../../shared/clock";
@@ -75,6 +75,13 @@ export function SettingsForm({ config, logoMedia }: { config: ErastoLeagueConfig
         <p className="text-xs text-muted-foreground">
           Tempo total configurado agora: <strong className="text-foreground">{formatClock(config.periodMs * config.periodCount)}</strong>
         </p>
+      </div>
+
+      <div className="space-y-3 rounded-panel border border-border/60 bg-background/40 p-4">
+        <SectionHeading icon={Sparkles} title="Overlay" />
+        <Field label="Duração do flash de gol (segundos)" hint="Quanto tempo o aviso 'GOL!' fica na tela do overlay antes de desaparecer sozinho. Cartão e power play não têm esse tempo — só saem quando tirados no controle.">
+          <Input name="goalFlashSeconds" type="number" min={2} max={30} defaultValue={config.goalFlashMs / 1000} />
+        </Field>
       </div>
 
       <div className="space-y-3 rounded-panel border border-border/60 bg-background/40 p-4">
