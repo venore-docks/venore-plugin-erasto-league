@@ -45,6 +45,7 @@ export async function ErastoLeagueTopScorersBlock({ block }: BlockRendererProps)
                 teamName={scorer.teamName}
                 teamSlug={scorer.teamSlug}
                 value={formatScore(scorer.goals)}
+                unit={scorer.goals === 1 ? "gol" : "gols"}
               />
             ))}
           </ol>

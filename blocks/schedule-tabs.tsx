@@ -20,37 +20,75 @@ function phaseTag(entry: ScheduleEntry): string {
   return FIXTURE_PHASE_LABEL[entry.phase];
 }
 
-function TeamCell({ name, crestUrl, slug, align }: { name: string; crestUrl: string | null; slug: string | null; align: "left" | "right" }) {
+// `won` só é true pra jogo já encerrado (ScheduleRow decide) — mesmo tratamento visual forte do
+// vencedor usado em blocks/match-result-card.tsx (fundo success-soft no chip + anel sólido no
+// brasão), pra manter os dois lugares consistentes e o destaque longe de sutil demais.
+function TeamCell({
+  name,
+  crestUrl,
+  slug,
+  align,
+  won,
+}: {
+  name: string;
+  crestUrl: string | null;
+  slug: string | null;
+  align: "left" | "right";
+  won: boolean;
+}) {
+  const className = `flex min-w-0 flex-1 items-center gap-2.5 rounded-full py-1 ${
+    align === "right" ? "flex-row-reverse pl-2 text-right" : "pr-2"
+  } ${won ? "bg-success-soft" : ""}`;
+
   const content = (
-    <div className={`flex min-w-0 flex-1 items-center gap-2.5 ${align === "right" ? "flex-row-reverse text-right" : ""}`}>
+    <>
       {crestUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={crestUrl} alt="" className="size-8 shrink-0 rounded-full border border-border/60 object-cover shadow-sm" />
+        <img
+          src={crestUrl}
+          alt=""
+          className={`size-8 shrink-0 rounded-full object-cover shadow-sm ${won ? "border-2 border-success" : "border border-border/60"}`}
+        />
       ) : (
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
+        <span
+          className={`flex size-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+            won ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"
+          }`}
+        >
           {name.slice(0, 2).toUpperCase()}
         </span>
       )}
-      <span className="truncate text-sm font-semibold text-foreground">{name}</span>
-    </div>
+      <span className={`truncate text-sm ${won ? "font-bold text-success" : "font-semibold text-foreground"}`}>{name}</span>
+    </>
   );
 
   return slug ? (
-    <Link href={`/erasto-league/teams/${slug}`} className="flex min-w-0 flex-1 hover:opacity-80">
+    <Link href={`/erasto-league/teams/${slug}`} className={`${className} transition hover:opacity-80`}>
       {content}
     </Link>
   ) : (
-    content
+    <div className={className}>{content}</div>
   );
 }
 
 // Pedido explícito: data e hora (não só a hora) evidentes no CENTRO do card — a rodada, que antes
 // era uma badge colorida chamando mais atenção que a própria data, vira texto neutro junto da fase.
+//
+// Jogo já encerrado ganha um fundo diferente do card (bg-muted, em vez do bg-card dos jogos ainda
+// não realizados) pra diferenciar "passado" de "futuro" olhando só a cor, além da tag "Encerrado" e
+// do vencedor destacado em TeamCell — pedido explícito depois do card de encerrado/agendado ficarem
+// visualmente idênticos.
 function ScheduleRow({ entry }: { entry: ScheduleEntry }) {
   const dateLabel = entry.scheduledDate ? formatDate(entry.scheduledDate) : "Data a definir";
+  const homeWon = entry.played && (entry.homeScore ?? 0) > (entry.awayScore ?? 0);
+  const awayWon = entry.played && (entry.awayScore ?? 0) > (entry.homeScore ?? 0);
 
   return (
-    <div className="rounded-panel border border-border bg-card px-4 py-3 shadow-sm transition hover:border-primary/40">
+    <div
+      className={`rounded-panel border px-4 py-3 shadow-sm transition hover:border-primary/40 ${
+        entry.played ? "border-border bg-muted/50" : "border-border bg-card"
+      }`}
+    >
       <div className="mb-2 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
         <span>{phaseTag(entry)}</span>
         {entry.roundLabel && (
@@ -59,9 +97,14 @@ function ScheduleRow({ entry }: { entry: ScheduleEntry }) {
             <span>{entry.roundLabel}</span>
           </>
         )}
+        {entry.played && (
+          <span className="ml-auto rounded-full bg-success-soft px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-success">
+            Encerrado
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-3">
-        <TeamCell name={entry.homeName} crestUrl={entry.homeCrestUrl} slug={entry.homeSlug} align="left" />
+        <TeamCell name={entry.homeName} crestUrl={entry.homeCrestUrl} slug={entry.homeSlug} align="left" won={homeWon} />
 
         <div className="flex shrink-0 flex-col items-center gap-1 px-1">
           {entry.played ? (
@@ -82,7 +125,7 @@ function ScheduleRow({ entry }: { entry: ScheduleEntry }) {
           )}
         </div>
 
-        <TeamCell name={entry.awayName} crestUrl={entry.awayCrestUrl} slug={entry.awaySlug} align="right" />
+        <TeamCell name={entry.awayName} crestUrl={entry.awayCrestUrl} slug={entry.awaySlug} align="right" won={awayWon} />
       </div>
     </div>
   );

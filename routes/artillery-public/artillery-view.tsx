@@ -27,6 +27,7 @@ export function ArtilleryView({ scorers }: { scorers: ScorerEntry[] }) {
               teamName={scorer.teamName}
               teamSlug={scorer.teamSlug}
               value={formatScore(scorer.goals)}
+              unit={scorer.goals === 1 ? "gol" : "gols"}
             />
           ))}
         </ol>

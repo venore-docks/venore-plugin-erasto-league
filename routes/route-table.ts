@@ -17,6 +17,7 @@ import TeamProfilePage from "./teams-public/page";
 import PlayerProfilePage from "./players-public/page";
 import ArtilleryPage from "./artillery-public/page";
 import MvpPage from "./mvp-public/page";
+import ResultsPage from "./results-public/page";
 import { GET as eventsGET } from "./api/events/route";
 import { GET as stateGET } from "./api/state/route";
 
@@ -30,7 +31,12 @@ import { GET as stateGET } from "./api/state/route";
 //                 (rota "public", casada pelo catch-all do CMS — não mais /ext/, que tirava a
 //                 shell). Lista de todos os times não é mais uma rota fixa: virou o bloco
 //                 "erasto-league.teams" pro CMS (blocks/teams-block.tsx), o admin decide em que
-//                 página ele aparece.
+//                 página ele aparece. Por isso /erasto-league/teams (sem slug) e /erasto-league
+//                 sozinho dão 404 hoje — não há nenhuma "page" de CMS cadastrada nesses slugs, e
+//                 não é bug de roteamento (confirmado em resolve-public-route.ts do venore-docks:
+//                 sem colisão de padrão, cai no catch-all normal do CMS). Cabe ao admin criar essas
+//                 páginas se quiser um índice fixo ali.
+// - resultados -> /erasto-league/resultados     ("Ver mais" do bloco erasto-league.recent-results)
 // - eventos    -> /api/erasto-league/events     (SSE)
 // - estado     -> /api/erasto-league/state      (snapshot JSON — fallback do SSE)
 export const erastoLeagueRouteTable: PluginRouteTable = {
@@ -52,6 +58,7 @@ export const erastoLeagueRouteTable: PluginRouteTable = {
     { pattern: "erasto-league/players/:slug", Component: asPluginPage(PlayerProfilePage) },
     { pattern: "erasto-league/artilharia", Component: asPluginPage(ArtilleryPage) },
     { pattern: "erasto-league/mvps", Component: asPluginPage(MvpPage) },
+    { pattern: "erasto-league/resultados", Component: asPluginPage(ResultsPage) },
   ],
   standalone: [
     { pattern: "erasto-league/overlay", Component: asPluginPage(OverlayPage) },

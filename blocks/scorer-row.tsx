@@ -13,10 +13,33 @@ function PlayerAvatarPlaceholder() {
   );
 }
 
+// Ícone de bola (inline SVG, não .png — sem asset bitmap no plugin hoje e um vetor acompanha
+// tema/dark-mode via currentColor de graça) — só na artilharia, pra diferenciar visualmente o
+// número de gols do número de MVPs (mesmo ScorerRow, ver blocks/mvp-scorers-block.tsx) e do placar
+// de últimos resultados (blocks/match-result-card.tsx), que os dois usavam a mesma pílula genérica.
+function BallIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M12 7.6l3.3 2.4-1.25 3.9H9.95L8.7 10l3.3-2.4zM12 7.6V4.3M15.3 10l3.1-1.7M14.05 14l2.1 3.05M9.95 14l-2.1 3.05M8.7 10l-3.1-1.7"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        fill="currentColor"
+        fillOpacity="0.18"
+      />
+    </svg>
+  );
+}
+
 // Linha de ranking compartilhada entre artilharia (blocks/top-scorers-block.tsx) e MVPs
 // (blocks/mvp-scorers-block.tsx) — tanto no bloco (top N) quanto na página cheia
 // (routes/artillery-public, routes/mvp-public). `value` é o número em destaque à direita (gols ou
-// contagem de MVPs); quem chama decide o que ele significa.
+// contagem de MVPs); quem chama decide o que ele significa. `unit` é opcional (só a artilharia
+// passa "gol"/"gols" já no plural certo — MVPs não tem uma palavra natural pro número e continua
+// sem, mostrando só o número na pílula simples de antes).
 export function ScorerRow({
   rank,
   name,
@@ -25,6 +48,7 @@ export function ScorerRow({
   teamName,
   teamSlug,
   value,
+  unit,
 }: {
   rank: number;
   name: string;
@@ -33,6 +57,7 @@ export function ScorerRow({
   teamName: string;
   teamSlug: string;
   value: string;
+  unit?: string;
 }) {
   return (
     <li
@@ -59,7 +84,17 @@ export function ScorerRow({
           {teamName}
         </Link>
       </div>
-      <span className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-lg font-bold tabular-nums text-primary">{value}</span>
+      {unit ? (
+        <span className="flex shrink-0 flex-col items-center gap-0.5 rounded-panel bg-primary/10 px-3 py-1.5">
+          <span className="flex items-center gap-1 text-lg font-bold tabular-nums text-primary">
+            <BallIcon className="size-4 shrink-0" />
+            {value}
+          </span>
+          <span className="text-[9px] font-bold uppercase tracking-wide text-primary/70">{unit}</span>
+        </span>
+      ) : (
+        <span className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-lg font-bold tabular-nums text-primary">{value}</span>
+      )}
     </li>
   );
 }
