@@ -1,14 +1,17 @@
 import { cache } from "react";
 import type { BreadcrumbSegmentDefinition } from "@venore/plugin-sdk";
 import { staticBreadcrumbSegment, dynamicBreadcrumbSegment } from "@venore/plugin-sdk";
-import { getTeamBySlug } from "./runtime/teams";
+import { getTeam, getTeamBySlug } from "./runtime/teams";
 import { getPlayerBySlug } from "./runtime/players";
+import { getMatch } from "./runtime/matches";
 
 // Mesmo padrão de venore-plugin-academy/breadcrumbs.ts: cache() por slug pra reuso real dentro do
 // request (embora hoje só o resolver de breadcrumb chame estas duas — as páginas públicas
 // (routes/teams-public, routes/players-public) ainda chamam os runtime/* crus).
 export const getCachedTeamBySlug = cache((slug: string) => getTeamBySlug(slug));
 export const getCachedPlayerBySlug = cache((slug: string) => getPlayerBySlug(slug));
+export const getCachedMatch = cache((id: string) => getMatch(id));
+export const getCachedTeam = cache((id: string) => getTeam(id));
 
 // "erasto-league" sozinho não tem página própria — é 100% CMS (o admin decide em que página o
 // bloco de times/resultados aparece, ver routes/route-table.ts). Por isso href: null aqui: rótulo
@@ -33,6 +36,17 @@ export const erastoLeagueBreadcrumbSegments: BreadcrumbSegmentDefinition[] = [
     resolveLabel: async (slug) => {
       const player = await getCachedPlayerBySlug(slug);
       return player ? player.name : null;
+    },
+  }),
+  dynamicBreadcrumbSegment({
+    key: "erasto-league.public.match",
+    segments: ["erasto-league", "jogos", ":id"],
+    paramName: "id",
+    resolveLabel: async (id) => {
+      const match = await getCachedMatch(id);
+      if (!match) return null;
+      const [homeTeam, awayTeam] = await Promise.all([getCachedTeam(match.homeTeamId), getCachedTeam(match.awayTeamId)]);
+      return `${homeTeam?.name ?? "—"} × ${awayTeam?.name ?? "—"}`;
     },
   }),
   staticBreadcrumbSegment({ key: "erasto-league.public.artilharia", segments: ["erasto-league", "artilharia"], label: "Artilharia" }),

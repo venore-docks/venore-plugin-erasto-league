@@ -1,0 +1,1 @@
+ALTER TABLE "erasto_league"."matches" ADD COLUMN "youtube_url" text;

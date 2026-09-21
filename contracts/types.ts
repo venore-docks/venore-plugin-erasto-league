@@ -157,6 +157,11 @@ export type MatchSummary = {
   // runtime/matches.ts::setMatchMvp.
   mvpPlayerId: string | null;
   mvpNote: string | null;
+  // Link da transmissão/gravação no YouTube deste jogo — colado manualmente na súmula (súmula
+  // sempre existe primeiro; todo jogo é transmitido, mas o link só existe depois de gravado/ao
+  // vivo). null = página pública do jogo mostra "transmissão não disponível". Ver
+  // runtime/matches.ts::setMatchYoutubeUrl e routes/match-public.
+  youtubeUrl: string | null;
 };
 
 // Cadastro de times/jogadores (Fase 1) — sempre mantido por um admin. crestUrl/photoUrl já vêm

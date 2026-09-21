@@ -22,6 +22,7 @@ export function rowToSummary(row: MatchRow): MatchSummary {
     finishedAt: row.finishedAt?.getTime() ?? null,
     mvpPlayerId: row.mvpPlayerId,
     mvpNote: row.mvpNote,
+    youtubeUrl: row.youtubeUrl,
   };
 }
 
@@ -34,6 +35,13 @@ export async function setMatchMvp(matchId: string, playerId: string | null, note
     .set({ mvpPlayerId: playerId, mvpNote: note })
     .where(eq(matchesTable.id, matchId))
     .returning();
+  return rowToSummary(row);
+}
+
+// Link da transmissão/gravação no YouTube (súmula, routes/admin/matches) — alimenta a página
+// pública do jogo (routes/match-public). null limpa (jogo ainda sem link colado).
+export async function setMatchYoutubeUrl(matchId: string, youtubeUrl: string | null): Promise<MatchSummary> {
+  const [row] = await db.update(matchesTable).set({ youtubeUrl }).where(eq(matchesTable.id, matchId)).returning();
   return rowToSummary(row);
 }
 

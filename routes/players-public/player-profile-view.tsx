@@ -106,7 +106,7 @@ export function PlayerProfileView({
               return (
                 <Link
                   key={match.id}
-                  href={opponent ? `/erasto-league/teams/${opponent.slug}` : "#"}
+                  href={`/erasto-league/jogos/${match.id}`}
                   className="flex items-center gap-3 rounded-panel border border-border bg-card px-4 py-3 ui-motion-base hover:border-ring"
                 >
                   <span className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${resultStyle.className}`}>

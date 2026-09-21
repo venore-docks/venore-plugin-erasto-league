@@ -42,7 +42,10 @@ function TeamChip({ team, align, won, lost }: { team: TeamProfile; align: "left"
 
 // Cartão de resultado — compartilhado entre o bloco de últimos resultados
 // (blocks/recent-results-block.tsx) e a lista completa (routes/results-public), mesmo padrão de
-// blocks/scorer-row.tsx pra artilharia/MVPs.
+// blocks/scorer-row.tsx pra artilharia/MVPs. O placar central linka pra página pública do jogo
+// (routes/match-public — súmula + transmissão no YouTube); os brasões/nomes continuam linkando
+// pro perfil de cada time, então o placar (não aninhado em nenhum dos dois Links) é quem carrega
+// esse segundo destino.
 export function MatchResultCard({
   match,
   home,
@@ -61,7 +64,10 @@ export function MatchResultCard({
     <div className="flex items-center gap-3 rounded-panel border border-border bg-card px-4 py-3 shadow-sm transition hover:border-primary/40">
       {home && <TeamChip team={home} align="left" won={homeWon} lost={awayWon} />}
 
-      <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
+      <Link
+        href={`/erasto-league/jogos/${match.id}`}
+        className="flex shrink-0 flex-col items-center gap-0.5 rounded-panel px-1 ui-motion-base hover:opacity-80"
+      >
         <span className="rounded-full bg-primary/10 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
           {formatScore(match.homeScore)}-{formatScore(match.awayScore)}
         </span>
@@ -73,7 +79,7 @@ export function MatchResultCard({
             ⭐ {mvpName}
           </span>
         )}
-      </div>
+      </Link>
 
       {away && <TeamChip team={away} align="right" won={awayWon} lost={homeWon} />}
     </div>

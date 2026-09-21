@@ -18,6 +18,7 @@ import PlayerProfilePage from "./players-public/page";
 import ArtilleryPage from "./artillery-public/page";
 import MvpPage from "./mvp-public/page";
 import ResultsPage from "./results-public/page";
+import MatchPublicPage from "./match-public/page";
 import { GET as eventsGET } from "./api/events/route";
 import { GET as stateGET } from "./api/state/route";
 
@@ -36,6 +37,9 @@ import { GET as stateGET } from "./api/state/route";
 //                 não é bug de roteamento (confirmado em resolve-public-route.ts do venore-docks:
 //                 sem colisão de padrão, cai no catch-all normal do CMS). Cabe ao admin criar essas
 //                 páginas se quiser um índice fixo ali.
+// - jogo       -> /erasto-league/jogos/:id      (súmula pública + transmissão, ver
+//                 routes/match-public) — linkada pelos widgets de resultado (últimos resultados,
+//                 agenda, fases de grupos) quando o confronto já tem partida vinculada.
 // - resultados -> /erasto-league/resultados     ("Ver mais" do bloco erasto-league.recent-results)
 // - eventos    -> /api/erasto-league/events     (SSE)
 // - estado     -> /api/erasto-league/state      (snapshot JSON — fallback do SSE)
@@ -56,6 +60,7 @@ export const erastoLeagueRouteTable: PluginRouteTable = {
   public: [
     { pattern: "erasto-league/teams/:slug", Component: asPluginPage(TeamProfilePage) },
     { pattern: "erasto-league/players/:slug", Component: asPluginPage(PlayerProfilePage) },
+    { pattern: "erasto-league/jogos/:id", Component: asPluginPage(MatchPublicPage) },
     { pattern: "erasto-league/artilharia", Component: asPluginPage(ArtilleryPage) },
     { pattern: "erasto-league/mvps", Component: asPluginPage(MvpPage) },
     { pattern: "erasto-league/resultados", Component: asPluginPage(ResultsPage) },

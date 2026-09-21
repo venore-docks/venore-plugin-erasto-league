@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ExternalLink } from "lucide-react";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { AdminAccessDenied, AdminPageHeader, Badge, Button } from "@venore/plugin-sdk/ui";
 import { getMatch } from "../../../runtime/matches";
@@ -19,6 +20,7 @@ import {
 } from "./actions";
 import { CreateMatchForm } from "./create-match-form";
 import { DeleteMatchControl } from "./delete-match-control";
+import { YoutubeUrlForm } from "./youtube-url-form";
 import type { EventKind, MatchEvent, PlayerProfile, TeamProfile } from "../../../contracts/types";
 
 const EVENT_LABEL: Record<EventKind, string> = {
@@ -163,8 +165,26 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
         description={
           <Badge variant={MATCH_STATUS_BADGE_VARIANT[match.status]}>{MATCH_STATUS_LABEL[match.status]}</Badge>
         }
-        actions={<DeleteMatchControl matchId={id} matchLabel={matchLabel} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <a href={`/erasto-league/jogos/${id}`} target="_blank" rel="noreferrer">
+                <ExternalLink className="size-4" /> Ver página do jogo ↗
+              </a>
+            </Button>
+            <DeleteMatchControl matchId={id} matchLabel={matchLabel} />
+          </div>
+        }
       />
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-foreground">Transmissão (YouTube)</h2>
+        <p className="text-xs text-muted-foreground">
+          Link do jogo no YouTube (ao vivo ou já gravado) — aparece na página pública do jogo e nos widgets que linkam pra ela (últimos
+          resultados, agenda, fases de grupos).
+        </p>
+        <YoutubeUrlForm matchId={id} youtubeUrl={match.youtubeUrl} />
+      </section>
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">MVP da partida</h2>

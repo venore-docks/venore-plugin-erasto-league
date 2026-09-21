@@ -52,7 +52,18 @@ function FixtureCard({ fixture }: { fixture: FixtureView }) {
       <TeamRow name={fixture.homeName} crestUrl={fixture.homeCrestUrl} slug={fixture.homeSlug} score={fixture.homeScore} won={homeWon} />
       <div className="border-t border-border/60" />
       <TeamRow name={fixture.awayName} crestUrl={fixture.awayCrestUrl} slug={fixture.awaySlug} score={fixture.awayScore} won={awayWon} />
-      {!fixture.played && <p className="mt-2 text-center text-xs text-muted-foreground">A jogar</p>}
+      {!fixture.played ? (
+        <p className="mt-2 text-center text-xs text-muted-foreground">A jogar</p>
+      ) : (
+        fixture.matchId && (
+          <Link
+            href={`/erasto-league/jogos/${fixture.matchId}`}
+            className="mt-2 block text-center text-xs font-semibold text-primary hover:underline"
+          >
+            Ver jogo →
+          </Link>
+        )
+      )}
     </div>
   );
 }

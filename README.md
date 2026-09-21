@@ -48,6 +48,17 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   controle ao vivo — pra jogo que já aconteceu (atrasou o cadastro, ou é histórico anterior ao
   plugin): escolhe os times, o placar final e a data, e cai direto na súmula do jogo criado pra
   detalhar/atribuir os gols a jogadores específicos.
+- **Página pública do jogo** — `/erasto-league/jogos/:id` (`routes/match-public`): placar, MVP,
+  lances (gol/cartão com jogador) e o **link do YouTube** do jogo (todo jogo é transmitido lá) —
+  colado à mão na súmula (`matches.youtube_url`, seção "Transmissão" em
+  `/admin/erasto-league/matches/:id`, `routes/admin/matches/youtube-url-form.tsx`). Link de
+  `youtube.com`/`youtu.be` reconhecido vira player embutido (`shared/youtube.ts`
+  `extractYoutubeVideoId`); qualquer outro formato cai pra um botão "Assistir no YouTube ↗"; sem
+  link ainda, mostra "transmissão não disponível" (não é erro — todo jogo passa por aqui antes de
+  ter o link colado). Os widgets que mostram resultado linkam pra cá quando o confronto já tem
+  partida vinculada: placar central de **últimos resultados** (`blocks/match-result-card.tsx`) e
+  **agenda** (`blocks/schedule-tabs.tsx`), "Ver jogo →" nas eliminatórias de **fases do campeonato**
+  (`blocks/bracket-block.tsx`), e a linha inteira de "últimos jogos" nos perfis de time/jogador.
 - **Power boosts** — catálogo **editável pelo admin** em `/admin/erasto-league/power-boosts`
   (`erasto_league.power_boosts`: acrescentar, editar rótulo/emoji/descrição, remover — a "key"
   interna gravada nos usos segue o rótulo sozinha na criação e não muda em edições depois, ver

@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { deleteEvent, recordEvent, updateEvent } from "../../../runtime/match-events";
 import { deleteBoostUse, recordBoostUse } from "../../../runtime/match-boosts";
-import { createManualMatch, deleteMatch, getMatchDeleteImpact, setMatchMvp, type MatchDeleteImpact } from "../../../runtime/matches";
+import { createManualMatch, deleteMatch, getMatchDeleteImpact, setMatchMvp, setMatchYoutubeUrl, type MatchDeleteImpact } from "../../../runtime/matches";
+import { sanitizeYoutubeUrl } from "../../../shared/youtube";
 import type { EventKind, MatchSide, PowerBoostKey } from "../../../contracts/types";
 
 // Súmula (Fase 3): corrige/completa ao vivo o que o controle deixou passar — mesmos mutators de
@@ -103,6 +104,27 @@ export async function setMatchMvpFormAction(formData: FormData): Promise<void> {
   const note = String(formData.get("mvpNote") ?? "").trim() || null;
   await setMatchMvp(matchId, playerId, note);
   revalidatePath(`/admin/erasto-league/matches/${matchId}`);
+}
+
+export type SetMatchYoutubeUrlActionState = { error: string | null };
+
+// Link da transmissão/gravação no YouTube deste jogo (todo jogo é transmitido lá) — alimenta a
+// página pública do jogo (routes/match-public). Campo vazio limpa o link.
+export async function setMatchYoutubeUrlFormAction(
+  _prev: SetMatchYoutubeUrlActionState,
+  formData: FormData,
+): Promise<SetMatchYoutubeUrlActionState> {
+  await requireGate();
+  const matchId = String(formData.get("matchId"));
+  const raw = String(formData.get("youtubeUrl") ?? "").trim();
+  const youtubeUrl = raw ? sanitizeYoutubeUrl(raw) : null;
+  if (raw && !youtubeUrl) {
+    return { error: "Link inválido — cole um link do YouTube (youtube.com ou youtu.be)." };
+  }
+
+  await setMatchYoutubeUrl(matchId, youtubeUrl);
+  revalidatePath(`/admin/erasto-league/matches/${matchId}`);
+  return { error: null };
 }
 
 // Excluir súmula (Fase 3) — mesma UX de confirmação com impacto de routes/admin/teams/actions.ts

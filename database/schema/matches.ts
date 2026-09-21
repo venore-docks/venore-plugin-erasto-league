@@ -26,4 +26,11 @@ export const matches = erastoLeagueSchema.table("matches", {
   // setMatchMvp), nunca calculado. mvpNote é um texto livre opcional ("decisivo no 2º tempo"...).
   mvpPlayerId: uuid("mvp_player_id").references(() => players.id),
   mvpNote: text("mvp_note"),
+
+  // Link da transmissão/gravação no YouTube deste jogo específico (todo jogo é transmitido lá) —
+  // colado manualmente na súmula (routes/admin/matches/actions.ts setMatchYoutubeUrlFormAction),
+  // não resolvido automaticamente feito o canal ao vivo do bloco erasto-league.broadcast (aquele é
+  // sempre a live ATUAL do canal; este é o vídeo definitivo de UMA partida, que só existe depois
+  // que ela acontece). Alimenta a página pública do jogo (routes/match-public).
+  youtubeUrl: text("youtube_url"),
 });

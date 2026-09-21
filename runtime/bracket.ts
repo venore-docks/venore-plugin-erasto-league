@@ -23,6 +23,10 @@ export type FixtureView = {
   scheduledTime: string | null;
   roundLabel: string | null;
   played: boolean;
+  // Id da partida linkada (null enquanto não jogado/vinculado) — pros widgets de resultado
+  // (agenda, fases de grupos) linkarem pra página pública do jogo (routes/match-public) quando
+  // `played` é true.
+  matchId: string | null;
 };
 
 // Mesmo FixtureView + fase/grupo, pra agenda de jogos precisar mostrar um selo ("Grupo A",
@@ -79,6 +83,7 @@ async function loadFixtureViewData() {
       scheduledTime: fixture.scheduledTime,
       roundLabel: fixture.roundLabel,
       played: Boolean(match && match.status === "finished"),
+      matchId: fixture.matchId,
     };
   }
 
@@ -190,5 +195,6 @@ export async function getNextFixture(): Promise<NextGameView | null> {
     scheduledTime: next.scheduledTime,
     roundLabel: next.roundLabel,
     played: Boolean(match && match.status === "finished"),
+    matchId: next.matchId,
   };
 }

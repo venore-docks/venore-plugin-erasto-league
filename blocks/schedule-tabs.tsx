@@ -71,6 +71,35 @@ function TeamCell({
   );
 }
 
+// Score central do jogo já encerrado — vira Link pra página pública do jogo (routes/match-public)
+// quando o confronto tem partida vinculada (sempre tem, na prática, se `played` é true — matchId
+// null com played true não deveria existir, ver runtime/bracket.ts toView, mas o tipo não garante
+// isso sozinho). Sem matchId (nunca deveria acontecer), cai pro mesmo visual sem virar link.
+function ScoreCell({ entry, dateLabel }: { entry: ScheduleEntry; dateLabel: string }) {
+  const content = (
+    <>
+      <span className="rounded-full bg-primary/10 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
+        {formatScore(entry.homeScore ?? 0)}-{formatScore(entry.awayScore ?? 0)}
+      </span>
+      <span className="text-center text-[10px] font-medium text-muted-foreground">
+        {dateLabel}
+        {entry.scheduledTime ? ` · ${entry.scheduledTime}` : ""}
+      </span>
+    </>
+  );
+
+  return entry.matchId ? (
+    <Link
+      href={`/erasto-league/jogos/${entry.matchId}`}
+      className="flex shrink-0 flex-col items-center gap-1 rounded-panel px-1 ui-motion-base hover:opacity-80"
+    >
+      {content}
+    </Link>
+  ) : (
+    <div className="flex shrink-0 flex-col items-center gap-1 px-1">{content}</div>
+  );
+}
+
 // Pedido explícito: data e hora (não só a hora) evidentes no CENTRO do card — a rodada, que antes
 // era uma badge colorida chamando mais atenção que a própria data, vira texto neutro junto da fase.
 //
@@ -106,24 +135,14 @@ function ScheduleRow({ entry }: { entry: ScheduleEntry }) {
       <div className="flex items-center gap-3">
         <TeamCell name={entry.homeName} crestUrl={entry.homeCrestUrl} slug={entry.homeSlug} align="left" won={homeWon} />
 
-        <div className="flex shrink-0 flex-col items-center gap-1 px-1">
-          {entry.played ? (
-            <>
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
-                {formatScore(entry.homeScore ?? 0)}-{formatScore(entry.awayScore ?? 0)}
-              </span>
-              <span className="text-center text-[10px] font-medium text-muted-foreground">
-                {dateLabel}
-                {entry.scheduledTime ? ` · ${entry.scheduledTime}` : ""}
-              </span>
-            </>
-          ) : (
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="text-sm font-extrabold text-foreground">{dateLabel}</span>
-              <span className="text-sm font-bold tabular-nums text-primary">{entry.scheduledTime ?? "Hora a definir"}</span>
-            </div>
-          )}
-        </div>
+        {entry.played ? (
+          <ScoreCell entry={entry} dateLabel={dateLabel} />
+        ) : (
+          <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
+            <span className="text-sm font-extrabold text-foreground">{dateLabel}</span>
+            <span className="text-sm font-bold tabular-nums text-primary">{entry.scheduledTime ?? "Hora a definir"}</span>
+          </div>
+        )}
 
         <TeamCell name={entry.awayName} crestUrl={entry.awayCrestUrl} slug={entry.awaySlug} align="right" won={awayWon} />
       </div>
