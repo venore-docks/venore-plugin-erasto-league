@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, or } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
 import { fixtures as fixturesTable } from "../database/schema";
 import type { Fixture, FixturePhase } from "../contracts/types";
@@ -107,15 +107,27 @@ export async function deleteAllFixtures(): Promise<void> {
   await db.delete(fixturesTable);
 }
 
-// Candidato pra auto-link no fim de uma partida (runtime/match-actions.ts, endCurrentMatch) — só
-// linka sozinho quando é inequívoco: exatamente um fixture ainda sem match (matchId null) com esse
-// par exato de times (mesmo mando de campo). Zero ou mais de um (rematch dentro do campeonato), o
-// admin resolve manualmente em /admin/erasto-league/fixtures — mesma garantia contra ambiguidade
-// documentada em linkFixtureToMatch.
-export async function findUnlinkedFixtureForTeams(homeTeamId: string, awayTeamId: string): Promise<Fixture | null> {
+// Candidato pra auto-link no fim de uma partida (runtime/match-actions.ts endCurrentMatch, e
+// runtime/matches.ts createManualMatch pra súmula de jogo atrasado) — só linka sozinho quando é
+// inequívoco: exatamente um fixture ainda sem match (matchId null) com esse par de times, EM
+// QUALQUER ORDEM de mando de campo. Mando de campo na fixture é só informativo (quem definiu o
+// confronto), não precisa bater com quem o controle marcou como "casa" ao iniciar a partida —
+// exigir a mesma ordem deixava esse jogo preso como "próximo jogo"/sem resultado na agenda pra
+// sempre sempre que o operador invertia os lados no controle ao vivo. Zero ou mais de um candidato
+// (rematch dentro do campeonato), o admin resolve manualmente em /admin/erasto-league/fixtures —
+// mesma garantia contra ambiguidade documentada em linkFixtureToMatch.
+export async function findUnlinkedFixtureForTeams(teamAId: string, teamBId: string): Promise<Fixture | null> {
   const rows = await db
     .select()
     .from(fixturesTable)
-    .where(and(isNull(fixturesTable.matchId), eq(fixturesTable.homeTeamId, homeTeamId), eq(fixturesTable.awayTeamId, awayTeamId)));
+    .where(
+      and(
+        isNull(fixturesTable.matchId),
+        or(
+          and(eq(fixturesTable.homeTeamId, teamAId), eq(fixturesTable.awayTeamId, teamBId)),
+          and(eq(fixturesTable.homeTeamId, teamBId), eq(fixturesTable.awayTeamId, teamAId)),
+        ),
+      ),
+    );
   return rows.length === 1 ? rowToFixture(rows[0]) : null;
 }

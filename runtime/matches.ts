@@ -2,7 +2,7 @@ import { and, desc, eq, or } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
 import { fixtures as fixturesTable, matchBoosts as matchBoostsTable, matchEvents as matchEventsTable, matches as matchesTable } from "../database/schema";
 import { recordEvent } from "./match-events";
-import { linkFixtureToMatch } from "./fixtures";
+import { findUnlinkedFixtureForTeams, linkFixtureToMatch } from "./fixtures";
 import type { MatchSummary } from "../contracts/types";
 
 type MatchRow = typeof matchesTable.$inferSelect;
@@ -107,6 +107,14 @@ export async function createManualMatch(input: ManualMatchInput): Promise<MatchS
   }
   if (input.awayScore > 0) {
     await recordEvent({ matchId: row.id, kind: "goal", side: "away", amount: input.awayScore });
+  }
+
+  // Mesmo auto-link de runtime/match-actions.ts endCurrentMatch — sem isso, súmula criada aqui pra
+  // jogo atrasado nunca aparecia com resultado na agenda nem saía de "próximo jogo" até o admin
+  // linkar manualmente em /admin/erasto-league/fixtures.
+  const fixture = await findUnlinkedFixtureForTeams(input.homeTeamId, input.awayTeamId);
+  if (fixture) {
+    await linkFixtureToMatch(fixture.id, row.id);
   }
 
   const created = await getMatch(row.id);

@@ -20,8 +20,8 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
   const [team, stats, recentMatches, allTeams] = await Promise.all([
     getTeam(player.teamId),
-    getPlayerStats(player.id),
-    listRecentMatchesForPlayer(player.id),
+    getPlayerStats(player.id, player.teamId),
+    listRecentMatchesForPlayer(player.teamId),
     listTeams(),
   ]);
   const teamById = new Map(allTeams.map((t) => [t.id, t]));

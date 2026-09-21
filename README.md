@@ -3,12 +3,13 @@
 Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto League*.
 
 - **View pra TV/projetor** — `/ext/erasto-league/tv` — tabelas do campeonato em tela cheia (mesma
-  técnica de palco escalável do venore-plugin-scoreboard, `shared/tv-stage.ts`): uma página por
-  grupo (ou classificação geral, se não houver fase de grupos) + eliminatórias, com rodízio
-  automático quando há mais de uma página. Design premium: cartão com sombra/gradiente pra tabela
-  (linhas grandes, medalha 🥇🥈🥉 pro top 3, listras sutis), logo da marca do site (`brand.logoUrl`,
-  `@venore/plugin-sdk/brand`) no canto do cabeçalho — sem indicador "ao vivo". Sem PIN/sessão, mesma
-  filosofia do overlay — feita pra abrir em tela cheia numa TV do evento.
+  técnica de palco escalável do venore-plugin-scoreboard, `shared/tv-stage.ts`): próximo jogo, uma
+  página por grupo (ou classificação geral, se não houver fase de grupos), **artilheiros** (só entra
+  no rodízio se já existe gol registrado) e eliminatórias, com rodízio automático quando há mais de
+  uma página. Design premium: cartão com sombra/gradiente pra tabela (linhas grandes, medalha
+  🥇🥈🥉 pro top 3, listras sutis), logo da marca do site (`brand.logoUrl`, `@venore/plugin-sdk/brand`)
+  no canto do cabeçalho — sem indicador "ao vivo". Sem PIN/sessão, mesma filosofia do overlay —
+  feita pra abrir em tela cheia numa TV do evento.
 - **Overlay pro OBS** — `/ext/erasto-league/overlay` — fundo transparente, placar bottom-center
   com logo da liga no medalhão central e **relógio de jogo**, atualiza sozinho via SSE.
 - **Controle pelo celular** — `/ext/erasto-league/control` — escolhe os dois times cadastrados pra
@@ -30,7 +31,9 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   (opcional, só pra sinalizar), capitão (flag), foto, bio. Perfis públicos em
   `/erasto-league/teams/:slug` e `/erasto-league/players/:slug` — DENTRO da shell/tema do site
   (rota "public", não mais `/ext/`): capa, recorde (V/E/D/saldo/pontos) e últimos jogos encerrados
-  pro time; gols/cartões e últimos jogos pro jogador (capitão aparece com um selo "C"). A lista de
+  pro time; gols/cartões (só dos eventos atribuídos a ele) e últimos jogos do TIME (não só os jogos
+  em que ele tem evento atribuído — ver `runtime/stats.ts`) pro jogador (capitão aparece com um selo
+  "C"). A lista de
   todos os times não é mais uma rota fixa — virou o bloco **Erasto League — Times**
   (`erasto-league.teams`, ver lista de blocos abaixo), pra o admin colocar em qualquer página.
   Excluir time/jogador é seguro: bloqueado de verdade se o time tem partida registrada (senão o

@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, or, sql } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
 import { matchEvents as matchEventsTable, matches as matchesTable, players as playersTable, teams as teamsTable } from "../database/schema";
@@ -7,9 +7,12 @@ import { clampScore } from "../shared/score";
 import type { MatchSummary } from "../contracts/types";
 
 // Stats de um jogador (perfil público, Fase 4) — só eventos de partidas encerradas contam (mesmo
-// filtro de runtime/standings.ts). "Jogos" = partidas distintas em que o jogador teve pelo menos
-// um evento — não existe conceito de escalação/titular no modelo (só evento), então isso é o mais
-// perto de "jogos disputados" que dá pra saber.
+// filtro de runtime/standings.ts). "Jogos" vem das partidas ENCERRADAS DO TIME do jogador, não de
+// partidas em que ele teve algum evento atribuído: não existe conceito de escalação/titular no
+// modelo (só evento), e a maioria dos gols/cartões é registrada no controle ao vivo sem escolher o
+// jogador na hora (atribuição fica pra súmula, opcional) — contar só eventos atribuídos deixava
+// "Jogos" (e o card de stats inteiro, condicionado a matchesPlayed > 0) zerado pra praticamente todo
+// jogador que não fez gol/cartão, mesmo tendo disputado o campeonato inteiro.
 export type PlayerStats = {
   matchesPlayed: number;
   goals: number;
@@ -19,10 +22,10 @@ export type PlayerStats = {
   mvpCount: number;
 };
 
-export async function getPlayerStats(playerId: string): Promise<PlayerStats> {
-  const [rows, mvpRows] = await Promise.all([
+export async function getPlayerStats(playerId: string, teamId: string): Promise<PlayerStats> {
+  const [eventRows, mvpRows, matchesPlayedRows] = await Promise.all([
     db
-      .select({ kind: matchEventsTable.kind, matchId: matchEventsTable.matchId, amount: matchEventsTable.amount })
+      .select({ kind: matchEventsTable.kind, amount: matchEventsTable.amount })
       .from(matchEventsTable)
       .innerJoin(matchesTable, eq(matchEventsTable.matchId, matchesTable.id))
       .where(and(eq(matchEventsTable.playerId, playerId), eq(matchesTable.status, "finished"))),
@@ -30,35 +33,37 @@ export async function getPlayerStats(playerId: string): Promise<PlayerStats> {
       .select({ count: count() })
       .from(matchesTable)
       .where(and(eq(matchesTable.mvpPlayerId, playerId), eq(matchesTable.status, "finished"))),
+    db
+      .select({ count: count() })
+      .from(matchesTable)
+      .where(and(eq(matchesTable.status, "finished"), or(eq(matchesTable.homeTeamId, teamId), eq(matchesTable.awayTeamId, teamId)))),
   ]);
 
-  const stats: PlayerStats = { matchesPlayed: 0, goals: 0, yellowCards: 0, redCards: 0, fouls: 0, mvpCount: mvpRows[0]?.count ?? 0 };
-  const matchIds = new Set<string>();
-  for (const row of rows) {
-    matchIds.add(row.matchId);
+  const stats: PlayerStats = {
+    matchesPlayed: matchesPlayedRows[0]?.count ?? 0,
+    goals: 0,
+    yellowCards: 0,
+    redCards: 0,
+    fouls: 0,
+    mvpCount: mvpRows[0]?.count ?? 0,
+  };
+  for (const row of eventRows) {
     if (row.kind === "goal") stats.goals = clampScore(stats.goals + row.amount);
     else if (row.kind === "yellow_card") stats.yellowCards += 1;
     else if (row.kind === "red_card") stats.redCards += 1;
     else if (row.kind === "foul") stats.fouls += 1;
   }
-  stats.matchesPlayed = matchIds.size;
   return stats;
 }
 
-// Últimos jogos de um jogador — matches distintas onde ele teve pelo menos um evento, mais
-// recente primeiro.
-export async function listRecentMatchesForPlayer(playerId: string, limit = 5): Promise<MatchSummary[]> {
-  const eventRows = await db
-    .select({ matchId: matchEventsTable.matchId })
-    .from(matchEventsTable)
-    .where(eq(matchEventsTable.playerId, playerId));
-  const matchIds = [...new Set(eventRows.map((row) => row.matchId))];
-  if (matchIds.length === 0) return [];
-
+// Últimos jogos de um jogador — mesma fonte de runtime/matches.ts listRecentMatchesForTeam (todas
+// as partidas encerradas DO TIME dele, não só as que têm algum evento seu atribuído — mesmo motivo
+// de getPlayerStats acima). Reaproveita a mesma query, sem duplicar.
+export async function listRecentMatchesForPlayer(teamId: string, limit = 5): Promise<MatchSummary[]> {
   const rows = await db
     .select()
     .from(matchesTable)
-    .where(and(eq(matchesTable.status, "finished"), inArray(matchesTable.id, matchIds)))
+    .where(and(eq(matchesTable.status, "finished"), or(eq(matchesTable.homeTeamId, teamId), eq(matchesTable.awayTeamId, teamId))))
     .orderBy(desc(matchesTable.finishedAt))
     .limit(limit);
 

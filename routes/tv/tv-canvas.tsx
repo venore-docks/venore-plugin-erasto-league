@@ -7,6 +7,7 @@ import { FIXTURE_PHASE_LABEL } from "../../shared/fixture-phase";
 import { formatScore } from "../../shared/score";
 import { getTvDataAction, type TvData } from "./actions";
 import type { NextGameView } from "../../runtime/bracket";
+import type { ScorerEntry } from "../../runtime/stats";
 import type { TeamStanding } from "../../contracts/types";
 
 // Requisito explícito: view pra TV/projetor mostrando as tabelas do campeonato, mesmo espírito da
@@ -113,6 +114,7 @@ function pageTitle(page: TvPage): string {
   if (page.kind === "next-game") return "Próximo jogo";
   if (page.kind === "group") return `Grupo ${page.groupName}`;
   if (page.kind === "standings") return "Classificação";
+  if (page.kind === "scorers") return "Artilheiros";
   return "Eliminatórias";
 }
 
@@ -212,6 +214,43 @@ function StandingsTable({ standings }: { standings: TeamStanding[] }) {
   );
 }
 
+function ScorersTable({ scorers }: { scorers: ScorerEntry[] }) {
+  return (
+    <div className="el-tv-table-card">
+      <table className="el-tv-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Jogador</th>
+            <th>Time</th>
+            <th className="center">Gols</th>
+          </tr>
+        </thead>
+        <tbody>
+          {scorers.map((scorer, index) => (
+            <tr key={scorer.playerId} className={index === 0 ? "top" : undefined}>
+              <td className="pos">{RANK_MEDAL[index] ?? index + 1}</td>
+              <td>
+                <div className="el-tv-team">
+                  {scorer.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className="el-tv-crest" src={scorer.photoUrl} alt="" />
+                  ) : (
+                    <div className="el-tv-crest-mono">{scorer.name.slice(0, 2).toUpperCase()}</div>
+                  )}
+                  {scorer.name}
+                </div>
+              </td>
+              <td>{scorer.teamName}</td>
+              <td className="center pts">{formatScore(scorer.goals)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function KnockoutPage({ knockout }: { knockout: Extract<TvPage, { kind: "knockout" }>["knockout"] }) {
   return (
     <div className="el-tv-knockout">
@@ -295,7 +334,7 @@ export function TvCanvas({
   }, []);
 
   const stage = useTvStageTransform();
-  const pages = buildTvPages(data.bracket, data.standings, data.nextGame);
+  const pages = buildTvPages(data.bracket, data.standings, data.nextGame, data.scorers);
 
   const [pageIndex, setPageIndex] = useState(0);
   const safePageIndex = pages.length === 0 ? 0 : Math.min(pageIndex, pages.length - 1);
@@ -343,6 +382,8 @@ export function TvCanvas({
               <NextGamePage nextGame={currentPage.nextGame} />
             ) : currentPage.kind === "knockout" ? (
               <KnockoutPage knockout={currentPage.knockout} />
+            ) : currentPage.kind === "scorers" ? (
+              <ScorersTable scorers={currentPage.scorers} />
             ) : (
               <StandingsTable standings={currentPage.standings} />
             )}
