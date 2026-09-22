@@ -8,6 +8,7 @@ import { listMatchesBetweenTeams } from "../../../runtime/matches";
 import { FIXTURE_PHASE_LABEL, FIXTURE_PHASE_ORDER } from "../../../shared/fixture-phase";
 import { formatScore } from "../../../shared/score";
 import { linkFixtureFormAction, deleteFixtureFormAction } from "./actions";
+import { AutoLinkFixturesButton } from "./auto-link-fixtures-button";
 import type { Fixture, FixturePhase, TeamProfile } from "../../../contracts/types";
 
 // scheduledDate/scheduledTime já chegam como texto puro — só formata pra exibição, nenhuma
@@ -98,6 +99,7 @@ export default async function FixturesAdminPage() {
         description="Confrontos agendados (grupos + eliminatórias) — importados via CSV, vinculados à partida real quando jogados."
         actions={
           <>
+            <AutoLinkFixturesButton />
             <Button asChild variant="outline">
               <Link href="/admin/erasto-league/import">Importar CSV</Link>
             </Button>

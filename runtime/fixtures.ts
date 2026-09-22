@@ -1,6 +1,6 @@
-import { and, asc, eq, isNull, or } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull, or } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
-import { fixtures as fixturesTable } from "../database/schema";
+import { fixtures as fixturesTable, matches as matchesTable } from "../database/schema";
 import type { Fixture, FixturePhase } from "../contracts/types";
 
 type FixtureRow = typeof fixturesTable.$inferSelect;
@@ -130,4 +130,52 @@ export async function findUnlinkedFixtureForTeams(teamAId: string, teamBId: stri
       ),
     );
   return rows.length === 1 ? rowToFixture(rows[0]) : null;
+}
+
+export type AutoLinkFixturesResult = { linked: number; skipped: number };
+
+// Vínculo em massa (botão "Vincular automaticamente" em /admin/erasto-league/fixtures) — mesmo
+// critério de findUnlinkedFixtureForTeams (par de times em qualquer ordem, só quando é
+// inequívoco), só que na direção inversa: parte de cada CONFRONTO ainda sem partida e procura uma
+// partida encerrada livre (não vinculada a nenhum outro confronto) com esse par de times. Cobre
+// partidas que já existiam antes do auto-link automático (endCurrentMatch/createManualMatch), ou
+// que passaram por ele sem achar candidato único na hora (ex.: outro confronto do mesmo par ainda
+// não tinha sido resolvido). Confronto sem os dois times cadastrados (rótulo livre tipo "Vencedor
+// Grupo A") ou com zero/mais de uma partida candidata continua exigindo escolha manual — mesma
+// garantia contra ambiguidade de sempre, só que reportada em vez de silenciosa.
+export async function autoLinkAllFixtures(): Promise<AutoLinkFixturesResult> {
+  const [pendingFixtures, linkedRows, finishedMatches] = await Promise.all([
+    db.select().from(fixturesTable).where(isNull(fixturesTable.matchId)),
+    db.select({ matchId: fixturesTable.matchId }).from(fixturesTable).where(isNotNull(fixturesTable.matchId)),
+    db.select().from(matchesTable).where(eq(matchesTable.status, "finished")),
+  ]);
+
+  const linkedMatchIds = new Set(linkedRows.map((row) => row.matchId).filter((id): id is string => Boolean(id)));
+
+  let linked = 0;
+  let skipped = 0;
+  for (const fixture of pendingFixtures) {
+    if (!fixture.homeTeamId || !fixture.awayTeamId) {
+      skipped += 1;
+      continue;
+    }
+
+    const candidates = finishedMatches.filter(
+      (match) =>
+        !linkedMatchIds.has(match.id) &&
+        ((match.homeTeamId === fixture.homeTeamId && match.awayTeamId === fixture.awayTeamId) ||
+          (match.homeTeamId === fixture.awayTeamId && match.awayTeamId === fixture.homeTeamId)),
+    );
+
+    if (candidates.length !== 1) {
+      skipped += 1;
+      continue;
+    }
+
+    await db.update(fixturesTable).set({ matchId: candidates[0].id, updatedAt: new Date() }).where(eq(fixturesTable.id, fixture.id));
+    linkedMatchIds.add(candidates[0].id);
+    linked += 1;
+  }
+
+  return { linked, skipped };
 }

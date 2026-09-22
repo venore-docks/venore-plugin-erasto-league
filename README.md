@@ -147,8 +147,14 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   pelo nome (`upsertTeamByName`), o caminho de quando não tem uuid nenhum à mão. Dá pra ver o id de
   um time já cadastrado na página dele (`/admin/erasto-league/teams/:id`). `/admin/erasto-league/fixtures`
   lista tudo, deixa **editar/excluir/criar confrontos manualmente** e **vincular manualmente** um
-  confronto à partida real depois de jogada (não é automático — dois times podem se enfrentar mais
-  de uma vez). Exemplo de planilha (times e confrontos do Erasto League 2026, 100% por id) em
+  confronto à partida real depois de jogada (não é 100% automático — dois times podem se enfrentar
+  mais de uma vez, então um par ambíguo sempre cai pra escolha manual). Partida encerrada (ao vivo
+  ou súmula manual) tenta se auto-vincular na hora (`runtime/match-actions.ts` `endCurrentMatch`,
+  `runtime/matches.ts` `createManualMatch`); o botão **"Vincular automaticamente"** no topo da
+  página de fixtures (`runtime/fixtures.ts` `autoLinkAllFixtures`) faz essa mesma varredura em
+  massa pra todos os confrontos pendentes de uma vez — cobre partida que já existia antes desse
+  auto-link, ou que ficou ambígua na hora porque outro confronto do mesmo par ainda não tinha sido
+  resolvido. Exemplo de planilha (times e confrontos do Erasto League 2026, 100% por id) em
   `csv/teams.csv` e `csv/fixtures.csv`.
 - **Tempo real** — `EventSource` → `/api/erasto-league/events` (SSE). O servidor relê o banco a
   cada 1s (catch-up multi-instância) e o client cai em polling de `/api/erasto-league/state`

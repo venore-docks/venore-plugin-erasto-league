@@ -3,7 +3,16 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
-import { createFixture, deleteFixture, getFixture, linkFixtureToMatch, updateFixture, type FixtureInput } from "../../../runtime/fixtures";
+import {
+  autoLinkAllFixtures,
+  createFixture,
+  deleteFixture,
+  getFixture,
+  linkFixtureToMatch,
+  updateFixture,
+  type AutoLinkFixturesResult,
+  type FixtureInput,
+} from "../../../runtime/fixtures";
 import type { FixturePhase } from "../../../contracts/types";
 
 async function requireGate(): Promise<void> {
@@ -19,6 +28,18 @@ export async function linkFixtureFormAction(formData: FormData): Promise<void> {
   const matchIdRaw = String(formData.get("matchId") ?? "");
   await linkFixtureToMatch(fixtureId, matchIdRaw || null);
   revalidatePath("/admin/erasto-league/fixtures");
+}
+
+// "Vincular automaticamente" (routes/admin/fixtures/auto-link-fixtures-button.tsx) — cobre jogos
+// que já aconteceram (ao vivo ou súmula manual) mas nunca ganharam o vínculo automático (partida
+// de antes desse recurso existir, ou que na hora tinha mais de um candidato ambíguo pro mesmo par
+// de times). Não é uma <form> comum porque o resultado ({linked, skipped}) vira mensagem inline no
+// botão, não um redirect/void — chamado direto do client component via server action.
+export async function autoLinkFixturesAction(): Promise<AutoLinkFixturesResult> {
+  await requireGate();
+  const result = await autoLinkAllFixtures();
+  revalidatePath("/admin/erasto-league/fixtures");
+  return result;
 }
 
 export async function deleteFixtureFormAction(formData: FormData): Promise<void> {
