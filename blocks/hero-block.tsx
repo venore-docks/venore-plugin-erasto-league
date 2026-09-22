@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Button } from "@venore/plugin-sdk/ui";
 import type { BlockRendererProps } from "@venore/plugin-sdk";
 import { getMatchState } from "../runtime/match-actions";
-import { resolveErastoLeagueConfig } from "../shared/config";
 import { formatScore } from "../shared/score";
 
 function readString(data: Record<string, unknown>, key: string, fallback = ""): string {
@@ -10,11 +9,13 @@ function readString(data: Record<string, unknown>, key: string, fallback = ""): 
   return typeof value === "string" ? value : fallback;
 }
 
-// Capa do site — lida direto do plugin (não do que foi salvo na composição): cor de destaque das
-// settings, e "ao vivo agora" de match_state, pra a home nunca mostrar uma partida velha como se
-// estivesse rolando.
+// Capa do site — DENTRO da shell/tema do host, mesmo princípio de team-profile-view.tsx: só cor do
+// TEMA (var(--primary), shadcn), nunca a cor de destaque das settings do plugin
+// (erasto-league.accentColor) — essa é identidade visual do overlay/controle/TV (telas fora do
+// tema do site, ver README), não do site em si. "ao vivo agora" ainda vem de match_state, pra a
+// home nunca mostrar uma partida velha como se estivesse rolando.
 export async function ErastoLeagueHeroBlock({ block }: BlockRendererProps) {
-  const [config, state] = await Promise.all([resolveErastoLeagueConfig(), getMatchState()]);
+  const state = await getMatchState();
 
   const title = readString(block.data, "title", "Erasto League");
   const subtitle = readString(block.data, "subtitle");
@@ -26,8 +27,8 @@ export async function ErastoLeagueHeroBlock({ block }: BlockRendererProps) {
     <section
       className="relative overflow-hidden rounded-panel px-6 py-14 text-center sm:px-10 sm:py-20"
       style={{
-        background: `radial-gradient(120% 140% at 50% -10%, color-mix(in srgb, ${config.accentColor} 30%, transparent), transparent 60%),
-          linear-gradient(160deg, color-mix(in srgb, ${config.accentColor} 16%, var(--card)), var(--card) 70%)`,
+        background: `radial-gradient(120% 140% at 50% -10%, color-mix(in srgb, var(--primary) 30%, transparent), transparent 60%),
+          linear-gradient(160deg, color-mix(in srgb, var(--primary) 16%, var(--card)), var(--card) 70%)`,
       }}
     >
       {isLive && (
@@ -45,7 +46,7 @@ export async function ErastoLeagueHeroBlock({ block }: BlockRendererProps) {
 
       {ctaLabel && ctaHref && (
         <div className="mt-8">
-          <Button asChild size="lg" className="text-background" style={{ background: config.accentColor }}>
+          <Button asChild size="lg">
             <Link href={ctaHref}>{ctaLabel}</Link>
           </Button>
         </div>

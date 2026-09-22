@@ -73,8 +73,10 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
 - **Blocos de page-builder** — contribuídos via `contributions.ts` (`blocks/`), aparecem no
   palette do builder do CMS (`/admin/cms/entries/:id/builder`) igual a qualquer bloco nativo, sem
   precisar do sistema de import/export do site:
-  - **Erasto League — Capa** (`erasto-league.hero`) — título/subtítulo/CTA editáveis; cor de
-    destaque e "🔴 ao vivo agora" vêm do plugin, não do que foi salvo na composição.
+  - **Erasto League — Capa** (`erasto-league.hero`) — título/subtítulo/CTA editáveis; "🔴 ao vivo
+    agora" vem do plugin (match_state), não do que foi salvo na composição — mas a cor de destaque
+    é do TEMA do site (`var(--primary)`), não da configuração de `accentColor` do plugin (essa é só
+    a identidade visual de overlay/controle/TV, telas fora do tema).
   - **Erasto League — Classificação** (`erasto-league.standings`) — tabela sempre recalculada na
     hora de renderizar (nunca lida do que foi salvo).
   - **Erasto League — Últimos resultados** (`erasto-league.recent-results`) — últimas N partidas

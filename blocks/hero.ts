@@ -1,8 +1,8 @@
 import type { BlockDefinition } from "@venore/plugin-sdk/cms";
 
-// Capa da página do campeonato — título/subtítulo/CTA editáveis pelo builder; cor de destaque e
-// brasão vêm das settings do plugin (mesma identidade visual do overlay/controle), não são campo
-// aqui, pra manter a marca consistente entre as telas. Ver blocks/hero-block.tsx.
+// Capa da página do campeonato — título/subtítulo/CTA editáveis pelo builder; cor de destaque vem
+// do TEMA do site (var(--primary)), não das settings do plugin (aquela é só a identidade visual de
+// overlay/controle/TV, telas fora do tema). Ver blocks/hero-block.tsx.
 export const erastoLeagueHeroBlockDefinition: BlockDefinition = {
   key: "erasto-league.hero",
   label: "Erasto League — Capa",
