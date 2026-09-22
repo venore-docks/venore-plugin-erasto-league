@@ -45,7 +45,8 @@ function TeamChip({ team, align, won, lost }: { team: TeamProfile; align: "left"
 // blocks/scorer-row.tsx pra artilharia/MVPs. O placar central linka pra página pública do jogo
 // (routes/match-public — súmula + transmissão no YouTube); os brasões/nomes continuam linkando
 // pro perfil de cada time, então o placar (não aninhado em nenhum dos dois Links) é quem carrega
-// esse segundo destino.
+// esse segundo destino. "▶ Assista o jogo" embaixo do placar é só um empurrão sutil pra esse
+// destino — pedido explícito, já que todo jogo é transmitido (ver routes/match-public).
 export function MatchResultCard({
   match,
   home,
@@ -79,6 +80,7 @@ export function MatchResultCard({
             ⭐ {mvpName}
           </span>
         )}
+        <span className="mt-0.5 text-[9px] font-medium tracking-wide text-muted-foreground">▶ Assista o jogo</span>
       </Link>
 
       {away && <TeamChip team={away} align="right" won={awayWon} lost={homeWon} />}
