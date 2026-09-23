@@ -4,6 +4,8 @@ import { getMatch } from "../../runtime/matches";
 import { getTeam } from "../../runtime/teams";
 import { listPlayersByTeam } from "../../runtime/players";
 import { listEventsByMatch } from "../../runtime/match-events";
+import { listBoostsByMatch } from "../../runtime/match-boosts";
+import { listPowerBoosts } from "../../runtime/power-boosts";
 import { MatchView } from "./match-view";
 
 // Página pública de UM jogo (/erasto-league/jogos/:id) — súmula + transmissão (link do YouTube
@@ -25,14 +27,26 @@ export default async function MatchPublicPage({ params }: { params: Promise<{ id
     notFound();
   }
 
-  const [homeTeam, awayTeam, events, homeRoster, awayRoster] = await Promise.all([
+  const [homeTeam, awayTeam, events, homeRoster, awayRoster, boosts, powerBoosts] = await Promise.all([
     getTeam(match.homeTeamId),
     getTeam(match.awayTeamId),
     listEventsByMatch(id),
     listPlayersByTeam(match.homeTeamId),
     listPlayersByTeam(match.awayTeamId),
+    listBoostsByMatch(id),
+    listPowerBoosts(),
   ]);
   const playerById = new Map([...homeRoster, ...awayRoster].map((player) => [player.id, player]));
 
-  return <MatchView match={match} homeTeam={homeTeam} awayTeam={awayTeam} events={events} playerById={playerById} />;
+  return (
+    <MatchView
+      match={match}
+      homeTeam={homeTeam}
+      awayTeam={awayTeam}
+      events={events}
+      playerById={playerById}
+      boosts={boosts}
+      powerBoosts={powerBoosts}
+    />
+  );
 }

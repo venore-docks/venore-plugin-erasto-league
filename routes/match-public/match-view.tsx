@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@venore/plugin-sdk/ui";
-import type { MatchEvent, MatchSummary, PlayerProfile, TeamProfile } from "../../contracts/types";
+import type { MatchEvent, MatchSummary, PlayerProfile, PowerBoost, PowerBoostUse, TeamProfile } from "../../contracts/types";
 import { formatScore } from "../../shared/score";
 import { MATCH_STATUS_BADGE_VARIANT, MATCH_STATUS_LABEL } from "../../shared/match-status";
 import { extractYoutubeVideoId } from "../../shared/youtube";
@@ -121,6 +121,33 @@ function EventRow({
   );
 }
 
+function BoostRow({
+  boost,
+  homeTeam,
+  awayTeam,
+  powerBoosts,
+}: {
+  boost: PowerBoostUse;
+  homeTeam: TeamProfile | null;
+  awayTeam: TeamProfile | null;
+  powerBoosts: PowerBoost[];
+}) {
+  const catalogEntry = powerBoosts.find((entry) => entry.key === boost.boostKey);
+  const team = boost.side === "home" ? homeTeam : awayTeam;
+  const minuteLabel = boost.minuteMs != null ? `${Math.floor(boost.minuteMs / 60000)}'` : null;
+
+  return (
+    <div className="flex items-center gap-3 rounded-panel border border-border bg-card px-4 py-2.5">
+      <span className="text-lg leading-none">{catalogEntry?.emoji ?? "⚡"}</span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-foreground">{catalogEntry?.label ?? boost.boostKey}</p>
+        <p className="truncate text-xs text-muted-foreground">{team?.name ?? "—"}</p>
+      </div>
+      {minuteLabel && <span className="shrink-0 text-xs font-bold tabular-nums text-muted-foreground">{minuteLabel}</span>}
+    </div>
+  );
+}
+
 // Página pública de UM jogo — súmula (placar, eventos) + transmissão. DENTRO da shell/tema do host
 // (só tokens shadcn), mesmo princípio de team-profile-view.tsx/player-profile-view.tsx.
 export function MatchView({
@@ -129,12 +156,16 @@ export function MatchView({
   awayTeam,
   events,
   playerById,
+  boosts,
+  powerBoosts,
 }: {
   match: MatchSummary;
   homeTeam: TeamProfile | null;
   awayTeam: TeamProfile | null;
   events: MatchEvent[];
   playerById: Map<string, PlayerProfile>;
+  boosts: PowerBoostUse[];
+  powerBoosts: PowerBoost[];
 }) {
   const mvpPlayer = match.mvpPlayerId ? (playerById.get(match.mvpPlayerId) ?? null) : null;
   const goalsAndCards = events.filter((event) => event.kind !== "foul");
@@ -180,6 +211,19 @@ export function MatchView({
           <div className="space-y-2">
             {goalsAndCards.map((event) => (
               <EventRow key={event.id} event={event} homeTeam={homeTeam} awayTeam={awayTeam} playerById={playerById} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Power plays</h2>
+        {boosts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum power play usado.</p>
+        ) : (
+          <div className="space-y-2">
+            {boosts.map((boost) => (
+              <BoostRow key={boost.id} boost={boost} homeTeam={homeTeam} awayTeam={awayTeam} powerBoosts={powerBoosts} />
             ))}
           </div>
         )}
