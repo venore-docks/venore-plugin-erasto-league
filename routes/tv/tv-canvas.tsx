@@ -29,11 +29,13 @@ const CSS = `
   .el-tv-eyebrow { font-size: 20px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin: 0; }
   .el-tv-page-title { font-size: 52px; font-weight: 900; margin: 8px 0 0; }
   .el-tv-title-bar { width: 84px; height: 6px; border-radius: 999px; background: var(--accent, #22c55e); margin-top: 14px; }
-  .el-tv-brand-plate {
-    display: flex; align-items: center; padding: 12px 24px; border-radius: 18px;
-    background: rgba(255,255,255,0.92); box-shadow: 0 12px 28px -10px rgba(0,0,0,0.5);
+  .el-tv-brand-plate { display: flex; align-items: center; }
+  .el-tv-brand {
+    height: 96px; max-width: 380px; width: auto; object-fit: contain;
+    /* SVG/PNG vem com as cores do arquivo original — brightness(0) apaga tudo pra preto (mantendo
+       a transparência) e invert(1) vira branco puro, sem depender de mexer no arquivo de origem. */
+    filter: brightness(0) invert(1);
   }
-  .el-tv-brand { height: 48px; max-width: 280px; width: auto; object-fit: contain; }
 
   .el-tv-body { flex: 1; min-height: 0; padding: 24px 64px 40px; display: flex; flex-direction: column; justify-content: center; }
   .el-tv-empty { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 32px; color: rgba(255,255,255,0.4); }
@@ -84,21 +86,21 @@ const CSS = `
     font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #fff; }
   .el-tv-next-badge.round { background: var(--accent, #22c55e); color: #04170a; }
   .el-tv-next-row { position: relative; flex: 1; display: flex; align-items: center; }
-  .el-tv-next-side { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 0 24px; min-width: 0; }
+  .el-tv-next-side { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 0 24px; min-width: 0; }
   .el-tv-next-crest {
-    width: 160px; height: 160px; border-radius: 999px; object-fit: cover; border: 6px solid var(--team-color, rgba(255,255,255,0.25));
-    box-shadow: 0 0 0 3px rgba(255,255,255,0.06), 0 24px 48px -12px rgba(0,0,0,0.7);
+    width: 260px; height: 260px; border-radius: 999px; object-fit: cover; border: 8px solid var(--team-color, rgba(255,255,255,0.25));
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.06), 0 24px 48px -12px rgba(0,0,0,0.7);
   }
   .el-tv-next-crest-mono {
-    width: 160px; height: 160px; border-radius: 999px; border: 6px solid var(--team-color, rgba(255,255,255,0.25));
+    width: 260px; height: 260px; border-radius: 999px; border: 8px solid var(--team-color, rgba(255,255,255,0.25));
     background: rgba(255,255,255,0.06);
-    display: flex; align-items: center; justify-content: center; font-size: 52px; font-weight: 900; color: #fff;
-    box-shadow: 0 0 0 3px rgba(255,255,255,0.06), 0 24px 48px -12px rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center; font-size: 84px; font-weight: 900; color: #fff;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.06), 0 24px 48px -12px rgba(0,0,0,0.7);
   }
-  .el-tv-next-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 34px;
+  .el-tv-next-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 54px;
     font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; }
-  .el-tv-next-name-bar { width: 48px; height: 4px; border-radius: 999px; background: var(--team-color, var(--accent, #22c55e)); }
-  .el-tv-next-vs { flex: none; font-size: 48px; font-style: italic; font-weight: 900; color: rgba(255,255,255,0.4); }
+  .el-tv-next-name-bar { width: 64px; height: 5px; border-radius: 999px; background: var(--team-color, var(--accent, #22c55e)); }
+  .el-tv-next-vs { flex: none; font-size: 56px; font-style: italic; font-weight: 900; color: rgba(255,255,255,0.4); }
   .el-tv-next-when { position: relative; text-align: center; padding-bottom: 32px; font-size: 20px; font-weight: 800; color: #fff; }
 
   .el-tv-foot { padding: 24px 64px 40px; }
