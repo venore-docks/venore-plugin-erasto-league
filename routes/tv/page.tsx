@@ -4,6 +4,7 @@ import { getBrandConfig } from "@venore/plugin-sdk/brand";
 import { getBracketView, getNextFixture } from "../../runtime/bracket";
 import { computeStandings } from "../../runtime/standings";
 import { listTopScorers } from "../../runtime/stats";
+import { getTvDataVersion } from "../../runtime/tv-version";
 import { resolveErastoLeagueConfig } from "../../shared/config";
 import { TvCanvas } from "./tv-canvas";
 
@@ -22,18 +23,20 @@ export default async function TvPage() {
     notFound();
   }
 
-  const [bracket, standings, nextGame, scorers, config, brand] = await Promise.all([
+  const [bracket, standings, nextGame, scorers, config, brand, version] = await Promise.all([
     getBracketView(),
     computeStandings(),
     getNextFixture(),
     listTopScorers(TV_SCORERS_LIMIT),
     resolveErastoLeagueConfig(),
     getBrandConfig("png"),
+    getTvDataVersion(),
   ]);
 
   return (
     <TvCanvas
       initialData={{ bracket, standings, nextGame, scorers }}
+      initialVersion={version}
       accentColor={config.accentColor}
       brandLogoUrl={brand.logoUrl || null}
     />

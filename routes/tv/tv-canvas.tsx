@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { buildTvPages, type TvPage } from "../../shared/tv-pages";
 import { resolveTvStageTransform, type TvStageTransform } from "../../shared/tv-stage";
 import { FIXTURE_PHASE_LABEL } from "../../shared/fixture-phase";
 import { formatScore } from "../../shared/score";
-import { getTvDataAction, type TvData } from "./actions";
+import { getTvDataAction, getTvDataVersionAction, type TvData } from "./actions";
 import type { NextGameView } from "../../runtime/bracket";
 import type { ScorerEntry } from "../../runtime/stats";
 import type { TeamStanding } from "../../contracts/types";
@@ -15,7 +15,13 @@ import type { TeamStanding } from "../../contracts/types";
 // (shared/tv-stage.ts) e rodízio automático entre páginas (uma por grupo, + eliminatórias) quando
 // há mais de uma pra mostrar.
 const PAGE_DURATION_MS = 12_000;
-const POLL_MS = 20_000;
+// A tabela só muda quando uma partida encerra ou o campeonato importa/reordena fixtures (comentário
+// de getTvDataAction) — bem mais raro que os 20s que isto pollava antes. VERSION_POLL_MS pergunta
+// só o fingerprint barato (getTvDataVersionAction, dois MAX() indexados); o refetch caro
+// (getTvDataAction: chaveamento + classificação + artilheiros) só roda quando o fingerprint muda.
+// Com 3 telas ficando ligadas 24h/dia num evento (overlay já é o oposto: só sobe durante o jogo),
+// era isso que gerava invocação de function completa a cada 20s em cada tela sem nada ter mudado.
+const VERSION_POLL_MS = 60_000;
 
 const CSS = `
   html, body { margin: 0; background: #0a0d12; }
@@ -309,26 +315,33 @@ function useTvStageTransform(): TvStageTransform {
 
 export function TvCanvas({
   initialData,
+  initialVersion,
   accentColor,
   brandLogoUrl,
 }: {
   initialData: TvData;
+  initialVersion: number;
   accentColor: string;
   brandLogoUrl: string | null;
 }) {
   const [data, setData] = useState(initialData);
+  const versionRef = useRef(initialVersion);
 
   useEffect(() => {
     let cancelled = false;
     const interval = setInterval(() => {
-      getTvDataAction()
-        .then((next) => {
-          if (!cancelled) setData(next);
+      getTvDataVersionAction()
+        .then((version) => {
+          if (cancelled || version <= versionRef.current) return;
+          versionRef.current = version;
+          return getTvDataAction().then((next) => {
+            if (!cancelled) setData(next);
+          });
         })
         .catch(() => {
           // rede instável — próximo tick tenta de novo
         });
-    }, POLL_MS);
+    }, VERSION_POLL_MS);
     return () => {
       cancelled = true;
       clearInterval(interval);

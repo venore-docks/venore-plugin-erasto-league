@@ -3,6 +3,7 @@
 import { getBracketView, getNextFixture, type BracketView, type NextGameView } from "../../runtime/bracket";
 import { computeStandings } from "../../runtime/standings";
 import { listTopScorers, type ScorerEntry } from "../../runtime/stats";
+import { getTvDataVersion } from "../../runtime/tv-version";
 import type { TeamStanding } from "../../contracts/types";
 
 // Quantos artilheiros aparecem na página de TV — mesmo teto do bloco erasto-league.top-scorers
@@ -22,4 +23,10 @@ export async function getTvDataAction(): Promise<TvData> {
     listTopScorers(TV_SCORERS_LIMIT),
   ]);
   return { bracket, standings, nextGame, scorers };
+}
+
+// Poll leve pro client comparar e só chamar getTvDataAction (caro) quando algo de fato mudou —
+// ver runtime/tv-version.ts.
+export async function getTvDataVersionAction(): Promise<number> {
+  return getTvDataVersion();
 }
