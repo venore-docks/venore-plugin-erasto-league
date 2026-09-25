@@ -6,6 +6,8 @@ import { listPlayersByTeam } from "../../runtime/players";
 import { listEventsByMatch } from "../../runtime/match-events";
 import { listBoostsByMatch } from "../../runtime/match-boosts";
 import { listPowerBoosts } from "../../runtime/power-boosts";
+import { getMatchFanVoteResults, toMatchVotePoll } from "../../runtime/fan-votes";
+import { readFanVoteWindowHours } from "../../shared/config";
 import { MatchView } from "./match-view";
 
 // Página pública de UM jogo (/erasto-league/jogos/:id) — súmula + transmissão (link do YouTube
@@ -27,7 +29,7 @@ export default async function MatchPublicPage({ params }: { params: Promise<{ id
     notFound();
   }
 
-  const [homeTeam, awayTeam, events, homeRoster, awayRoster, boosts, powerBoosts] = await Promise.all([
+  const [homeTeam, awayTeam, events, homeRoster, awayRoster, boosts, powerBoosts, fanVoteResults, windowHours] = await Promise.all([
     getTeam(match.homeTeamId),
     getTeam(match.awayTeamId),
     listEventsByMatch(id),
@@ -35,8 +37,11 @@ export default async function MatchPublicPage({ params }: { params: Promise<{ id
     listPlayersByTeam(match.awayTeamId),
     listBoostsByMatch(id),
     listPowerBoosts(),
+    getMatchFanVoteResults(id, 1),
+    readFanVoteWindowHours(),
   ]);
   const playerById = new Map([...homeRoster, ...awayRoster].map((player) => [player.id, player]));
+  const fanVotePoll = toMatchVotePoll(match, windowHours);
 
   return (
     <MatchView
@@ -47,6 +52,7 @@ export default async function MatchPublicPage({ params }: { params: Promise<{ id
       playerById={playerById}
       boosts={boosts}
       powerBoosts={powerBoosts}
+      fanVote={{ isOpen: fanVotePoll.isOpen, leader: fanVoteResults.entries[0] ?? null, totalVotes: fanVoteResults.totalVotes }}
     />
   );
 }

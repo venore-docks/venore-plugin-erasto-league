@@ -10,6 +10,7 @@ import FixturesAdminPage from "./admin/fixtures/page";
 import FixtureDetailPage from "./admin/fixtures/fixture-page";
 import PowerBoostsAdminPage from "./admin/power-boosts/page";
 import ImportAdminPage from "./admin/import/page";
+import VotesAdminPage from "./admin/votes/page";
 import OverlayPage from "./overlay/page";
 import ControlPage from "./control/page";
 import TvPage from "./tv/page";
@@ -19,8 +20,14 @@ import ArtilleryPage from "./artillery-public/page";
 import MvpPage from "./mvp-public/page";
 import ResultsPage from "./results-public/page";
 import MatchPublicPage from "./match-public/page";
+import VoteHubPage from "./vote-public/page";
+import MatchVotePage from "./vote-public/match-page";
+import FavoriteTeamVotePage from "./vote-public/favorite-team-page";
+import VoteOverlayPage from "./vote-overlay/page";
+import VoteTvPage from "./vote-tv/page";
 import { GET as eventsGET } from "./api/events/route";
 import { GET as stateGET } from "./api/state/route";
+import { GET as matchCoverGET } from "./api/match-cover/route";
 
 // - admin      -> /admin/erasto-league          (config + atalhos; link vem do manifest.navigation)
 //                 /admin/erasto-league/teams(/:id), /players(/:id) — cadastro (admin-only)
@@ -41,8 +48,17 @@ import { GET as stateGET } from "./api/state/route";
 //                 routes/match-public) — linkada pelos widgets de resultado (últimos resultados,
 //                 agenda, fases de grupos) quando o confronto já tem partida vinculada.
 // - resultados -> /erasto-league/resultados     ("Ver mais" do bloco erasto-league.recent-results)
+// - votação    -> /erasto-league/votar          (hub da votação da torcida — destino do QR; ver
+//                 routes/vote-public), /votar/jogo/:id (Jogador da Torcida de um jogo),
+//                 /votar/time-favorito (Time favorito da temporada). Admin em
+//                 /admin/erasto-league/votes (auditoria + abrir/fechar).
+// - QR no OBS  -> /ext/erasto-league/vote-overlay (fonte SEPARADA do placar, ligada/desligada pelo
+//                 operador do OBS — routes/vote-overlay)
+// - TV votação -> /ext/erasto-league/vote-tv    (parcial pra TV/projetor — routes/vote-tv)
 // - eventos    -> /api/erasto-league/events     (SSE)
 // - estado     -> /api/erasto-league/state      (snapshot JSON — fallback do SSE)
+// - capa       -> /api/erasto-league/matches/:id/cover (capa 1280×720 do jogo, gerada da foto da
+//                 súmula — routes/api/match-cover)
 export const erastoLeagueRouteTable: PluginRouteTable = {
   admin: [
     { pattern: "", Component: asPluginPage(AdminPage) },
@@ -56,6 +72,7 @@ export const erastoLeagueRouteTable: PluginRouteTable = {
     { pattern: "fixtures/:id", Component: asPluginPage(FixtureDetailPage) },
     { pattern: "power-boosts", Component: asPluginPage(PowerBoostsAdminPage) },
     { pattern: "import", Component: asPluginPage(ImportAdminPage) },
+    { pattern: "votes", Component: asPluginPage(VotesAdminPage) },
   ],
   public: [
     { pattern: "erasto-league/teams/:slug", Component: asPluginPage(TeamProfilePage) },
@@ -64,14 +81,20 @@ export const erastoLeagueRouteTable: PluginRouteTable = {
     { pattern: "erasto-league/artilharia", Component: asPluginPage(ArtilleryPage) },
     { pattern: "erasto-league/mvps", Component: asPluginPage(MvpPage) },
     { pattern: "erasto-league/resultados", Component: asPluginPage(ResultsPage) },
+    { pattern: "erasto-league/votar", Component: asPluginPage(VoteHubPage) },
+    { pattern: "erasto-league/votar/time-favorito", Component: asPluginPage(FavoriteTeamVotePage) },
+    { pattern: "erasto-league/votar/jogo/:id", Component: asPluginPage(MatchVotePage) },
   ],
   standalone: [
     { pattern: "erasto-league/overlay", Component: asPluginPage(OverlayPage) },
     { pattern: "erasto-league/control", Component: asPluginPage(ControlPage) },
     { pattern: "erasto-league/tv", Component: asPluginPage(TvPage) },
+    { pattern: "erasto-league/vote-overlay", Component: asPluginPage(VoteOverlayPage) },
+    { pattern: "erasto-league/vote-tv", Component: asPluginPage(VoteTvPage) },
   ],
   api: [
     { pattern: "events", handlers: { GET: asPluginApiHandler(eventsGET) } },
     { pattern: "state", handlers: { GET: asPluginApiHandler(stateGET) } },
+    { pattern: "matches/:id/cover", handlers: { GET: asPluginApiHandler(matchCoverGET) } },
   ],
 };

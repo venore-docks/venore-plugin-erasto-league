@@ -162,6 +162,9 @@ export type MatchSummary = {
   // vivo). null = página pública do jogo mostra "transmissão não disponível". Ver
   // runtime/matches.ts::setMatchYoutubeUrl e routes/match-public.
   youtubeUrl: string | null;
+  // Foto do jogo (media id) — base da capa 1280×720 gerada em /api/erasto-league/matches/:id/cover
+  // (runtime/match-cover-image.tsx). null = sem capa (a página do jogo não mostra cover).
+  coverMediaId: string | null;
 };
 
 // Cadastro de times/jogadores (Fase 1) — sempre mantido por um admin. crestUrl/photoUrl já vêm

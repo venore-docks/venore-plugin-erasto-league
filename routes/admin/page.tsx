@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Award, CalendarDays, ClipboardList, MonitorPlay, Radio, Shield, Smartphone, Tv, Upload, Users, Zap } from "lucide-react";
+import { Award, CalendarDays, ClipboardList, MonitorPlay, QrCode, Radio, Shield, Smartphone, Tv, Upload, Users, Vote, Zap } from "lucide-react";
 import { AdminAccessDenied, AdminPageHeader, AdminStatTile, Badge, Button } from "@venore/plugin-sdk/ui";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
@@ -93,6 +93,11 @@ export default async function ErastoLeagueAdminPage() {
               <Upload className="size-4" /> Importar CSV
             </Link>
           </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/erasto-league/votes">
+              <Vote className="size-4" /> Votação da torcida
+            </Link>
+          </Button>
         </div>
       </section>
 
@@ -119,6 +124,16 @@ export default async function ErastoLeagueAdminPage() {
           <Button asChild variant="outline" size="sm">
             <a href="/ext/erasto-league/tv" target="_blank" rel="noreferrer">
               <Tv className="size-4" /> Abrir view de TV ↗
+            </a>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <a href="/ext/erasto-league/vote-overlay" target="_blank" rel="noreferrer">
+              <QrCode className="size-4" /> Overlay do QR (votação) ↗
+            </a>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <a href="/ext/erasto-league/vote-tv" target="_blank" rel="noreferrer">
+              <Tv className="size-4" /> TV da votação ↗
             </a>
           </Button>
           {state.currentMatchId && (

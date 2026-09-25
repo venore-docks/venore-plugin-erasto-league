@@ -156,6 +156,33 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   auto-link, ou que ficou ambígua na hora porque outro confronto do mesmo par ainda não tinha sido
   resolvido. Exemplo de planilha (times e confrontos do Erasto League 2026, 100% por id) em
   `csv/teams.csv` e `csv/fixtures.csv`.
+- **Capa do jogo** — na súmula (`/admin/erasto-league/matches/:id`, seção "Capa do jogo") o admin
+  envia uma foto (`matches.cover_media_id`, `MediaPickerField`) e o sistema gera a capa **1280×720
+  sem placar** em `/api/erasto-league/matches/:id/cover` (`routes/api/match-cover`,
+  `runtime/match-cover-image.tsx`): foto de fundo, brasões, nomes, rodada/fase, data e logo da liga.
+  Gerada com `next/og` e convertida pra JPEG pelo `sharp` (optionalDependency do Next; sem ele sai
+  PNG), com a foto girada pela orientação EXIF e recortada em 16:9. "Baixar capa" entrega o arquivo
+  pra subir como miniatura no YouTube (o sistema não mexe no YouTube); com foto salva, a mesma capa
+  abre a página pública do jogo. Fonte Barlow Condensed embutida (`shared/fonts`, OFL).
+- **Votação da torcida (sem login)** — dois prêmios da torcida, separados do MVP oficial:
+  - **Jogador da Torcida** — um voto por aparelho por jogo, abre no apito inicial e fecha N horas
+    depois do fim (`erasto-league.fanVoteWindowHours`, padrão 48h: os alunos só votam de casa).
+  - **Time favorito** — um voto por aparelho na temporada, **pode trocar** enquanto aberta; o admin
+    abre/fecha e zera na virada de temporada.
+  - Hub público `/erasto-league/votar` (destino do QR e do link na descrição do YouTube), mais
+    `/erasto-league/votar/jogo/:id` e `/erasto-league/votar/time-favorito` (`routes/vote-public`).
+  - Identidade = cookie de aparelho httpOnly (`runtime/voter.ts`); no banco só vão hashes (cookie,
+    IP agrupado por /64 no IPv6 e user-agent, HMAC com o `AUTH_SECRET`). Limpar cookie/aba anônima
+    vota de novo — limitação aceita; a **auditoria** (súmula de cada jogo e `/admin/erasto-league/votes`)
+    agrupa por IP, marca "suspeito" quando o mesmo navegador vota várias vezes e deixa o admin
+    "Manter 1 por navegador", "Anular todos" ou "Restaurar" — nada é anulado sozinho.
+  - Anti-robô opcional: Cloudflare Turnstile, ligado só com `ERASTO_LEAGUE_TURNSTILE_SITE_KEY` +
+    `ERASTO_LEAGUE_TURNSTILE_SECRET_KEY` no ambiente.
+  - **Overlay do QR** `/ext/erasto-league/vote-overlay` — fonte do OBS **separada** do placar (o
+    operador do OBS liga/desliga; o controle de gols não mexe nela). Chama o Jogador da Torcida com
+    votação aberta, senão o Time favorito, senão fica transparente. `?pos=top-left|top-right|bottom-left|bottom-right`.
+  - **Parcial** no bloco **Erasto League — Votação da torcida** (`erasto-league.fan-votes`) e na **TV
+    da votação** `/ext/erasto-league/vote-tv` (rodízio entre os dois rankings + QR; `?pagina=jogador|time`).
 - **Tempo real** — `EventSource` → `/api/erasto-league/events` (SSE). O servidor relê o banco a
   cada 1s (catch-up multi-instância) e o client cai em polling de `/api/erasto-league/state`
   quando o SSE está fora.
@@ -186,6 +213,8 @@ Tudo em `/admin/erasto-league` (contexts/settings do host):
 | `erasto-league.accentColor` | `#22c55e` | Cor da placa/halo/relógio no overlay. |
 | `erasto-league.logoMediaId` | (vazio) | Logo no medalhão, via sistema de mídia do host (MediaPickerField). Ausente → monograma "EL". |
 | `erasto-league.youtubeChannelId` | (vazio) | Id do canal do YouTube da transmissão (bloco `erasto-league.broadcast`). |
+| `erasto-league.fanVoteWindowHours` | 48 | Horas que a votação do Jogador da Torcida fica aberta depois do jogo (`/admin/erasto-league/votes`). |
+| `erasto-league.favoriteTeamVotingOpen` | `true` | Votação do Time favorito aberta (`/admin/erasto-league/votes`). |
 
 ## Relógio
 

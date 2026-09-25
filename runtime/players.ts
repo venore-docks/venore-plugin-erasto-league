@@ -1,7 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
-import { matchEvents as matchEventsTable, players as playersTable } from "../database/schema";
+import { matchEvents as matchEventsTable, matchFanVotes as matchFanVotesTable, players as playersTable } from "../database/schema";
 import { slugify } from "../shared/slug";
 import type { PlayerGender, PlayerPosition, PlayerProfile } from "../contracts/types";
 
@@ -94,19 +94,25 @@ export async function updatePlayer(id: string, input: PlayerInput): Promise<Play
   return rowToProfile(row);
 }
 
-export type PlayerDeleteImpact = { eventCount: number };
+export type PlayerDeleteImpact = { eventCount: number; fanVoteCount: number };
 
 // Quantos eventos (gol/cartão/falta) ficariam sem jogador atribuído se este jogador fosse excluído
-// — mostrado antes de confirmar (routes/admin/players/delete-player-control.tsx).
+// — mostrado antes de confirmar (routes/admin/players/delete-player-control.tsx) — e quantos votos
+// de Jogador da Torcida recebidos por ele seriam apagados.
 export async function getPlayerDeleteImpact(id: string): Promise<PlayerDeleteImpact> {
-  const rows = await db.select({ id: matchEventsTable.id }).from(matchEventsTable).where(eq(matchEventsTable.playerId, id));
-  return { eventCount: rows.length };
+  const [eventRows, fanVoteRows] = await Promise.all([
+    db.select({ id: matchEventsTable.id }).from(matchEventsTable).where(eq(matchEventsTable.playerId, id)),
+    db.select({ id: matchFanVotesTable.id }).from(matchFanVotesTable).where(eq(matchFanVotesTable.playerId, id)),
+  ]);
+  return { eventCount: eventRows.length, fanVoteCount: fanVoteRows.length };
 }
 
 // Exclusão "segura": os eventos do jogador não são apagados (isso mexeria no placar/histórico das
 // partidas) — só perdem a atribuição (playerId null, mesmo estado de "quem fez?" pulado no
-// controle), corrigível depois na súmula atribuindo outro jogador se for o caso.
+// controle), corrigível depois na súmula atribuindo outro jogador se for o caso. Votos de Jogador
+// da Torcida nele, ao contrário, são apagados: um voto sem jogador não tem o que mostrar.
 export async function deletePlayer(id: string): Promise<void> {
   await db.update(matchEventsTable).set({ playerId: null }).where(eq(matchEventsTable.playerId, id));
+  await db.delete(matchFanVotesTable).where(eq(matchFanVotesTable.playerId, id));
   await db.delete(playersTable).where(eq(playersTable.id, id));
 }

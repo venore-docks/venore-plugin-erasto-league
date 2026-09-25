@@ -76,6 +76,9 @@ export function DeleteMatchControl({ matchId, matchLabel }: { matchId: string; m
                 {impact.fixtureCount > 0
                   ? ` O confronto vinculado na tabela de jogos volta a ficar sem resultado (não é excluído).`
                   : ""}
+                {impact.fanVoteCount > 0
+                  ? ` Os ${impact.fanVoteCount} voto${impact.fanVoteCount === 1 ? "" : "s"} do Jogador da Torcida deste jogo também são apagados.`
+                  : ""}
               </>
             )}
           </DialogDescription>

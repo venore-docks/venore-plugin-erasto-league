@@ -9,3 +9,4 @@ export * from "./match-boosts";
 export * from "./power-boosts";
 export * from "./match-state";
 export * from "./fixtures";
+export * from "./fan-votes";

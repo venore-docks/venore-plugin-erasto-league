@@ -5,7 +5,15 @@ import { revalidatePath } from "next/cache";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { deleteEvent, recordEvent, updateEvent } from "../../../runtime/match-events";
 import { deleteBoostUse, recordBoostUse } from "../../../runtime/match-boosts";
-import { createManualMatch, deleteMatch, getMatchDeleteImpact, setMatchMvp, setMatchYoutubeUrl, type MatchDeleteImpact } from "../../../runtime/matches";
+import {
+  createManualMatch,
+  deleteMatch,
+  getMatchDeleteImpact,
+  setMatchCover,
+  setMatchMvp,
+  setMatchYoutubeUrl,
+  type MatchDeleteImpact,
+} from "../../../runtime/matches";
 import { sanitizeYoutubeUrl } from "../../../shared/youtube";
 import type { EventKind, MatchSide, PowerBoostKey } from "../../../contracts/types";
 
@@ -125,6 +133,20 @@ export async function setMatchYoutubeUrlFormAction(
   await setMatchYoutubeUrl(matchId, youtubeUrl);
   revalidatePath(`/admin/erasto-league/matches/${matchId}`);
   return { error: null };
+}
+
+export type SetMatchCoverActionState = { error: string | null; savedAt: number | null };
+
+// Foto do jogo — base da capa 1280×720 (/api/erasto-league/matches/:id/cover). Campo vazio tira a
+// capa. A mídia em si continua no sistema de mídia do host (não é apagada aqui).
+export async function setMatchCoverFormAction(_prev: SetMatchCoverActionState, formData: FormData): Promise<SetMatchCoverActionState> {
+  await requireGate();
+  const matchId = String(formData.get("matchId"));
+  const coverMediaId = String(formData.get("coverMediaId") ?? "").trim() || null;
+  await setMatchCover(matchId, coverMediaId);
+  revalidatePath(`/admin/erasto-league/matches/${matchId}`);
+  revalidatePath(`/erasto-league/jogos/${matchId}`);
+  return { error: null, savedAt: Date.now() };
 }
 
 // Excluir súmula (Fase 3) — mesma UX de confirmação com impacto de routes/admin/teams/actions.ts
