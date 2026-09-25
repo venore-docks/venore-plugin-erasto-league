@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
-import { fixtures as fixturesTable } from "../database/schema";
+import { fixtures as fixturesTable, teams as teamsTable } from "../database/schema";
 import { getMatch } from "./matches";
 import { getTeam } from "./teams";
 import { resolveErastoLeagueConfig } from "../shared/config";
@@ -28,8 +28,64 @@ export type MatchCoverData = {
   accentColor: string;
 };
 
+type FixtureRow = typeof fixturesTable.$inferSelect;
+
 function formatDayMonth(epochMs: number): string {
   return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
+}
+
+// "Semifinal", "Grupo A · 2ª Rodada"... do confronto vinculado à partida (tabela de jogos).
+function describeStage(fixture: FixtureRow | undefined): string | null {
+  if (!fixture) return null;
+  if (fixture.phase !== "group") return FIXTURE_PHASE_LABEL[fixture.phase];
+  const group = fixture.groupName ? `Grupo ${fixture.groupName}` : null;
+  return [group, fixture.roundLabel].filter(Boolean).join(" · ") || FIXTURE_PHASE_LABEL.group;
+}
+
+// Data do confronto (texto puro, sem fuso) ou, sem confronto, do apito inicial em Brasília.
+function describeDate(startedAt: number, fixture: FixtureRow | undefined): string {
+  if (fixture?.scheduledDate) {
+    const [, month, day] = fixture.scheduledDate.split("-");
+    if (month && day) return `${day}/${month}`;
+  }
+  return formatDayMonth(startedAt);
+}
+
+async function findLinkedFixture(matchId: string): Promise<FixtureRow | undefined> {
+  const [fixture] = await db.select().from(fixturesTable).where(eq(fixturesTable.matchId, matchId)).limit(1);
+  return fixture;
+}
+
+// Versão leve (sem foto/brasões/config) pra metadata de compartilhamento das páginas do jogo
+// (runtime/share-metadata.ts) — roda em toda visita à página, não só quando alguém gera a capa.
+export type MatchShareInfo = {
+  matchId: string;
+  coverMediaId: string | null;
+  homeName: string;
+  awayName: string;
+  stageLabel: string | null;
+  dateLabel: string;
+};
+
+export async function loadMatchShareInfo(matchId: string): Promise<MatchShareInfo | null> {
+  const match = await getMatch(matchId);
+  if (!match) return null;
+  const [teamRows, fixture] = await Promise.all([
+    db
+      .select({ id: teamsTable.id, name: teamsTable.name })
+      .from(teamsTable)
+      .where(inArray(teamsTable.id, [match.homeTeamId, match.awayTeamId])),
+    findLinkedFixture(matchId),
+  ]);
+  const nameOf = (id: string) => teamRows.find((row) => row.id === id)?.name ?? "—";
+  return {
+    matchId,
+    coverMediaId: match.coverMediaId,
+    homeName: nameOf(match.homeTeamId),
+    awayName: nameOf(match.awayTeamId),
+    stageLabel: describeStage(fixture),
+    dateLabel: describeDate(match.startedAt, fixture),
+  };
 }
 
 async function resolveMediaUrl(mediaId: string | null): Promise<string | null> {
@@ -42,29 +98,13 @@ export async function loadMatchCoverData(matchId: string): Promise<MatchCoverDat
   const match = await getMatch(matchId);
   if (!match) return null;
 
-  const [homeTeam, awayTeam, [fixture], config, photoUrl] = await Promise.all([
+  const [homeTeam, awayTeam, fixture, config, photoUrl] = await Promise.all([
     getTeam(match.homeTeamId),
     getTeam(match.awayTeamId),
-    db.select().from(fixturesTable).where(eq(fixturesTable.matchId, matchId)).limit(1),
+    findLinkedFixture(matchId),
     resolveErastoLeagueConfig(),
     resolveMediaUrl(match.coverMediaId),
   ]);
-
-  let stageLabel: string | null = null;
-  if (fixture) {
-    if (fixture.phase === "group") {
-      const group = fixture.groupName ? `Grupo ${fixture.groupName}` : null;
-      stageLabel = [group, fixture.roundLabel].filter(Boolean).join(" · ") || FIXTURE_PHASE_LABEL.group;
-    } else {
-      stageLabel = FIXTURE_PHASE_LABEL[fixture.phase];
-    }
-  }
-
-  let dateLabel = formatDayMonth(match.startedAt);
-  if (fixture?.scheduledDate) {
-    const [, month, day] = fixture.scheduledDate.split("-");
-    if (month && day) dateLabel = `${day}/${month}`;
-  }
 
   return {
     matchId,
@@ -76,8 +116,8 @@ export async function loadMatchCoverData(matchId: string): Promise<MatchCoverDat
     awayCrestUrl: awayTeam?.crestUrl ?? null,
     homeColor: homeTeam?.primaryColor ?? null,
     awayColor: awayTeam?.primaryColor ?? null,
-    stageLabel,
-    dateLabel,
+    stageLabel: describeStage(fixture),
+    dateLabel: describeDate(match.startedAt, fixture),
     leagueLogoUrl: config.logoUrl || null,
     accentColor: config.accentColor,
   };

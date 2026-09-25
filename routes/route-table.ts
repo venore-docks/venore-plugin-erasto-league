@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { asPluginApiHandler, asPluginPage, type PluginRouteTable } from "@venore/plugin-sdk";
 import AdminPage from "./admin/page";
 import TeamsAdminPage from "./admin/teams/page";
@@ -28,6 +29,37 @@ import VoteTvPage from "./vote-tv/page";
 import { GET as eventsGET } from "./api/events/route";
 import { GET as stateGET } from "./api/state/route";
 import { GET as matchCoverGET } from "./api/match-cover/route";
+import { buildMatchPageMetadata, buildMatchVoteMetadata, buildVoteHubMetadata } from "../runtime/share-metadata";
+
+// generateMetadata das rotas públicas que circulam como link (página do jogo e votação) — título,
+// descrição e a capa do jogo como imagem de preview no WhatsApp (runtime/share-metadata.ts).
+// Entradas declaradas FORA do literal da tabela, com o tipo escrito aqui (não asPluginMetadata do
+// SDK), de propósito: num host cujo core ainda não lê generateMetadata em PluginPageRouteEntry, a
+// entrada só carrega uma propriedade a mais (ignorada) — o plugin compila e funciona igual, só sem
+// o preview; com o core novo o preview liga sozinho. Literal inline na tabela quebraria o build do
+// host antigo (checagem de propriedade excedente do TypeScript).
+type RouteMetadata = (props: {
+  params: Promise<Record<string, string>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) => Promise<Metadata>;
+
+const matchPublicRoute = {
+  pattern: "erasto-league/jogos/:id",
+  Component: asPluginPage(MatchPublicPage),
+  generateMetadata: (async ({ params }) => buildMatchPageMetadata((await params).id)) satisfies RouteMetadata,
+};
+
+const voteHubRoute = {
+  pattern: "erasto-league/votar",
+  Component: asPluginPage(VoteHubPage),
+  generateMetadata: (async () => buildVoteHubMetadata()) satisfies RouteMetadata,
+};
+
+const matchVoteRoute = {
+  pattern: "erasto-league/votar/jogo/:id",
+  Component: asPluginPage(MatchVotePage),
+  generateMetadata: (async ({ params }) => buildMatchVoteMetadata((await params).id)) satisfies RouteMetadata,
+};
 
 // - admin      -> /admin/erasto-league          (config + atalhos; link vem do manifest.navigation)
 //                 /admin/erasto-league/teams(/:id), /players(/:id) — cadastro (admin-only)
@@ -77,13 +109,13 @@ export const erastoLeagueRouteTable: PluginRouteTable = {
   public: [
     { pattern: "erasto-league/teams/:slug", Component: asPluginPage(TeamProfilePage) },
     { pattern: "erasto-league/players/:slug", Component: asPluginPage(PlayerProfilePage) },
-    { pattern: "erasto-league/jogos/:id", Component: asPluginPage(MatchPublicPage) },
+    matchPublicRoute,
     { pattern: "erasto-league/artilharia", Component: asPluginPage(ArtilleryPage) },
     { pattern: "erasto-league/mvps", Component: asPluginPage(MvpPage) },
     { pattern: "erasto-league/resultados", Component: asPluginPage(ResultsPage) },
-    { pattern: "erasto-league/votar", Component: asPluginPage(VoteHubPage) },
+    voteHubRoute,
     { pattern: "erasto-league/votar/time-favorito", Component: asPluginPage(FavoriteTeamVotePage) },
-    { pattern: "erasto-league/votar/jogo/:id", Component: asPluginPage(MatchVotePage) },
+    matchVoteRoute,
   ],
   standalone: [
     { pattern: "erasto-league/overlay", Component: asPluginPage(OverlayPage) },
