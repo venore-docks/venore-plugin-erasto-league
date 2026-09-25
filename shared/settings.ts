@@ -45,6 +45,21 @@ export const ERASTO_LEAGUE_SETTINGS = {
     defaultValue: 7,
     label: "Duração do flash de gol no overlay (segundos)",
   },
+  // "Jogador da Torcida": a votação de uma partida abre no apito inicial e fecha N horas DEPOIS de
+  // encerrada (shared/fan-votes.ts resolveMatchVoteWindow) — 48h por padrão porque os alunos não
+  // usam celular na escola, só votam de casa.
+  fanVoteWindowHours: {
+    key: "erasto-league.fanVoteWindowHours",
+    defaultValue: 48,
+    label: "Votação do Jogador da Torcida fica aberta por quantas horas depois do jogo",
+  },
+  // "Time favorito" da temporada — sem janela automática: o admin abre/fecha
+  // (/admin/erasto-league/votes).
+  favoriteTeamVotingOpen: {
+    key: "erasto-league.favoriteTeamVotingOpen",
+    defaultValue: true,
+    label: "Votação do Time favorito aberta",
+  },
 } as const;
 
 export type ErastoLeagueSettingField = keyof typeof ERASTO_LEAGUE_SETTINGS;
@@ -62,6 +77,9 @@ export type ErastoLeagueConfig = {
   youtubeChannelId: string;
   // Em ms (mesmo padrão de periodMs vs. periodMinutes) — o overlay consome direto sem converter.
   goalFlashMs: number;
+  // Votação da torcida — ver fanVoteWindowHours/favoriteTeamVotingOpen acima.
+  fanVoteWindowHours: number;
+  favoriteTeamVotingOpen: boolean;
 };
 
 const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
@@ -84,4 +102,11 @@ export function clampPeriodCount(raw: number): number {
 export function clampGoalFlashSeconds(raw: number): number {
   if (!Number.isFinite(raw)) return ERASTO_LEAGUE_SETTINGS.goalFlashSeconds.defaultValue;
   return Math.min(30, Math.max(2, Math.round(raw)));
+}
+
+// Até 30 dias — mais que isso a "votação do jogo" vira votação da temporada, que já é o papel do
+// Time favorito.
+export function clampFanVoteWindowHours(raw: number): number {
+  if (!Number.isFinite(raw)) return ERASTO_LEAGUE_SETTINGS.fanVoteWindowHours.defaultValue;
+  return Math.min(24 * 30, Math.max(1, Math.round(raw)));
 }

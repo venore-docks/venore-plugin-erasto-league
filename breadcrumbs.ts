@@ -52,4 +52,21 @@ export const erastoLeagueBreadcrumbSegments: BreadcrumbSegmentDefinition[] = [
   staticBreadcrumbSegment({ key: "erasto-league.public.artilharia", segments: ["erasto-league", "artilharia"], label: "Artilharia" }),
   staticBreadcrumbSegment({ key: "erasto-league.public.mvps", segments: ["erasto-league", "mvps"], label: "MVPs" }),
   staticBreadcrumbSegment({ key: "erasto-league.public.resultados", segments: ["erasto-league", "resultados"], label: "Resultados" }),
+  staticBreadcrumbSegment({ key: "erasto-league.public.votar", segments: ["erasto-league", "votar"], label: "Votação da torcida" }),
+  staticBreadcrumbSegment({
+    key: "erasto-league.public.votar.favorite",
+    segments: ["erasto-league", "votar", "time-favorito"],
+    label: "Time favorito",
+  }),
+  dynamicBreadcrumbSegment({
+    key: "erasto-league.public.votar.match",
+    segments: ["erasto-league", "votar", "jogo", ":id"],
+    paramName: "id",
+    resolveLabel: async (id) => {
+      const match = await getCachedMatch(id);
+      if (!match) return null;
+      const [homeTeam, awayTeam] = await Promise.all([getCachedTeam(match.homeTeamId), getCachedTeam(match.awayTeamId)]);
+      return `Jogador da Torcida: ${homeTeam?.name ?? "—"} × ${awayTeam?.name ?? "—"}`;
+    },
+  }),
 ];

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
+import { getMediaAsset } from "@venore/plugin-sdk/media";
 import { AdminAccessDenied, AdminPageHeader, Badge, Button } from "@venore/plugin-sdk/ui";
 import { getMatch } from "../../../runtime/matches";
 import { getTeam, listTeams } from "../../../runtime/teams";
@@ -21,6 +22,8 @@ import {
 import { CreateMatchForm } from "./create-match-form";
 import { DeleteMatchControl } from "./delete-match-control";
 import { YoutubeUrlForm } from "./youtube-url-form";
+import { MatchFanVotePanel } from "./match-fan-vote-panel";
+import { MatchCoverForm } from "./match-cover-form";
 import type { EventKind, MatchEvent, PlayerProfile, TeamProfile } from "../../../contracts/types";
 
 const EVENT_LABEL: Record<EventKind, string> = {
@@ -156,6 +159,8 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
     listPowerBoosts(),
   ]);
   const playerById = new Map([...homeRoster, ...awayRoster].map((player) => [player.id, player]));
+  const coverMediaResult = match.coverMediaId ? await getMediaAsset({ id: match.coverMediaId }) : null;
+  const coverMedia = coverMediaResult?.success ? coverMediaResult.data : null;
   const matchLabel = `${homeTeam?.name ?? "—"} ${formatScore(match.homeScore)} × ${formatScore(match.awayScore)} ${awayTeam?.name ?? "—"}`;
 
   return (
@@ -187,6 +192,15 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
       </section>
 
       <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-foreground">Capa do jogo</h2>
+        <p className="text-xs text-muted-foreground">
+          Envie uma foto do jogo e o sistema monta a capa 1280×720 (brasões, times e rodada — sem placar). Baixe e suba no YouTube como
+          miniatura do vídeo; ela também vira a capa da página pública do jogo.
+        </p>
+        <MatchCoverForm matchId={id} coverMedia={coverMedia} coverVersion={match.coverMediaId} />
+      </section>
+
+      <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">MVP da partida</h2>
         {match.mvpPlayerId && (
           <p className="text-xs text-muted-foreground">
@@ -212,6 +226,11 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
           />
           <Button type="submit">Salvar MVP</Button>
         </form>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-foreground">Jogador da Torcida (votação)</h2>
+        <MatchFanVotePanel match={match} />
       </section>
 
       <section className="space-y-3">

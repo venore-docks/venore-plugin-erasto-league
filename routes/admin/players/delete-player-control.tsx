@@ -67,6 +67,7 @@ export function DeletePlayerControl({ playerId, playerName }: { playerId: string
               (impact.eventCount > 0
                 ? `Este jogador tem ${impact.eventCount} evento(s) (gol/cartão/falta) registrado(s). Excluir NÃO apaga esses eventos nem mexe no placar das partidas — eles só ficam sem jogador atribuído (dá pra corrigir depois na súmula).`
                 : "Este jogador não tem nenhum evento registrado — pode excluir sem afetar nenhuma partida.")}
+            {impact && impact.fanVoteCount > 0 && ` Os ${impact.fanVoteCount} voto(s) de Jogador da Torcida que ele recebeu serão apagados.`}
           </DialogDescription>
         </DialogHeader>
         {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}

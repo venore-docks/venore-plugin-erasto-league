@@ -33,4 +33,10 @@ export const matches = erastoLeagueSchema.table("matches", {
   // sempre a live ATUAL do canal; este é o vídeo definitivo de UMA partida, que só existe depois
   // que ela acontece). Alimenta a página pública do jogo (routes/match-public).
   youtubeUrl: text("youtube_url"),
+
+  // Foto do jogo (sistema de mídia do host, mesmo padrão de teams.crestMediaId) — base da capa
+  // 1280×720 gerada em /api/erasto-league/matches/:id/cover (routes/api/match-cover), que o admin
+  // baixa pra subir no YouTube e que vira a capa da página pública do jogo. A capa em si nunca é
+  // gravada: é recalculada a partir desta foto + times + rodada.
+  coverMediaId: text("cover_media_id"),
 });

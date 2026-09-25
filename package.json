@@ -13,10 +13,21 @@
     "./package.json": "./package.json"
   },
   "//": "@venore/plugin-sdk NÃO é peerDependency — resolve pelo alias de tsconfig do host (src/sdk), não pelo npm. Mesmo padrão do venore-plugin-broadcast.",
+  "//sharp": "sharp é opcional: só converte a capa do jogo pra JPEG (runtime/match-cover-image.tsx) — o Next já o instala como optionalDependency. Sem ele a capa sai em PNG.",
   "peerDependencies": {
     "drizzle-orm": ">=0.45",
     "next": ">=16",
-    "react": ">=19"
+    "react": ">=19",
+    "sharp": ">=0.33"
+  },
+  "peerDependenciesMeta": {
+    "sharp": {
+      "optional": true
+    }
+  },
+  "//uqr": "uqr gera a matriz do QR code da votação (shared/qr.ts) — MIT, sem dependências.",
+  "dependencies": {
+    "uqr": "^0.1.3"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.10"

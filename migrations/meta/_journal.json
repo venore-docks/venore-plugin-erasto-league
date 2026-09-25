@@ -106,6 +106,13 @@
       "when": 1790034599132,
       "tag": "0014_match_youtube_url",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790357033540,
+      "tag": "0015_fan_votes_and_match_cover",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@venore/plugin-sdk/ui";
 import type { MatchEvent, MatchSummary, PlayerProfile, PowerBoost, PowerBoostUse, TeamProfile } from "../../contracts/types";
+import type { FanVoteResultEntry } from "../../runtime/fan-votes";
 import { formatScore } from "../../shared/score";
 import { MATCH_STATUS_BADGE_VARIANT, MATCH_STATUS_LABEL } from "../../shared/match-status";
 import { extractYoutubeVideoId } from "../../shared/youtube";
@@ -148,8 +149,43 @@ function BoostRow({
   );
 }
 
+// Jogador da Torcida (votação aberta, routes/vote-public) — chamada pra votar enquanto aberta,
+// líder parcial/final quando já tem voto. Separado do MVP oficial (escolhido pelo admin).
+function FanVoteCallout({
+  matchId,
+  fanVote,
+}: {
+  matchId: string;
+  fanVote: { isOpen: boolean; leader: FanVoteResultEntry | null; totalVotes: number };
+}) {
+  if (!fanVote.isOpen && !fanVote.leader) return null;
+  return (
+    <Link
+      href={`/erasto-league/votar/jogo/${matchId}`}
+      className="flex flex-wrap items-center gap-2 rounded-panel border border-border bg-card px-4 py-3 ui-motion-base hover:bg-muted/40"
+    >
+      <span className="text-lg leading-none">📣</span>
+      <p className="min-w-0 flex-1 text-sm font-semibold text-foreground">
+        Jogador da Torcida
+        {fanVote.leader ? (
+          <span className="font-normal text-muted-foreground">
+            {" "}
+            — {fanVote.isOpen ? "liderando" : "vencedor"}: <span className="font-semibold text-foreground">{fanVote.leader.name}</span> (
+            {fanVote.leader.percent}% de {fanVote.totalVotes} voto{fanVote.totalVotes === 1 ? "" : "s"})
+          </span>
+        ) : (
+          <span className="font-normal text-muted-foreground"> — votação aberta, ninguém votou ainda</span>
+        )}
+      </p>
+      <span className="shrink-0 text-sm font-bold text-primary">{fanVote.isOpen ? "Votar →" : "Ver resultado →"}</span>
+    </Link>
+  );
+}
+
 // Página pública de UM jogo — súmula (placar, eventos) + transmissão. DENTRO da shell/tema do host
-// (só tokens shadcn), mesmo princípio de team-profile-view.tsx/player-profile-view.tsx.
+// (só tokens shadcn), mesmo princípio de team-profile-view.tsx/player-profile-view.tsx. Com foto
+// salva na súmula, a capa gerada (/api/erasto-league/matches/:id/cover — a mesma que vai pro
+// YouTube) abre a página.
 export function MatchView({
   match,
   homeTeam,
@@ -158,6 +194,7 @@ export function MatchView({
   playerById,
   boosts,
   powerBoosts,
+  fanVote,
 }: {
   match: MatchSummary;
   homeTeam: TeamProfile | null;
@@ -166,12 +203,22 @@ export function MatchView({
   playerById: Map<string, PlayerProfile>;
   boosts: PowerBoostUse[];
   powerBoosts: PowerBoost[];
+  fanVote: { isOpen: boolean; leader: FanVoteResultEntry | null; totalVotes: number };
 }) {
   const mvpPlayer = match.mvpPlayerId ? (playerById.get(match.mvpPlayerId) ?? null) : null;
   const goalsAndCards = events.filter((event) => event.kind !== "foul");
 
   return (
     <div className="space-y-8">
+      {match.coverMediaId && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/api/erasto-league/matches/${match.id}/cover?v=${encodeURIComponent(match.coverMediaId)}`}
+          alt={`${homeTeam?.name ?? "—"} × ${awayTeam?.name ?? "—"}`}
+          className="aspect-video w-full rounded-panel border border-border bg-muted object-cover shadow-sm"
+        />
+      )}
+
       <div>
         <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Erasto League</p>
         <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -187,6 +234,8 @@ export function MatchView({
         <span className="shrink-0 text-lg font-black italic text-muted-foreground sm:text-2xl">×</span>
         <TeamHeader team={awayTeam} score={match.awayScore} />
       </div>
+
+      <FanVoteCallout matchId={match.id} fanVote={fanVote} />
 
       {mvpPlayer && (
         <div className="flex items-center gap-2 rounded-panel border border-warning bg-warning-soft px-4 py-3">

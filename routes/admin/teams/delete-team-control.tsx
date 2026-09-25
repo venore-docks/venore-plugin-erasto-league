@@ -90,6 +90,9 @@ export function DeleteTeamControl({ teamId, teamName }: { teamId: string; teamNa
                 {impact.playerCount > 0
                   ? `Os ${impact.playerCount} jogador${impact.playerCount === 1 ? "" : "es"} cadastrados nele também serão excluídos.`
                   : "Não tem jogadores cadastrados."}{" "}
+                {impact.favoriteVoteCount > 0
+                  ? `Os ${impact.favoriteVoteCount} voto${impact.favoriteVoteCount === 1 ? "" : "s"} de Time favorito que ele recebeu também serão apagados. `
+                  : ""}
                 Isso não pode ser desfeito.
               </>
             )}

@@ -1,7 +1,13 @@
 import { asc, eq, ilike, or } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
-import { fixtures as fixturesTable, matches as matchesTable, players as playersTable, teams as teamsTable } from "../database/schema";
+import {
+  favoriteTeamVotes as favoriteTeamVotesTable,
+  fixtures as fixturesTable,
+  matches as matchesTable,
+  players as playersTable,
+  teams as teamsTable,
+} from "../database/schema";
 import { deletePlayer } from "./players";
 import { slugify } from "../shared/slug";
 import type { TeamProfile } from "../contracts/types";
@@ -117,15 +123,21 @@ export async function upsertTeamByName(input: TeamInput): Promise<{ team: TeamPr
   return { team, created: true };
 }
 
-export type TeamDeleteImpact = { matchCount: number; playerCount: number; fixtureCount: number };
+export type TeamDeleteImpact = { matchCount: number; playerCount: number; fixtureCount: number; favoriteVoteCount: number };
 
 export async function getTeamDeleteImpact(id: string): Promise<TeamDeleteImpact> {
-  const [matchRows, playerRows, fixtureRows] = await Promise.all([
+  const [matchRows, playerRows, fixtureRows, favoriteVoteRows] = await Promise.all([
     db.select({ id: matchesTable.id }).from(matchesTable).where(or(eq(matchesTable.homeTeamId, id), eq(matchesTable.awayTeamId, id))),
     db.select({ id: playersTable.id }).from(playersTable).where(eq(playersTable.teamId, id)),
     db.select({ id: fixturesTable.id }).from(fixturesTable).where(or(eq(fixturesTable.homeTeamId, id), eq(fixturesTable.awayTeamId, id))),
+    db.select({ id: favoriteTeamVotesTable.id }).from(favoriteTeamVotesTable).where(eq(favoriteTeamVotesTable.teamId, id)),
   ]);
-  return { matchCount: matchRows.length, playerCount: playerRows.length, fixtureCount: fixtureRows.length };
+  return {
+    matchCount: matchRows.length,
+    playerCount: playerRows.length,
+    fixtureCount: fixtureRows.length,
+    favoriteVoteCount: favoriteVoteRows.length,
+  };
 }
 
 export type DeleteTeamResult = { ok: true } | { ok: false; error: string };
@@ -156,6 +168,9 @@ export async function deleteTeam(id: string): Promise<DeleteTeamResult> {
   for (const player of players) {
     await deletePlayer(player.id);
   }
+  // Votos de Time favorito referenciam teams.id (sem cascade) — o dialog de confirmação já avisou
+  // quantos (TeamDeleteImpact.favoriteVoteCount).
+  await db.delete(favoriteTeamVotesTable).where(eq(favoriteTeamVotesTable.teamId, id));
   await db.delete(teamsTable).where(eq(teamsTable.id, id));
   return { ok: true };
 }

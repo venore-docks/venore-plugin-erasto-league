@@ -1,6 +1,12 @@
 import { and, desc, eq, or } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
-import { fixtures as fixturesTable, matchBoosts as matchBoostsTable, matchEvents as matchEventsTable, matches as matchesTable } from "../database/schema";
+import {
+  fixtures as fixturesTable,
+  matchBoosts as matchBoostsTable,
+  matchEvents as matchEventsTable,
+  matchFanVotes as matchFanVotesTable,
+  matches as matchesTable,
+} from "../database/schema";
 import { recordEvent } from "./match-events";
 import { findUnlinkedFixtureForTeams, linkFixtureToMatch } from "./fixtures";
 import type { MatchSummary } from "../contracts/types";
@@ -23,6 +29,7 @@ export function rowToSummary(row: MatchRow): MatchSummary {
     mvpPlayerId: row.mvpPlayerId,
     mvpNote: row.mvpNote,
     youtubeUrl: row.youtubeUrl,
+    coverMediaId: row.coverMediaId,
   };
 }
 
@@ -42,6 +49,13 @@ export async function setMatchMvp(matchId: string, playerId: string | null, note
 // pública do jogo (routes/match-public). null limpa (jogo ainda sem link colado).
 export async function setMatchYoutubeUrl(matchId: string, youtubeUrl: string | null): Promise<MatchSummary> {
   const [row] = await db.update(matchesTable).set({ youtubeUrl }).where(eq(matchesTable.id, matchId)).returning();
+  return rowToSummary(row);
+}
+
+// Foto do jogo (súmula, routes/admin/matches/match-cover-form.tsx) — base da capa gerada em
+// /api/erasto-league/matches/:id/cover. null tira a capa (a página pública volta a ficar sem cover).
+export async function setMatchCover(matchId: string, coverMediaId: string | null): Promise<MatchSummary> {
+  const [row] = await db.update(matchesTable).set({ coverMediaId }).where(eq(matchesTable.id, matchId)).returning();
   return rowToSummary(row);
 }
 
@@ -145,19 +159,21 @@ export async function listRecentMatchesForTeam(teamId: string, limit = 5): Promi
   return rows.map(rowToSummary);
 }
 
-export type MatchDeleteImpact = { eventCount: number; boostCount: number; fixtureCount: number; isLive: boolean };
+export type MatchDeleteImpact = { eventCount: number; boostCount: number; fixtureCount: number; fanVoteCount: number; isLive: boolean };
 
 export async function getMatchDeleteImpact(id: string): Promise<MatchDeleteImpact> {
-  const [match, eventRows, boostRows, fixtureRows] = await Promise.all([
+  const [match, eventRows, boostRows, fixtureRows, fanVoteRows] = await Promise.all([
     getMatch(id),
     db.select({ id: matchEventsTable.id }).from(matchEventsTable).where(eq(matchEventsTable.matchId, id)),
     db.select({ id: matchBoostsTable.id }).from(matchBoostsTable).where(eq(matchBoostsTable.matchId, id)),
     db.select({ id: fixturesTable.id }).from(fixturesTable).where(eq(fixturesTable.matchId, id)),
+    db.select({ id: matchFanVotesTable.id }).from(matchFanVotesTable).where(eq(matchFanVotesTable.matchId, id)),
   ]);
   return {
     eventCount: eventRows.length,
     boostCount: boostRows.length,
     fixtureCount: fixtureRows.length,
+    fanVoteCount: fanVoteRows.length,
     isLive: match?.status === "in_progress",
   };
 }
@@ -177,6 +193,9 @@ export async function hardDeleteMatchCascade(id: string): Promise<void> {
 
   await db.delete(matchBoostsTable).where(eq(matchBoostsTable.matchId, id));
   await db.delete(matchEventsTable).where(eq(matchEventsTable.matchId, id));
+  // Votos do Jogador da Torcida referenciam matches.id (sem cascade) — sem a partida, não há o que
+  // exibir nem auditar.
+  await db.delete(matchFanVotesTable).where(eq(matchFanVotesTable.matchId, id));
   await db.delete(matchesTable).where(eq(matchesTable.id, id));
 }
 
