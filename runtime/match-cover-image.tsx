@@ -1,16 +1,13 @@
 import { ImageResponse } from "next/og";
 import type { MatchCoverData } from "./match-cover";
 import { BARLOW_CONDENSED_600_WOFF_BASE64, BARLOW_CONDENSED_800_WOFF_BASE64 } from "../shared/fonts/barlow-condensed";
-import { coverTeamNameFontSize } from "../shared/match-cover-layout";
+import { COVER_HEIGHT, COVER_WIDTH, coverTeamNameFontSize } from "../shared/match-cover-layout";
 
 // Capa 1280×720 do jogo (tamanho recomendado de miniatura do YouTube) — foto da súmula de fundo,
 // brasões + nomes dos times, rodada/fase, data e logo da liga. SEM placar (pedido explícito).
 // Renderizada com next/og (Satori + Resvg: JSX → PNG, só flexbox e um subconjunto de CSS — nada de
 // grid, color-mix nem filter) e, quando o `sharp` existe (optionalDependency do próprio Next),
 // convertida pra JPEG: PNG de foto em 1280×720 passa fácil dos 2 MB que o YouTube aceita.
-
-export const COVER_WIDTH = 1280;
-export const COVER_HEIGHT = 720;
 
 const FETCH_TIMEOUT_MS = 8_000;
 // Formatos que o Satori decodifica sozinho quando o sharp não está disponível pra normalizar.

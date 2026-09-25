@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Download } from "lucide-react";
 import { Button, MediaPickerField, useActionToast, type PickableMedia } from "@venore/plugin-sdk/ui";
 import { setMatchCoverFormAction, type SetMatchCoverActionState } from "./actions";
+import { matchCoverPath } from "../../../shared/match-cover-layout";
 
 const initialState: SetMatchCoverActionState = { error: null, savedAt: null };
 
@@ -23,8 +24,7 @@ export function MatchCoverForm({
   const [state, formAction, pending] = useActionState(setMatchCoverFormAction, initialState);
   useActionToast({ pending, error: state.error, successMessage: "Foto salva — capa atualizada." });
 
-  const version = coverVersion ?? "sem-foto";
-  const coverUrl = `/api/erasto-league/matches/${matchId}/cover?v=${encodeURIComponent(version)}`;
+  const coverUrl = matchCoverPath(matchId, coverVersion);
 
   return (
     <div className="space-y-3 rounded-panel border border-border bg-card p-3">

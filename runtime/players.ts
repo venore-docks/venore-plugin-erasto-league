@@ -1,7 +1,12 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
-import { matchEvents as matchEventsTable, matchFanVotes as matchFanVotesTable, players as playersTable } from "../database/schema";
+import {
+  matchEvents as matchEventsTable,
+  matchFanVotes as matchFanVotesTable,
+  matches as matchesTable,
+  players as playersTable,
+} from "../database/schema";
 import { slugify } from "../shared/slug";
 import type { PlayerGender, PlayerPosition, PlayerProfile } from "../contracts/types";
 
@@ -94,25 +99,33 @@ export async function updatePlayer(id: string, input: PlayerInput): Promise<Play
   return rowToProfile(row);
 }
 
-export type PlayerDeleteImpact = { eventCount: number; fanVoteCount: number };
+export type PlayerDeleteImpact = { eventCount: number; fanVoteCount: number; mvpMatchCount: number };
 
-// Quantos eventos (gol/cartão/falta) ficariam sem jogador atribuído se este jogador fosse excluído
-// — mostrado antes de confirmar (routes/admin/players/delete-player-control.tsx) — e quantos votos
-// de Jogador da Torcida recebidos por ele seriam apagados.
+// O que muda se este jogador for excluído — mostrado antes de confirmar
+// (routes/admin/players/delete-player-control.tsx): eventos (gol/cartão/falta) que ficam sem
+// jogador atribuído, votos de Jogador da Torcida recebidos por ele que são apagados, e partidas em
+// que ele era o MVP oficial (ficam sem MVP).
 export async function getPlayerDeleteImpact(id: string): Promise<PlayerDeleteImpact> {
-  const [eventRows, fanVoteRows] = await Promise.all([
+  const [eventRows, fanVoteRows, mvpRows] = await Promise.all([
     db.select({ id: matchEventsTable.id }).from(matchEventsTable).where(eq(matchEventsTable.playerId, id)),
     db.select({ id: matchFanVotesTable.id }).from(matchFanVotesTable).where(eq(matchFanVotesTable.playerId, id)),
+    db.select({ id: matchesTable.id }).from(matchesTable).where(eq(matchesTable.mvpPlayerId, id)),
   ]);
-  return { eventCount: eventRows.length, fanVoteCount: fanVoteRows.length };
+  return { eventCount: eventRows.length, fanVoteCount: fanVoteRows.length, mvpMatchCount: mvpRows.length };
 }
 
 // Exclusão "segura": os eventos do jogador não são apagados (isso mexeria no placar/histórico das
 // partidas) — só perdem a atribuição (playerId null, mesmo estado de "quem fez?" pulado no
-// controle), corrigível depois na súmula atribuindo outro jogador se for o caso. Votos de Jogador
-// da Torcida nele, ao contrário, são apagados: um voto sem jogador não tem o que mostrar.
+// controle), corrigível depois na súmula atribuindo outro jogador se for o caso. Partida em que
+// ele era o MVP oficial fica sem MVP (a nota do MVP falava dele, sai junto) — antes isso estourava
+// a FK matches.mvp_player_id. Votos de Jogador da Torcida nele são apagados: um voto sem jogador
+// não tem o que mostrar. Tudo numa transação: se qualquer passo falhar, nada fica pela metade
+// (antes, um erro no DELETE final deixava os eventos já sem atribuição).
 export async function deletePlayer(id: string): Promise<void> {
-  await db.update(matchEventsTable).set({ playerId: null }).where(eq(matchEventsTable.playerId, id));
-  await db.delete(matchFanVotesTable).where(eq(matchFanVotesTable.playerId, id));
-  await db.delete(playersTable).where(eq(playersTable.id, id));
+  await db.transaction(async (tx) => {
+    await tx.update(matchEventsTable).set({ playerId: null }).where(eq(matchEventsTable.playerId, id));
+    await tx.update(matchesTable).set({ mvpPlayerId: null, mvpNote: null }).where(eq(matchesTable.mvpPlayerId, id));
+    await tx.delete(matchFanVotesTable).where(eq(matchFanVotesTable.playerId, id));
+    await tx.delete(playersTable).where(eq(playersTable.id, id));
+  });
 }

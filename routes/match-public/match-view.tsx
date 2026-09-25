@@ -5,6 +5,7 @@ import type { FanVoteResultEntry } from "../../runtime/fan-votes";
 import { formatScore } from "../../shared/score";
 import { MATCH_STATUS_BADGE_VARIANT, MATCH_STATUS_LABEL } from "../../shared/match-status";
 import { extractYoutubeVideoId } from "../../shared/youtube";
+import { matchCoverPath } from "../../shared/match-cover-layout";
 
 const EVENT_ICON: Record<MatchEvent["kind"], string> = { goal: "⚽", yellow_card: "🟨", red_card: "🟥", foul: "⚠️" };
 const EVENT_LABEL: Record<MatchEvent["kind"], string> = {
@@ -213,7 +214,7 @@ export function MatchView({
       {match.coverMediaId && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={`/api/erasto-league/matches/${match.id}/cover?v=${encodeURIComponent(match.coverMediaId)}`}
+          src={matchCoverPath(match.id, match.coverMediaId)}
           alt={`${homeTeam?.name ?? "—"} × ${awayTeam?.name ?? "—"}`}
           className="aspect-video w-full rounded-panel border border-border bg-muted object-cover shadow-sm"
         />

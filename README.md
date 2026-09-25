@@ -37,8 +37,10 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   todos os times não é mais uma rota fixa — virou o bloco **Erasto League — Times**
   (`erasto-league.teams`, ver lista de blocos abaixo), pra o admin colocar em qualquer página.
   Excluir time/jogador é seguro: bloqueado de verdade se o time tem partida registrada (senão o
-  histórico quebra); jogador sempre pode ser excluído — os eventos dele só perdem a atribuição
-  (`runtime/teams.ts` `deleteTeam`, `runtime/players.ts` `deletePlayer`).
+  histórico quebra); jogador sempre pode ser excluído — os eventos dele só perdem a atribuição, a
+  partida em que ele era o MVP oficial fica sem MVP e os votos de Jogador da Torcida nele são
+  apagados, tudo numa transação só (`runtime/teams.ts` `deleteTeam`, `runtime/players.ts`
+  `deletePlayer`).
 - **Partida como entidade** — cada partida (`matches`) tem uma trilha de eventos (`match_events`:
   gol/cartão/falta, cada um podendo apontar pro jogador) em vez de só um contador — placar de cada
   lado é a soma dos eventos "goal". Times/jogador podem ficar sem atribuição no calor do jogo.
@@ -164,6 +166,11 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   PNG), com a foto girada pela orientação EXIF e recortada em 16:9. "Baixar capa" entrega o arquivo
   pra subir como miniatura no YouTube (o sistema não mexe no YouTube); com foto salva, a mesma capa
   abre a página pública do jogo. Fonte Barlow Condensed embutida (`shared/fonts`, OFL).
+- **Preview de link (WhatsApp/redes)** — `/erasto-league/jogos/:id`, `/erasto-league/votar/jogo/:id`
+  e `/erasto-league/votar` declaram `generateMetadata` na `route-table.ts` (`runtime/share-metadata.ts`):
+  título, descrição e a capa do jogo como `og:image` (URL absoluta montada do request, 1280×720).
+  Precisa do core com `generateMetadata` em `PluginPageRouteEntry` (venore-docks `main`); em host
+  mais antigo o campo é ignorado — o plugin funciona igual, só sem o preview.
 - **Votação da torcida (sem login)** — dois prêmios da torcida, separados do MVP oficial:
   - **Jogador da Torcida** — um voto por aparelho por jogo, abre no apito inicial e fecha N horas
     depois do fim (`erasto-league.fanVoteWindowHours`, padrão 48h: os alunos só votam de casa).
