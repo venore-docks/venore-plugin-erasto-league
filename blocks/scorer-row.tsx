@@ -34,6 +34,9 @@ function BallIcon({ className }: { className?: string }) {
   );
 }
 
+// `rank` é a POSIÇÃO (0 = primeiro), não o índice na lista: empatados recebem a mesma posição e a
+// mesma medalha (shared/ranking.ts rankPositions, calculado por quem chama).
+//
 // Linha de ranking compartilhada entre artilharia (blocks/top-scorers-block.tsx) e MVPs
 // (blocks/mvp-scorers-block.tsx) — tanto no bloco (top N) quanto na página cheia
 // (routes/artillery-public, routes/mvp-public). `value` é o número em destaque à direita (gols ou

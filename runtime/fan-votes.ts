@@ -168,44 +168,98 @@ export async function getMatchFanVoteResults(matchId: string, limit?: number): P
   };
 }
 
-// Partidas em que o jogador foi o Jogador da Torcida — só votação JÁ ENCERRADA (parcial não é
-// prêmio), ele no topo dos votos válidos, e empate no topo contando pra todos os empatados
-// (shared/fan-votes.ts resolveTopChoiceIds — mesma regra da página do jogo). Mais recente primeiro.
-export async function listFanVoteAwardsForPlayer(playerId: string, windowHours: number, now = Date.now()): Promise<MatchSummary[]> {
+// Vencedores de cada votação JÁ ENCERRADA (partida encerrada + janela passada — parcial não é
+// prêmio), só votos válidos, empate no topo contando pra todos os empatados (shared/fan-votes.ts
+// resolveTopChoiceIds — mesma regra da página do jogo). Base do perfil do jogador e do ranking.
+// matchIds limita a busca (perfil: só as partidas em que o jogador teve voto).
+async function listClosedPollWinners(windowHours: number, now: number, matchIds?: string[]): Promise<Map<string, string[]>> {
   const closedBefore = new Date(now - windowHours * HOUR_MS);
-  // Candidatas: partidas encerradas há mais de windowHours em que ele teve ao menos 1 voto válido
-  // (súmula manual sem finishedAt fecha a contar do início, igual a resolveMatchVoteWindow).
-  const candidates = await db
-    .selectDistinct({ matchId: matchFanVotesTable.matchId })
+  const rows = await db
+    .select({ matchId: matchFanVotesTable.matchId, playerId: matchFanVotesTable.playerId, votes: count(matchFanVotesTable.id) })
     .from(matchFanVotesTable)
     .innerJoin(matchesTable, eq(matchFanVotesTable.matchId, matchesTable.id))
     .where(
       and(
-        eq(matchFanVotesTable.playerId, playerId),
         isNull(matchFanVotesTable.voidedAt),
         eq(matchesTable.status, "finished"),
+        // Súmula manual sem finishedAt fecha a contar do início, igual a resolveMatchVoteWindow.
         or(lte(matchesTable.finishedAt, closedBefore), and(isNull(matchesTable.finishedAt), lte(matchesTable.startedAt, closedBefore))),
+        matchIds ? inArray(matchFanVotesTable.matchId, matchIds) : undefined,
       ),
-    );
-  if (candidates.length === 0) return [];
-
-  const counts = await db
-    .select({ matchId: matchFanVotesTable.matchId, playerId: matchFanVotesTable.playerId, votes: count(matchFanVotesTable.id) })
-    .from(matchFanVotesTable)
-    .where(and(inArray(matchFanVotesTable.matchId, candidates.map((row) => row.matchId)), isNull(matchFanVotesTable.voidedAt)))
+    )
     .groupBy(matchFanVotesTable.matchId, matchFanVotesTable.playerId);
 
   const countsByMatch = new Map<string, VoteCount[]>();
-  for (const row of counts) {
+  for (const row of rows) {
     const list = countsByMatch.get(row.matchId) ?? [];
     list.push({ id: row.playerId, votes: row.votes });
     countsByMatch.set(row.matchId, list);
   }
-  const wonMatchIds = [...countsByMatch].filter(([, list]) => resolveTopChoiceIds(list).includes(playerId)).map(([matchId]) => matchId);
+  return new Map([...countsByMatch].map(([matchId, list]) => [matchId, resolveTopChoiceIds(list)]));
+}
+
+// Partidas em que o jogador foi o Jogador da Torcida (listClosedPollWinners). Mais recente primeiro.
+export async function listFanVoteAwardsForPlayer(playerId: string, windowHours: number, now = Date.now()): Promise<MatchSummary[]> {
+  const candidates = await db
+    .selectDistinct({ matchId: matchFanVotesTable.matchId })
+    .from(matchFanVotesTable)
+    .where(and(eq(matchFanVotesTable.playerId, playerId), isNull(matchFanVotesTable.voidedAt)));
+  if (candidates.length === 0) return [];
+
+  const winners = await listClosedPollWinners(windowHours, now, candidates.map((row) => row.matchId));
+  const wonMatchIds = [...winners].filter(([, ids]) => ids.includes(playerId)).map(([matchId]) => matchId);
   if (wonMatchIds.length === 0) return [];
 
   const rows = await db.select().from(matchesTable).where(inArray(matchesTable.id, wonMatchIds)).orderBy(desc(matchesTable.startedAt));
   return rows.map(rowToSummary);
+}
+
+export type FanVoteRankingEntry = {
+  playerId: string;
+  slug: string;
+  name: string;
+  photoUrl: string | null;
+  teamId: string;
+  teamName: string;
+  teamSlug: string;
+  // Quantas vezes foi o Jogador da Torcida (votação encerrada; empate conta pra todos).
+  wins: number;
+};
+
+// Ranking do Jogador da Torcida (bloco erasto-league.fan-vote-ranking e /erasto-league/jogador-da-torcida)
+// — mesma estrutura de runtime/stats.ts listTopMvps, contando prêmios de listClosedPollWinners.
+// Empate no número de prêmios: ordem alfabética só pra exibir (a posição é dividida na tela).
+// limit omitido = lista inteira.
+export async function listFanVoteRanking(windowHours: number, limit?: number, now = Date.now()): Promise<FanVoteRankingEntry[]> {
+  const winners = await listClosedPollWinners(windowHours, now);
+  const winsByPlayer = new Map<string, number>();
+  for (const ids of winners.values()) {
+    for (const id of ids) winsByPlayer.set(id, (winsByPlayer.get(id) ?? 0) + 1);
+  }
+  if (winsByPlayer.size === 0) return [];
+
+  const rows = await db
+    .select({
+      playerId: playersTable.id,
+      slug: playersTable.slug,
+      name: playersTable.name,
+      photoMediaId: playersTable.photoMediaId,
+      teamId: teamsTable.id,
+      teamName: teamsTable.name,
+      teamSlug: teamsTable.slug,
+    })
+    .from(playersTable)
+    .innerJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(inArray(playersTable.id, [...winsByPlayer.keys()]));
+
+  const sorted = rows
+    .map((row) => ({ ...row, wins: winsByPlayer.get(row.playerId) ?? 0 }))
+    .sort((a, b) => b.wins - a.wins || a.name.localeCompare(b.name, "pt-BR"));
+  const visible = typeof limit === "number" ? sorted.slice(0, limit) : sorted;
+
+  return Promise.all(
+    visible.map(async ({ photoMediaId, ...row }) => ({ ...row, photoUrl: await resolveMediaUrl(photoMediaId) })),
+  );
 }
 
 // Em quem ESTE aparelho votou nesta partida (inclusive voto anulado — quem votou não fica sabendo

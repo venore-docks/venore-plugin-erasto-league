@@ -1,84 +1,11 @@
-import { ImageResponse } from "next/og";
 import type { MatchCoverData } from "./match-cover";
-import { BARLOW_CONDENSED_600_WOFF_BASE64, BARLOW_CONDENSED_800_WOFF_BASE64 } from "../shared/fonts/barlow-condensed";
+import { encodeForWeb, fetchImage, loadSharp, prepareEmblem, preparePhoto, renderPng, type RenderedImage } from "./og-image";
 import { COVER_HEIGHT, COVER_WIDTH, coverTeamNameFontSize } from "../shared/match-cover-layout";
 
 // Capa 1280×720 do jogo (tamanho recomendado de miniatura do YouTube) — foto da súmula de fundo,
 // brasões + nomes dos times, rodada/fase, data e logo da liga. SEM placar (pedido explícito).
-// Renderizada com next/og (Satori + Resvg: JSX → PNG, só flexbox e um subconjunto de CSS — nada de
-// grid, color-mix nem filter) e, quando o `sharp` existe (optionalDependency do próprio Next),
-// convertida pra JPEG: PNG de foto em 1280×720 passa fácil dos 2 MB que o YouTube aceita.
-
-const FETCH_TIMEOUT_MS = 8_000;
-// Formatos que o Satori decodifica sozinho quando o sharp não está disponível pra normalizar.
-const SATORI_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/svg+xml"]);
-
-type FetchedImage = { buffer: Buffer; contentType: string };
-type SharpFactory = typeof import("sharp");
-
-let sharpPromise: Promise<SharpFactory | null> | null = null;
-
-// Import dinâmico: sem sharp instalado a capa continua saindo (em PNG), só sem normalizar
-// orientação EXIF/tamanho da foto nem comprimir pra JPEG.
-function loadSharp(): Promise<SharpFactory | null> {
-  if (!sharpPromise) {
-    sharpPromise = import("sharp").then((mod) => mod.default).catch(() => null);
-  }
-  return sharpPromise;
-}
-
-async function fetchImage(url: string | null, origin: string): Promise<FetchedImage | null> {
-  if (!url) return null;
-  try {
-    const response = await fetch(new URL(url, origin), { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-    if (!response.ok) return null;
-    const contentType = response.headers.get("content-type")?.split(";")[0]?.trim() ?? "application/octet-stream";
-    return { buffer: Buffer.from(await response.arrayBuffer()), contentType };
-  } catch {
-    return null;
-  }
-}
-
-function toDataUri(buffer: Buffer, contentType: string): string {
-  return `data:${contentType};base64,${buffer.toString("base64")}`;
-}
-
-// Foto: com sharp, gira pela orientação EXIF (foto de celular!), recorta 16:9 no ponto de maior
-// interesse e reencoda leve — o Satori ignora EXIF e ficaria lento com foto de 8 MB.
-async function preparePhoto(image: FetchedImage | null, sharp: SharpFactory | null): Promise<string | null> {
-  if (!image) return null;
-  if (sharp) {
-    try {
-      const jpeg = await sharp(image.buffer)
-        .rotate()
-        .resize(COVER_WIDTH, COVER_HEIGHT, { fit: "cover", position: sharp.strategy.attention })
-        .jpeg({ quality: 90 })
-        .toBuffer();
-      return toDataUri(jpeg, "image/jpeg");
-    } catch {
-      // cai pro arquivo original abaixo
-    }
-  }
-  return SATORI_IMAGE_TYPES.has(image.contentType) ? toDataUri(image.buffer, image.contentType) : null;
-}
-
-// Brasão/logo: quadrado 320px recortado no centro (mesmo object-cover redondo do site e da TV); SVG
-// vira PNG aqui também.
-async function prepareEmblem(image: FetchedImage | null, sharp: SharpFactory | null): Promise<string | null> {
-  if (!image) return null;
-  if (sharp) {
-    try {
-      const png = await sharp(image.buffer)
-        .resize(320, 320, { fit: "cover" })
-        .png()
-        .toBuffer();
-      return toDataUri(png, "image/png");
-    } catch {
-      // cai pro arquivo original abaixo
-    }
-  }
-  return SATORI_IMAGE_TYPES.has(image.contentType) ? toDataUri(image.buffer, image.contentType) : null;
-}
+// Renderizada com next/og e convertida pra JPEG quando o sharp existe (runtime/og-image.ts): PNG de
+// foto em 1280×720 passa fácil dos 2 MB que o YouTube aceita.
 
 const FALLBACK_TEAM_COLOR = "#64748b";
 
@@ -241,19 +168,11 @@ function CoverLayout({
   );
 }
 
-function coverFonts() {
-  return [
-    { name: "Barlow Condensed", data: Buffer.from(BARLOW_CONDENSED_800_WOFF_BASE64, "base64"), weight: 800 as const, style: "normal" as const },
-    { name: "Barlow Condensed", data: Buffer.from(BARLOW_CONDENSED_600_WOFF_BASE64, "base64"), weight: 600 as const, style: "normal" as const },
-  ];
+function renderCoverPng(props: Parameters<typeof CoverLayout>[0]): Promise<Buffer> {
+  return renderPng(<CoverLayout {...props} />, COVER_WIDTH, COVER_HEIGHT);
 }
 
-async function renderPng(props: Parameters<typeof CoverLayout>[0]): Promise<Buffer> {
-  const response = new ImageResponse(<CoverLayout {...props} />, { width: COVER_WIDTH, height: COVER_HEIGHT, fonts: coverFonts() });
-  return Buffer.from(await response.arrayBuffer());
-}
-
-export type RenderedCover = { body: Buffer; contentType: "image/jpeg" | "image/png" };
+export type RenderedCover = RenderedImage;
 
 // origin: base pra URLs de mídia relativas (driver "filesystem" do host serve em /api/media/...).
 export async function renderMatchCover(data: MatchCoverData, origin: string): Promise<RenderedCover> {
@@ -265,7 +184,7 @@ export async function renderMatchCover(data: MatchCoverData, origin: string): Pr
     fetchImage(data.leagueLogoUrl, origin),
   ]);
   const [photo, homeCrest, awayCrest, logo] = await Promise.all([
-    preparePhoto(photoImage, sharp),
+    preparePhoto(photoImage, sharp, COVER_WIDTH, COVER_HEIGHT),
     prepareEmblem(homeCrestImage, sharp),
     prepareEmblem(awayCrestImage, sharp),
     prepareEmblem(logoImage, sharp),
@@ -273,20 +192,12 @@ export async function renderMatchCover(data: MatchCoverData, origin: string): Pr
 
   let png: Buffer;
   try {
-    png = await renderPng({ data, photo, homeCrest, awayCrest, logo });
+    png = await renderCoverPng({ data, photo, homeCrest, awayCrest, logo });
   } catch {
     // Alguma imagem num formato que o Satori não decodifica (sem sharp pra normalizar) — melhor
     // uma capa só com cores/nomes do que nenhuma.
-    png = await renderPng({ data, photo: null, homeCrest: null, awayCrest: null, logo: null });
+    png = await renderCoverPng({ data, photo: null, homeCrest: null, awayCrest: null, logo: null });
   }
 
-  if (sharp) {
-    try {
-      const jpeg = await sharp(png).jpeg({ quality: 88, mozjpeg: true }).toBuffer();
-      return { body: jpeg, contentType: "image/jpeg" };
-    } catch {
-      // PNG mesmo
-    }
-  }
-  return { body: png, contentType: "image/png" };
+  return encodeForWeb(png, sharp);
 }

@@ -53,8 +53,8 @@ export function TeamProfileView({
           <img src={team.crestUrl} alt="" className="size-20 shrink-0 rounded-2xl object-cover shadow-float sm:size-24" />
         ) : (
           <div
-            className="flex size-20 shrink-0 items-center justify-center rounded-2xl text-2xl font-bold text-white shadow-float sm:size-24"
-            style={{ background: color }}
+            className="flex size-20 shrink-0 items-center justify-center rounded-2xl border-4 bg-muted text-2xl font-bold text-muted-foreground shadow-float sm:size-24"
+            style={{ borderColor: color }}
           >
             {team.name.slice(0, 2).toUpperCase()}
           </div>

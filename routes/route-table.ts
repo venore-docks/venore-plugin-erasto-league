@@ -19,8 +19,10 @@ import TeamProfilePage from "./teams-public/page";
 import PlayerProfilePage from "./players-public/page";
 import ArtilleryPage from "./artillery-public/page";
 import MvpPage from "./mvp-public/page";
+import FanVoteRankingPage from "./fan-vote-ranking-public/page";
 import ResultsPage from "./results-public/page";
 import MatchPublicPage from "./match-public/page";
+import MatchesPage from "./matches-public/page";
 import VoteHubPage from "./vote-public/page";
 import MatchVotePage from "./vote-public/match-page";
 import FavoriteTeamVotePage from "./vote-public/favorite-team-page";
@@ -29,6 +31,9 @@ import VoteTvPage from "./vote-tv/page";
 import { GET as eventsGET } from "./api/events/route";
 import { GET as stateGET } from "./api/state/route";
 import { GET as matchCoverGET } from "./api/match-cover/route";
+import { GET as fixtureCalendarGET } from "./api/calendar/fixture-route";
+import { GET as calendarFeedGET } from "./api/calendar/feed-route";
+import { GET as storyGET } from "./api/story/route";
 import { buildMatchPageMetadata, buildMatchVoteMetadata, buildVoteHubMetadata } from "../runtime/share-metadata";
 
 // generateMetadata das rotas públicas que circulam como link (página do jogo e votação) — título,
@@ -76,10 +81,14 @@ const matchVoteRoute = {
 //                 não é bug de roteamento (confirmado em resolve-public-route.ts do venore-docks:
 //                 sem colisão de padrão, cai no catch-all normal do CMS). Cabe ao admin criar essas
 //                 páginas se quiser um índice fixo ali.
+// - jogos      -> /erasto-league/jogos           (todos os jogos e transmissões — mesma grade do bloco
+//                 erasto-league.matches-gallery; "Todos os jogos" da página inicial)
 // - jogo       -> /erasto-league/jogos/:id      (súmula pública + transmissão, ver
 //                 routes/match-public) — linkada pelos widgets de resultado (últimos resultados,
 //                 agenda, fases de grupos) quando o confronto já tem partida vinculada.
 // - resultados -> /erasto-league/resultados     ("Ver mais" do bloco erasto-league.recent-results)
+// - torcida    -> /erasto-league/jogador-da-torcida (ranking completo — "Ver mais" do bloco
+//                 erasto-league.fan-vote-ranking)
 // - votação    -> /erasto-league/votar          (hub da votação da torcida — destino do QR; ver
 //                 routes/vote-public), /votar/jogo/:id (Jogador da Torcida de um jogo),
 //                 /votar/time-favorito (Time favorito da temporada). Admin em
@@ -91,6 +100,10 @@ const matchVoteRoute = {
 // - estado     -> /api/erasto-league/state      (snapshot JSON — fallback do SSE)
 // - capa       -> /api/erasto-league/matches/:id/cover (capa 1280×720 do jogo, gerada da foto da
 //                 súmula — routes/api/match-cover)
+// - agenda     -> /api/erasto-league/fixtures/:id/calendar (.ics de um jogo) e /api/erasto-league/agenda
+//                 (feed de assinatura com todos os jogos) — routes/api/calendar, shared/calendar.ts
+// - story      -> /api/erasto-league/story?tipo=... (imagem 1080×1920 pro Instagram, gerada quando alguém
+//                 toca em "Instagram" — routes/api/story, runtime/story-image.tsx)
 export const erastoLeagueRouteTable: PluginRouteTable = {
   admin: [
     { pattern: "", Component: asPluginPage(AdminPage) },
@@ -109,9 +122,11 @@ export const erastoLeagueRouteTable: PluginRouteTable = {
   public: [
     { pattern: "erasto-league/teams/:slug", Component: asPluginPage(TeamProfilePage) },
     { pattern: "erasto-league/players/:slug", Component: asPluginPage(PlayerProfilePage) },
+    { pattern: "erasto-league/jogos", Component: asPluginPage(MatchesPage) },
     matchPublicRoute,
     { pattern: "erasto-league/artilharia", Component: asPluginPage(ArtilleryPage) },
     { pattern: "erasto-league/mvps", Component: asPluginPage(MvpPage) },
+    { pattern: "erasto-league/jogador-da-torcida", Component: asPluginPage(FanVoteRankingPage) },
     { pattern: "erasto-league/resultados", Component: asPluginPage(ResultsPage) },
     voteHubRoute,
     { pattern: "erasto-league/votar/time-favorito", Component: asPluginPage(FavoriteTeamVotePage) },
@@ -128,5 +143,8 @@ export const erastoLeagueRouteTable: PluginRouteTable = {
     { pattern: "events", handlers: { GET: asPluginApiHandler(eventsGET) } },
     { pattern: "state", handlers: { GET: asPluginApiHandler(stateGET) } },
     { pattern: "matches/:id/cover", handlers: { GET: asPluginApiHandler(matchCoverGET) } },
+    { pattern: "fixtures/:id/calendar", handlers: { GET: asPluginApiHandler(fixtureCalendarGET) } },
+    { pattern: "agenda", handlers: { GET: asPluginApiHandler(calendarFeedGET) } },
+    { pattern: "story", handlers: { GET: asPluginApiHandler(storyGET) } },
   ],
 };

@@ -49,8 +49,8 @@ export async function ErastoLeagueTeamsBlock({ block }: BlockRendererProps) {
                     <img src={team.crestUrl} alt="" className="size-12 shrink-0 rounded-xl object-cover" />
                   ) : (
                     <div
-                      className="flex size-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
-                      style={{ background: color }}
+                      className="flex size-12 shrink-0 items-center justify-center rounded-xl border-2 bg-muted text-sm font-bold text-muted-foreground"
+                      style={{ borderColor: color }}
                     >
                       {team.name.slice(0, 2).toUpperCase()}
                     </div>
@@ -78,7 +78,7 @@ export async function ErastoLeagueTeamsBlock({ block }: BlockRendererProps) {
                       <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Der.</p>
                     </div>
                     <div className="bg-card px-1 py-2">
-                      <p className="text-sm font-bold tabular-nums text-amber-500">{standing.yellowCards}</p>
+                      <p className="text-sm font-bold tabular-nums text-warning">{standing.yellowCards}</p>
                       <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">🟨</p>
                     </div>
                     <div className="bg-card px-1 py-2">

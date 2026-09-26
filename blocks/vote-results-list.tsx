@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { FanVoteResults } from "../runtime/fan-votes";
-import { rankPositions } from "../shared/fan-votes";
+import { rankPositions } from "../shared/ranking";
 
-// Por posição (1, 2, 3) — empatados dividem a posição e a medalha (shared/fan-votes.ts rankPositions).
+// Por posição (1, 2, 3) — empatados dividem a posição e a medalha (shared/ranking.ts rankPositions).
 const RANK_MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 function AvatarPlaceholder({ label }: { label: string }) {

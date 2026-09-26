@@ -1,11 +1,13 @@
 import type { ScorerEntry } from "../../runtime/stats";
 import { formatScore } from "../../shared/score";
 import { ScorerRow } from "../../blocks/scorer-row";
+import { rankPositions } from "../../shared/ranking";
 
 // Página cheia da artilharia — mesma linha de ranking do bloco (blocks/scorer-row.tsx), só sem
 // limite e sem botão "Ver mais". DENTRO da shell/tema do host (só tokens shadcn), mesmo princípio
 // de team-profile-view.tsx/player-profile-view.tsx.
 export function ArtilleryView({ scorers }: { scorers: ScorerEntry[] }) {
+  const positions = rankPositions(scorers.map((entry) => entry.goals));
   return (
     <div className="space-y-6">
       <div>
@@ -20,7 +22,7 @@ export function ArtilleryView({ scorers }: { scorers: ScorerEntry[] }) {
           {scorers.map((scorer, index) => (
             <ScorerRow
               key={scorer.playerId}
-              rank={index}
+              rank={positions[index] - 1}
               name={scorer.name}
               slug={scorer.slug}
               photoUrl={scorer.photoUrl}

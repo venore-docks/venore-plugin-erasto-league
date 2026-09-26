@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
@@ -119,7 +120,7 @@ function EventRow({
           Excluir
         </Button>
       </form>
-      {!event.playerId && <span className="text-xs text-amber-500">sem jogador atribuído</span>}
+      {!event.playerId && <span className="text-xs text-warning">sem jogador atribuído</span>}
       {player && <span className="ml-auto text-xs text-muted-foreground">{player.name}</span>}
     </div>
   );
@@ -315,9 +316,9 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
         {powerBoosts.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Nenhum power play cadastrado ainda —{" "}
-            <a href="/admin/erasto-league/power-boosts" className="underline">
+            <Link href="/admin/erasto-league/power-boosts" className="underline">
               cadastre o catálogo
-            </a>{" "}
+            </Link>{" "}
             antes de registrar um uso.
           </p>
         ) : (

@@ -3,6 +3,7 @@ import type { BlockRendererProps } from "@venore/plugin-sdk";
 import { Button } from "@venore/plugin-sdk/ui";
 import { listTopMvps } from "../runtime/stats";
 import { ScorerRow } from "./scorer-row";
+import { rankPositions } from "../shared/ranking";
 
 function readString(data: Record<string, unknown>, key: string, fallback = ""): string {
   const value = data[key];
@@ -24,6 +25,7 @@ export async function ErastoLeagueMvpScorersBlock({ block }: BlockRendererProps)
   const limit = readNumber(block.data, "limit", 10);
   const mvps = await listTopMvps(limit);
   const visible = mvps.slice(0, VISIBLE_LIMIT);
+  const positions = rankPositions(visible.map((entry) => entry.mvpCount));
 
   return (
     <div className="space-y-4">
@@ -37,7 +39,7 @@ export async function ErastoLeagueMvpScorersBlock({ block }: BlockRendererProps)
             {visible.map((mvp, index) => (
               <ScorerRow
                 key={mvp.playerId}
-                rank={index}
+                rank={positions[index] - 1}
                 name={mvp.name}
                 slug={mvp.slug}
                 photoUrl={mvp.photoUrl}

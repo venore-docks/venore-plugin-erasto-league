@@ -7,6 +7,9 @@ import { readVoterKey } from "../../runtime/voter";
 import { getTurnstileSiteKey } from "../../runtime/turnstile";
 import { readFanVoteWindowHours, readFavoriteTeamVotingOpenFresh } from "../../shared/config";
 import { FavoriteTeamVoteSection, MatchVoteSection } from "./vote-sections";
+import { resolveRequestOrigin, VOTE_HUB_PATH } from "../../runtime/request-origin";
+import { storyPath } from "../../shared/story-request";
+import { ShareBar } from "../../blocks/share-bar";
 
 // /erasto-league/votar — hub da votação da torcida, destino do QR do overlay
 // (/ext/erasto-league/vote-overlay) e do link na descrição do vídeo no YouTube. Um endereço fixo
@@ -19,11 +22,12 @@ export default async function VoteHubPage() {
   }
 
   const windowHours = await readFanVoteWindowHours();
-  const [openPolls, voterKey, favoriteOpen, teams] = await Promise.all([
+  const [openPolls, voterKey, favoriteOpen, teams, { origin }] = await Promise.all([
     listOpenMatchPolls(windowHours),
     readVoterKey(),
     readFavoriteTeamVotingOpenFresh(),
     listTeams(),
+    resolveRequestOrigin(),
   ]);
   const featuredClosed = openPolls.length === 0 ? await getFeaturedMatchPoll(windowHours) : null;
   const turnstileSiteKey = getTurnstileSiteKey();
@@ -37,6 +41,13 @@ export default async function VoteHubPage() {
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Escolha o Jogador da Torcida de cada jogo e o seu time favorito da temporada. Sem cadastro: cada aparelho vota uma vez.
         </p>
+        <div className="mt-4">
+          <ShareBar
+            url={`${origin}${VOTE_HUB_PATH}`}
+            text="📣 Votação da torcida da Erasto League: vote no Jogador da Torcida e no seu time favorito!"
+            storyUrl={storyPath({ kind: "vote-hub" })}
+          />
+        </div>
       </div>
 
       <section className="space-y-4 rounded-panel border border-border bg-card p-4 sm:p-6">

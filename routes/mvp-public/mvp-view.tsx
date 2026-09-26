@@ -1,10 +1,12 @@
 import type { MvpEntry } from "../../runtime/stats";
 import { ScorerRow } from "../../blocks/scorer-row";
+import { rankPositions } from "../../shared/ranking";
 
 // Página cheia de MVPs — mesma linha de ranking do bloco (blocks/scorer-row.tsx), só sem limite e
 // sem botão "Ver mais". DENTRO da shell/tema do host (só tokens shadcn), mesmo princípio de
 // routes/artillery-public/artillery-view.tsx.
 export function MvpView({ mvps }: { mvps: MvpEntry[] }) {
+  const positions = rankPositions(mvps.map((entry) => entry.mvpCount));
   return (
     <div className="space-y-6">
       <div>
@@ -19,7 +21,7 @@ export function MvpView({ mvps }: { mvps: MvpEntry[] }) {
           {mvps.map((mvp, index) => (
             <ScorerRow
               key={mvp.playerId}
-              rank={index}
+              rank={positions[index] - 1}
               name={mvp.name}
               slug={mvp.slug}
               photoUrl={mvp.photoUrl}

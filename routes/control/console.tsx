@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, type CSSProperties } from "react";
+import { useEffect, useState, useSyncExternalStore, useTransition, type CSSProperties } from "react";
 import type { ClockCommand, EventKind, MatchSide, MatchState, PlayerProfile, PowerBoost, TeamProfile } from "../../contracts/types";
 import { computeElapsedMs, formatClock } from "../../shared/clock";
 import { formatScore } from "../../shared/score";
@@ -202,6 +202,13 @@ const QUICK_LABELS = ["1º TEMPO", "INTERVALO", "2º TEMPO", "FIM DE JOGO"];
 
 type Attribution = { eventId: string; side: MatchSide; kind: EventKind };
 
+type Roster = { home: PlayerProfile[]; away: PlayerProfile[] };
+const EMPTY_ROSTER: Roster = { home: [], away: [] };
+
+const OVERLAY_PATH = "/ext/erasto-league/overlay";
+const subscribeNothing = () => () => {};
+const readOverlayUrl = () => `${window.location.origin}${OVERLAY_PATH}`;
+
 const EVENT_LABEL: Record<EventKind, string> = {
   goal: "o gol",
   yellow_card: "o cartão amarelo",
@@ -262,32 +269,32 @@ export function Console({
   const now = useTick(250);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [overlayUrl, setOverlayUrl] = useState("/ext/erasto-league/overlay");
+  // URL absoluta do overlay pro operador colar no OBS — origem só existe no client (no servidor e na
+  // hidratação fica o caminho relativo). useSyncExternalStore em vez de setState num efeito.
+  const overlayUrl = useSyncExternalStore(subscribeNothing, readOverlayUrl, () => OVERLAY_PATH);
   const [attribution, setAttribution] = useState<Attribution | null>(null);
-  const [roster, setRoster] = useState<{ home: PlayerProfile[]; away: PlayerProfile[] }>({ home: [], away: [] });
+  const [fetchedRoster, setFetchedRoster] = useState<(Roster & { key: string }) | null>(null);
+  const rosterKey = state.homeTeamId && state.awayTeamId ? `${state.homeTeamId}:${state.awayTeamId}` : null;
+  // Elenco só vale pros times da partida ATUAL — trocou de partida (ou encerrou), some até o novo
+  // chegar, sem precisar zerar estado dentro de efeito.
+  const roster: Roster = fetchedRoster && fetchedRoster.key === rosterKey ? fetchedRoster : EMPTY_ROSTER;
   const [mvpPrompt, setMvpPrompt] = useState<{
     matchId: string;
-    roster: { home: PlayerProfile[]; away: PlayerProfile[] };
+    roster: Roster;
     homeName: string;
     awayName: string;
   } | null>(null);
   const [mvpSelected, setMvpSelected] = useState<string | null>(null);
   const [mvpNote, setMvpNote] = useState("");
 
-  useEffect(() => {
-    setOverlayUrl(`${window.location.origin}/ext/erasto-league/overlay`);
-  }, []);
-
   // Elenco dos dois lados — buscado uma vez quando os times da partida atual ficam conhecidos
   // (troca ao trocar de partida). Alimenta a folha "quem fez?".
   useEffect(() => {
-    if (!state.homeTeamId || !state.awayTeamId) {
-      setRoster({ home: [], away: [] });
-      return;
-    }
+    if (!state.homeTeamId || !state.awayTeamId) return;
+    const key = `${state.homeTeamId}:${state.awayTeamId}`;
     let cancelled = false;
     Promise.all([listRosterAction(state.homeTeamId), listRosterAction(state.awayTeamId)]).then(([home, away]) => {
-      if (!cancelled) setRoster({ home, away });
+      if (!cancelled) setFetchedRoster({ key, home, away });
     });
     return () => {
       cancelled = true;

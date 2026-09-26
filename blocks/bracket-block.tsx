@@ -113,7 +113,7 @@ export async function ErastoLeagueBracketBlock({ block }: BlockRendererProps) {
                         </td>
                         <td className="py-1 text-center text-muted-foreground">{row.played}</td>
                         <td className="py-1 text-center text-muted-foreground">{row.goalsFor - row.goalsAgainst}</td>
-                        <td className="py-1 text-center text-amber-500">{row.yellowCards}</td>
+                        <td className="py-1 text-center text-warning">{row.yellowCards}</td>
                         <td className="py-1 text-center text-destructive">{row.redCards}</td>
                         <td className="py-1 text-center font-bold text-foreground">{row.points}</td>
                       </tr>

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { resolveTvStageTransform, type TvStageTransform } from "../../shared/tv-stage";
 import type { QrSvg } from "../../shared/qr";
 import type { FanVoteResults } from "../../runtime/fan-votes";
-import { rankPositions } from "../../shared/fan-votes";
+import { rankPositions } from "../../shared/ranking";
 import type { VoteTvData, VoteTvMatch } from "../../runtime/vote-tv";
 import { getVoteTvDataAction, getVoteTvVersionAction } from "./actions";
 
@@ -83,7 +83,7 @@ const CSS = `
 
 type VotePage = "match" | "favorite";
 
-// Por posição (1, 2, 3) — empatados dividem a posição e a medalha (shared/fan-votes.ts rankPositions).
+// Por posição (1, 2, 3) — empatados dividem a posição e a medalha (shared/ranking.ts rankPositions).
 const RANK_MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 function ResultRows({ results, emptyMessage }: { results: FanVoteResults; emptyMessage: string }) {
