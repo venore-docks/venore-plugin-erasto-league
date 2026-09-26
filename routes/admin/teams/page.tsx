@@ -57,8 +57,8 @@ export default async function TeamsAdminPage() {
                   <img src={team.crestUrl} alt="" className="size-12 rounded-lg object-cover" />
                 ) : (
                   <div
-                    className="flex size-12 items-center justify-center rounded-lg text-sm font-bold text-white"
-                    style={{ background: team.primaryColor ?? "#334155" }}
+                    className="flex size-12 items-center justify-center rounded-lg border-2 bg-muted text-sm font-bold text-muted-foreground"
+                    style={{ borderColor: team.primaryColor ?? "var(--border)" }}
                   >
                     {team.name.slice(0, 2).toUpperCase()}
                   </div>

@@ -3,6 +3,7 @@ import type { MatchSummary, PlayerProfile, TeamProfile } from "../../contracts/t
 import type { PlayerStats } from "../../runtime/stats";
 import { formatScore } from "../../shared/score";
 import { PLAYER_POSITION_LABEL } from "../../shared/player-position";
+import { ShareBar } from "../../blocks/share-bar";
 
 function formatMatchDate(epochMs: number): string {
   return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
@@ -38,6 +39,7 @@ export function PlayerProfileView({
   awards,
   recentMatches,
   teamById,
+  share,
 }: {
   player: PlayerProfile;
   team: TeamProfile | null;
@@ -47,6 +49,7 @@ export function PlayerProfileView({
   awards: PlayerAward[];
   recentMatches: MatchSummary[];
   teamById: Map<string, TeamProfile>;
+  share: { url: string; text: string; storyUrl: string };
 }) {
   const color = team?.primaryColor ?? "var(--muted-foreground)";
 
@@ -88,6 +91,8 @@ export function PlayerProfileView({
           </div>
         </div>
       </div>
+
+      <ShareBar url={share.url} text={share.text} storyUrl={share.storyUrl} />
 
       {(stats.matchesPlayed > 0 || awards.length > 0) && (
         // Gols, MVPs e Jogador da Torcida primeiro (1ª linha no celular) — os números que a torcida

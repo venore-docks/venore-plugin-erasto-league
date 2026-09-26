@@ -6,6 +6,8 @@ import type { ScheduleEntry } from "../runtime/bracket";
 import { FIXTURE_PHASE_LABEL } from "../shared/fixture-phase";
 import { fixtureDateTimeToEpoch } from "../shared/timezone";
 import { formatScore } from "../shared/score";
+import type { FixtureCalendarLinks } from "../shared/calendar";
+import { AddToCalendar } from "./add-to-calendar";
 
 // scheduledDate/scheduledTime já chegam como texto puro ("YYYY-MM-DD"/"HH:mm") — nenhuma
 // conversão de fuso é necessária pra exibir (só pra ORDENAR, ver fixtureDateTimeToEpoch abaixo).
@@ -107,7 +109,7 @@ function ScoreCell({ entry, dateLabel }: { entry: ScheduleEntry; dateLabel: stri
 // não realizados) pra diferenciar "passado" de "futuro" olhando só a cor, além da tag "Encerrado" e
 // do vencedor destacado em TeamCell — pedido explícito depois do card de encerrado/agendado ficarem
 // visualmente idênticos.
-function ScheduleRow({ entry }: { entry: ScheduleEntry }) {
+function ScheduleRow({ entry, calendar }: { entry: ScheduleEntry; calendar: FixtureCalendarLinks | undefined }) {
   const dateLabel = entry.scheduledDate ? formatDate(entry.scheduledDate) : "Data a definir";
   const homeWon = entry.played && (entry.homeScore ?? 0) > (entry.awayScore ?? 0);
   const awayWon = entry.played && (entry.awayScore ?? 0) > (entry.homeScore ?? 0);
@@ -141,6 +143,7 @@ function ScheduleRow({ entry }: { entry: ScheduleEntry }) {
           <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
             <span className="text-sm font-extrabold text-foreground">{dateLabel}</span>
             <span className="text-sm font-bold tabular-nums text-primary">{entry.scheduledTime ?? "Hora a definir"}</span>
+            {calendar && <AddToCalendar links={calendar} label="Agenda" />}
           </div>
         )}
 
@@ -178,7 +181,15 @@ function groupByRound(entries: ScheduleEntry[]): RoundGroup[] {
 // Pedido explícito: manter o card de confronto "cheio" (o formato anterior, que já estava bom),
 // só trocar como o VOLUME de jogos é apresentado — abas por rodada em vez de uma lista/grade com
 // tudo de uma vez.
-export function ScheduleTabs({ entries }: { entries: ScheduleEntry[] }) {
+export function ScheduleTabs({
+  entries,
+  calendarLinks = {},
+}: {
+  entries: ScheduleEntry[];
+  // "Adicionar à agenda" por confronto ainda por jogar (id do fixture → links), montado no servidor
+  // (blocks/schedule-block.tsx).
+  calendarLinks?: Record<string, FixtureCalendarLinks>;
+}) {
   const groups = useMemo(() => groupByRound(entries), [entries]);
   const [activeKey, setActiveKey] = useState(groups[0]?.key);
   const active = groups.find((group) => group.key === activeKey) ?? groups[0];
@@ -206,7 +217,7 @@ export function ScheduleTabs({ entries }: { entries: ScheduleEntry[] }) {
 
       <div className="space-y-2">
         {active.entries.map((entry) => (
-          <ScheduleRow key={entry.id} entry={entry} />
+          <ScheduleRow key={entry.id} entry={entry} calendar={calendarLinks[entry.id]} />
         ))}
       </div>
     </div>

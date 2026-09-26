@@ -45,7 +45,7 @@ export function SettingsForm({ config, logoMedia }: { config: ErastoLeagueConfig
         <div className="space-y-3 rounded-panel border border-border/60 bg-background/40 p-4">
           <SectionHeading icon={Trophy} title="Identidade" />
           <MediaPickerField name="logoMediaId" label="Logo da liga" initialMedia={logoMedia} />
-          <p className="text-xs text-muted-foreground">Exibida no medalhão do placar. Sem logo, cai no monograma "EL".</p>
+          <p className="text-xs text-muted-foreground">Exibida no medalhão do placar. Sem logo, cai no monograma &ldquo;EL&rdquo;.</p>
         </div>
 
         <div className="space-y-3 rounded-panel border border-border/60 bg-background/40 p-4">

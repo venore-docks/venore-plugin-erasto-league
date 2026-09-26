@@ -8,6 +8,9 @@ import { listBoostsByMatch } from "../../runtime/match-boosts";
 import { listPowerBoosts } from "../../runtime/power-boosts";
 import { getMatchFanVoteResults, toMatchVotePoll } from "../../runtime/fan-votes";
 import { readFanVoteWindowHours } from "../../shared/config";
+import { resolveRequestOrigin } from "../../runtime/request-origin";
+import { formatScore } from "../../shared/score";
+import { storyPath } from "../../shared/story-request";
 import { MatchView } from "./match-view";
 
 // Página pública de UM jogo (/erasto-league/jogos/:id) — súmula + transmissão (link do YouTube
@@ -29,7 +32,7 @@ export default async function MatchPublicPage({ params }: { params: Promise<{ id
     notFound();
   }
 
-  const [homeTeam, awayTeam, events, homeRoster, awayRoster, boosts, powerBoosts, fanVoteResults, windowHours] = await Promise.all([
+  const [homeTeam, awayTeam, events, homeRoster, awayRoster, boosts, powerBoosts, fanVoteResults, windowHours, { origin }] = await Promise.all([
     getTeam(match.homeTeamId),
     getTeam(match.awayTeamId),
     listEventsByMatch(id),
@@ -39,9 +42,16 @@ export default async function MatchPublicPage({ params }: { params: Promise<{ id
     listPowerBoosts(),
     getMatchFanVoteResults(id, 1),
     readFanVoteWindowHours(),
+    resolveRequestOrigin(),
   ]);
   const playerById = new Map([...homeRoster, ...awayRoster].map((player) => [player.id, player]));
   const fanVotePoll = toMatchVotePoll(match, windowHours);
+  const scoreLine = `${homeTeam?.name ?? "—"} ${formatScore(match.homeScore)} × ${formatScore(match.awayScore)} ${awayTeam?.name ?? "—"}`;
+  const share = {
+    url: `${origin}/erasto-league/jogos/${id}`,
+    text: match.status === "in_progress" ? `🔴 Ao vivo: ${scoreLine} — Erasto League` : `⚽ ${scoreLine} — Erasto League`,
+    storyUrl: storyPath({ kind: "match", matchId: id, vote: false }),
+  };
 
   return (
     <MatchView
@@ -52,6 +62,7 @@ export default async function MatchPublicPage({ params }: { params: Promise<{ id
       playerById={playerById}
       boosts={boosts}
       powerBoosts={powerBoosts}
+      share={share}
       fanVote={{
         isOpen: fanVotePoll.isOpen,
         leaders: fanVoteResults.leaders,

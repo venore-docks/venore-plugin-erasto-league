@@ -13,8 +13,11 @@ import { erastoLeagueNextGameAdBlockDefinition } from "./next-game-ad";
 import { erastoLeagueBroadcastBlockDefinition } from "./broadcast";
 import { erastoLeagueFanVotesBlockDefinition } from "./fan-votes";
 import { erastoLeagueMatchesGalleryBlockDefinition } from "./matches-gallery";
+import { erastoLeagueFanVoteRankingBlockDefinition } from "./fan-vote-ranking";
+import { erastoLeagueHomeBlockDefinition } from "./home";
 
 export const blockDefinitions: BlockDefinition[] = [
+  erastoLeagueHomeBlockDefinition,
   erastoLeagueHeroBlockDefinition,
   erastoLeagueStandingsBlockDefinition,
   erastoLeagueRecentResultsBlockDefinition,
@@ -29,4 +32,5 @@ export const blockDefinitions: BlockDefinition[] = [
   erastoLeagueBroadcastBlockDefinition,
   erastoLeagueFanVotesBlockDefinition,
   erastoLeagueMatchesGalleryBlockDefinition,
+  erastoLeagueFanVoteRankingBlockDefinition,
 ];

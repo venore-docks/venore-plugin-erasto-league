@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { MatchState } from "../contracts/types";
 
 // Assinatura do estado da partida com degradação: SSE (/api/erasto-league/events) como caminho
@@ -15,8 +15,6 @@ export function useMatchState(initial: MatchState): {
 } {
   const [state, setState] = useState<MatchState>(initial);
   const [live, setLive] = useState(false);
-  const stateRef = useRef(state);
-  stateRef.current = state;
 
   useEffect(() => {
     let es: EventSource | null = null;
@@ -27,8 +25,9 @@ export function useMatchState(initial: MatchState): {
     const apply = (raw: string) => {
       try {
         const next = JSON.parse(raw) as MatchState;
-        // não regride pra um snapshot mais velho (SSE e poll podem se cruzar)
-        if (next.updatedAt >= stateRef.current.updatedAt) setState(next);
+        // Não regride pra um snapshot mais velho (SSE e poll podem se cruzar) — comparado contra o
+        // estado ATUAL via setState funcional (antes era um ref reatribuído durante o render).
+        setState((current) => (next.updatedAt >= current.updatedAt ? next : current));
       } catch {
         /* keep-alive / linha malformada */
       }

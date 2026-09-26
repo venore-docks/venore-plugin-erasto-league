@@ -7,6 +7,7 @@ import { formatScore } from "../../shared/score";
 import { MATCH_STATUS_BADGE_VARIANT, MATCH_STATUS_LABEL } from "../../shared/match-status";
 import { extractYoutubeVideoId } from "../../shared/youtube";
 import { matchCoverPath } from "../../shared/match-cover-layout";
+import { ShareBar } from "../../blocks/share-bar";
 
 const EVENT_ICON: Record<MatchEvent["kind"], string> = { goal: "⚽", yellow_card: "🟨", red_card: "🟥", foul: "⚠️" };
 const EVENT_LABEL: Record<MatchEvent["kind"], string> = {
@@ -216,6 +217,7 @@ export function MatchView({
   boosts,
   powerBoosts,
   fanVote,
+  share,
 }: {
   match: MatchSummary;
   homeTeam: TeamProfile | null;
@@ -225,6 +227,7 @@ export function MatchView({
   boosts: PowerBoostUse[];
   powerBoosts: PowerBoost[];
   fanVote: FanVoteSummary;
+  share: { url: string; text: string; storyUrl: string };
 }) {
   const mvpPlayer = match.mvpPlayerId ? (playerById.get(match.mvpPlayerId) ?? null) : null;
   const goalsAndCards = events.filter((event) => event.kind !== "foul");
@@ -255,6 +258,8 @@ export function MatchView({
         <span className="shrink-0 text-lg font-black italic text-muted-foreground sm:text-2xl">×</span>
         <TeamHeader team={awayTeam} score={match.awayScore} />
       </div>
+
+      <ShareBar url={share.url} text={share.text} storyUrl={share.storyUrl} />
 
       <FanVoteCallout matchId={match.id} fanVote={fanVote} />
 

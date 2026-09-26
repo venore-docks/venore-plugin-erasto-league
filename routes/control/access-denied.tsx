@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 // Mesmo motivo de overlay/scoreboard.tsx e team-profile-view.tsx: rota standalone (fora de
 // (platform)) não pode contar com as variáveis CSS do tema shadcn do host (--background,
 // --foreground, etc. — só garantidas dentro da shell), então usa CSS própria em vez do
@@ -29,9 +31,9 @@ export function ControlAccessDenied({ message }: { message: string }) {
         <div className="el-cad-card">
           <p className="el-cad-title">Erasto League — controle</p>
           <p className="el-cad-message">{message}</p>
-          <a className="el-cad-btn" href="/login">
+          <Link className="el-cad-btn" href="/login">
             Fazer login
-          </a>
+          </Link>
         </div>
       </div>
     </>

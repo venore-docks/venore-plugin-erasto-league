@@ -38,6 +38,7 @@ export const erastoLeagueBreadcrumbSegments: BreadcrumbSegmentDefinition[] = [
       return player ? player.name : null;
     },
   }),
+  staticBreadcrumbSegment({ key: "erasto-league.public.jogos", segments: ["erasto-league", "jogos"], label: "Jogos" }),
   dynamicBreadcrumbSegment({
     key: "erasto-league.public.match",
     segments: ["erasto-league", "jogos", ":id"],
@@ -51,6 +52,11 @@ export const erastoLeagueBreadcrumbSegments: BreadcrumbSegmentDefinition[] = [
   }),
   staticBreadcrumbSegment({ key: "erasto-league.public.artilharia", segments: ["erasto-league", "artilharia"], label: "Artilharia" }),
   staticBreadcrumbSegment({ key: "erasto-league.public.mvps", segments: ["erasto-league", "mvps"], label: "MVPs" }),
+  staticBreadcrumbSegment({
+    key: "erasto-league.public.jogador-da-torcida",
+    segments: ["erasto-league", "jogador-da-torcida"],
+    label: "Jogador da Torcida",
+  }),
   staticBreadcrumbSegment({ key: "erasto-league.public.resultados", segments: ["erasto-league", "resultados"], label: "Resultados" }),
   staticBreadcrumbSegment({ key: "erasto-league.public.votar", segments: ["erasto-league", "votar"], label: "Votação da torcida" }),
   staticBreadcrumbSegment({

@@ -76,6 +76,17 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
 - **Blocos de page-builder** — contribuídos via `contributions.ts` (`blocks/`), aparecem no
   palette do builder do CMS (`/admin/cms/entries/:id/builder`) igual a qualquer bloco nativo, sem
   precisar do sistema de import/export do site:
+  - **Erasto League — Página inicial completa** (`erasto-league.home`) — a home inteira num bloco
+    só, já distribuída: capa (título/subtítulo/botão editáveis) com o jogo **ao vivo** ou o
+    **próximo jogo** + "Adicionar à agenda" ao lado; embaixo, coluna principal (**últimos jogos**
+    com a miniatura do vídeo, **classificação**/fases, **próximos jogos**) e coluna lateral
+    (**votação da torcida**, **destaques** — artilharia, MVPs e Jogador da Torcida — e o **muro de
+    brasões** dos times). A coluna lateral faz o papel de barra lateral: a barra contextual do site
+    (`@sidebarContextual` do core) só mostra conteúdo declarado por rota de plugin ou um Menu
+    Contextual de links, nunca blocos, e não existe na raiz "/". Duas colunas só a partir de `xl`
+    (com a sidebar de navegação aberta, em `lg` a lateral ficaria estreita); abaixo disso vira uma
+    coluna na ordem de prioridade, com a votação subindo pro topo quando há jogo com votação aberta.
+    Campo opcional "Link da página com a agenda completa" pro "Agenda completa →".
   - **Erasto League — Capa** (`erasto-league.hero`) — título/subtítulo/CTA editáveis; "🔴 ao vivo
     agora" vem do plugin (match_state), não do que foi salvo na composição — mas a cor de destaque
     é do TEMA do site (`var(--primary)`), não da configuração de `accentColor` do plugin (essa é só
@@ -94,6 +105,11 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     o card mostra as cores e os brasões dos dois times.
   - **Erasto League — Artilharia** (`erasto-league.top-scorers`) — ranking de gols por jogador,
     com foto (placeholder de avatar quando não há foto) e time abaixo do nome.
+  - **Erasto League — Ranking do Jogador da Torcida** (`erasto-league.fan-vote-ranking`) — quantas
+    vezes cada jogador foi o mais votado pela torcida (votação encerrada; empate conta pra todos),
+    5 primeiros + "Ver mais" pra `/erasto-league/jogador-da-torcida`. Nos rankings (artilharia,
+    MVPs, Jogador da Torcida, votação) empatados dividem a posição e a medalha
+    (`shared/ranking.ts`).
   - **Erasto League — Time em destaque** (`erasto-league.team-spotlight`) — card compacto de UM
     time (slug configurável) com recorde — pra "time campeão", destaque do mês, etc.
   - **Erasto League — Times** (`erasto-league.teams`) — grade com TODOS os times cadastrados, um
@@ -108,7 +124,9 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     o bloco de agenda, abaixo) — só a tabela. Alimentado por `fixtures` (confrontos agendados, ver
     abaixo) + `runtime/standings.ts` (cartões agregados de `match_events`), não por `matches`
     direto.
-  - **Erasto League — Agenda de jogos** (`erasto-league.schedule`) — TODOS os confrontos (grupos +
+  - **Erasto League — Agenda de jogos** (`erasto-league.schedule`) — com "Adicionar à agenda" em cada
+    jogo por disputar e "Todos os jogos na sua agenda" (assinatura) no cabeçalho — ver **Agenda no
+    celular** abaixo. TODOS os confrontos (grupos +
     eliminatórias) em **abas por rodada** (client component, `blocks/schedule-tabs.tsx`) — dentro
     de cada aba os cards continuam em ordem cronológica, mas só uma rodada aparece por vez, pra não
     virar um "listão" conforme o campeonato acumula jogos. Confronto sem rodada (raro, geralmente
@@ -180,6 +198,26 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   título, descrição e a capa do jogo como `og:image` (URL absoluta montada do request, 1280×720).
   Precisa do core com `generateMetadata` em `PluginPageRouteEntry` (venore-docks `main`); em host
   mais antigo o campo é ignorado — o plugin funciona igual, só sem o preview.
+- **Compartilhar** (`blocks/share-bar.tsx`) — barra "Compartilhar" nas páginas do jogo, da votação
+  (hub, jogo, time favorito) e do jogador:
+  - **WhatsApp**: link `wa.me` com texto + endereço (o preview com a capa vem da metadata acima).
+  - **Instagram**: não aceita link em post/legenda, então o caminho é o **story** — gera uma imagem
+    1080×1920 (`/api/erasto-league/story?tipo=jogo|jogador|votacao|time-favorito`,
+    `runtime/story-image.tsx`, mesma identidade da capa) e abre o menu de compartilhar do celular
+    (Web Share com arquivo), com o link já copiado pra colar no sticker de link. Em dois toques de
+    propósito (preparar → abrir), porque o menu só abre dentro do toque que o pediu. Sem suporte a
+    compartilhar arquivo (computador), vira "Baixar imagem". A imagem só é gerada quando alguém
+    toca em "Instagram" (nunca no carregamento da página), com cache curto na CDN.
+  - **Copiar link**, pro resto.
+- **Agenda no celular** (`shared/calendar.ts`, `routes/api/calendar`) — cada jogo por disputar tem
+  "Adicionar à agenda" com duas saídas: **Google Agenda** (link já preenchido — o Android não abre
+  .ics sozinho) e **iPhone/Outlook/outros** (`/api/erasto-league/fixtures/:id/calendar`, .ics). E
+  "Todos os jogos na sua agenda" assina o feed `/api/erasto-league/agenda` (webcal:// no iPhone,
+  "adicionar por URL" no Google): jogo remarcado ou novo aparece sozinho na agenda de quem assinou.
+  Horário de Brasília → UTC no arquivo; duração = tempos × minutos das settings + 10 min; jogo sem
+  hora vira evento de dia inteiro.
+- **Páginas fixas novas** — `/erasto-league/jogos` (todos os jogos e transmissões, mesma grade do
+  bloco `erasto-league.matches-gallery`) e `/erasto-league/jogador-da-torcida` (ranking completo).
 - **Votação da torcida (sem login)** — dois prêmios da torcida, separados do MVP oficial:
   - **Jogador da Torcida** — um voto por aparelho por jogo, abre no apito inicial e fecha N horas
     depois do fim (`erasto-league.fanVoteWindowHours`, padrão 48h: os alunos só votam de casa).
@@ -207,6 +245,14 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   quando o SSE está fora.
 - **Persistência** — `erasto_league.match_state` (linha única). Migrations próprias, aplicadas no
   install. Sobrevive a restart e a multi-instância (era a causa do overlay "zerar" no F5).
+
+## CI
+
+`.github/workflows/ci.yml` roda a cada push: baixa o `venore-docks` (`main`), instala ESTE checkout
+como `@venore/plugin-erasto-league` (igual a uma instância) e roda, com as regras do host,
+**typecheck**, **lint** (o plugin entra numa pasta de `src/plugins/` só pro lint — cores só por
+token do tema, fronteiras, regras de hooks do React; `--max-warnings 0`) e os **testes**
+(`npm run test:plugins`). Pra reproduzir local, veja os passos do próprio workflow.
 
 ## Rodar localmente contra o host (venore-docks)
 

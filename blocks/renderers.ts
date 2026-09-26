@@ -13,6 +13,8 @@ import { ErastoLeagueNextGameAdBlock } from "./next-game-ad-block";
 import { ErastoLeagueBroadcastBlock } from "./broadcast-block";
 import { ErastoLeagueFanVotesBlock } from "./fan-votes-block";
 import { ErastoLeagueMatchesGalleryBlock } from "./matches-gallery-block";
+import { ErastoLeagueFanVoteRankingBlock } from "./fan-vote-ranking-block";
+import { ErastoLeagueHomeBlock } from "./home-block";
 
 export const blockRenderers: Record<string, BlockRendererComponent> = {
   "erasto-league.hero": ErastoLeagueHeroBlock,
@@ -29,4 +31,6 @@ export const blockRenderers: Record<string, BlockRendererComponent> = {
   "erasto-league.broadcast": ErastoLeagueBroadcastBlock,
   "erasto-league.fan-votes": ErastoLeagueFanVotesBlock,
   "erasto-league.matches-gallery": ErastoLeagueMatchesGalleryBlock,
+  "erasto-league.fan-vote-ranking": ErastoLeagueFanVoteRankingBlock,
+  "erasto-league.home": ErastoLeagueHomeBlock,
 };

@@ -74,16 +74,6 @@ export function resolveTopChoiceIds(counts: VoteCount[]): string[] {
   return counts.filter((entry) => entry.votes === top).map((entry) => entry.id);
 }
 
-// Posição de cada linha de um ranking já ordenado por votos (mais votado primeiro), com empate
-// dividindo a posição ("1, 1, 3") — pra medalha 🥇 não ir só pro primeiro de dois empatados.
-export function rankPositions(sortedVotes: number[]): number[] {
-  const positions: number[] = [];
-  sortedVotes.forEach((votes, index) => {
-    positions.push(index > 0 && votes === sortedVotes[index - 1] ? positions[index - 1] : index + 1);
-  });
-  return positions;
-}
-
 // Agrupamento de IP pra auditoria: IPv4 inteiro; IPv6 pelo prefixo /64 (uma casa/aparelho recebe um
 // /64 inteiro e troca o sufixo à vontade — agrupar pelo endereço completo deixaria quem gira o
 // sufixo parecer N pessoas diferentes). "::ffff:1.2.3.4" (IPv4 mapeado) vira o IPv4.

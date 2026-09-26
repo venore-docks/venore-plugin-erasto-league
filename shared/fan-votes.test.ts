@@ -7,7 +7,6 @@ import {
   isVoteWindowOpen,
   normalizeIpForGrouping,
   pickClientIp,
-  rankPositions,
   resolveMatchVoteWindow,
   resolveTopChoiceIds,
   type AuditVoteRow,
@@ -70,14 +69,6 @@ describe("resolveTopChoiceIds", () => {
   it("sem voto ninguém leva", () => {
     expect(resolveTopChoiceIds([])).toEqual([]);
     expect(resolveTopChoiceIds([{ id: "a", votes: 0 }])).toEqual([]);
-  });
-});
-
-describe("rankPositions", () => {
-  it("empate divide a posição e pula a seguinte", () => {
-    expect(rankPositions([7, 5, 5, 2, 2, 2, 1])).toEqual([1, 2, 2, 4, 4, 4, 7]);
-    expect(rankPositions([3, 3])).toEqual([1, 1]);
-    expect(rankPositions([])).toEqual([]);
   });
 });
 

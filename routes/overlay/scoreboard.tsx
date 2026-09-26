@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useState, useSyncExternalStore, type CSSProperties } from "react";
 import type { CardMarker, GoalMarker, MatchState } from "../../contracts/types";
 import { computeElapsedMs, formatClock } from "../../shared/clock";
 import { formatScore } from "../../shared/score";
@@ -233,74 +233,32 @@ function MarkerBadge({ icon, label, tone }: { icon: string; label: string | null
   );
 }
 
+const subscribeNothing = () => () => {};
+
 // Flash de "quem fez o gol" (pedido explícito: só o gol some sozinho, depois de
 // `hideAfterMs` — cartão/power play ficam até serem tirados no controle, ver
 // shared/settings.ts goalFlashSeconds) — sempre o gol mais recente (goals.at(-1)).
 //
-// loadLiveMarkers (runtime/match-store.ts) devolve um array NOVO em TODO snapshot do SSE, mesmo
-// sem gol novo (qualquer outro evento da partida — cartão, power play, atribuição de jogador —
-// já republica o MatchState inteiro), então este efeito reexecuta bem mais vezes do que "só
-// quando um gol acontece". `expiredRef` é o que impede uma dessas reexecuções de ressuscitar um
-// flash que já tinha sido escondido pelo timer: sem ele, a resincronização de conteúdo abaixo
-// (necessária pro nome do jogador aparecer quando a atribuição chega alguns segundos DEPOIS do
-// gol) chamava `setVisible(last)` de novo pro MESMO gol mesmo depois do timer já ter disparado —
-// e como o id não tinha mudado, nenhum timer novo era agendado pra escondê-lo de novo, travando o
-// flash de volta na tela pra sempre no primeiro cartão/power play seguinte.
-function useGoalFlash(goals: GoalMarker[], hideAfterMs: number): GoalMarker | null {
-  const [visible, setVisible] = useState<GoalMarker | null>(null);
-  const lastIdRef = useRef<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const expiredRef = useRef(false);
-
+// Derivado, não guardado em estado: o gol aparece enquanto `now - occurredAt < hideAfterMs`, com o
+// `now` do tique do próprio overlay (useTick, 200ms). Isso já cobre sozinho o que a versão antiga
+// (timer + refs + setState dentro de efeito) precisava tratar à mão:
+// - nome do jogador que chega DEPOIS do gol (atribuição na súmula): `last` é sempre o snapshot
+//   mais novo do SSE, então o flash mostra o nome assim que ele chega;
+// - snapshot novo sem gol novo (cartão, power play...): não ressuscita um flash já expirado,
+//   porque o tempo só anda pra frente;
+// - F5 no OBS no meio do jogo: gol antigo já passou da janela, não aparece.
+// Antes de hidratar (servidor + primeiro render no client) fica sem flash, igual à versão antiga —
+// o `now` do servidor e o do client não batem, e um flash que existe num e não no outro quebraria a
+// hidratação.
+function useGoalFlash(goals: GoalMarker[], hideAfterMs: number, now: number): GoalMarker | null {
+  const hydrated = useSyncExternalStore(
+    subscribeNothing,
+    () => true,
+    () => false,
+  );
   const last = goals.length > 0 ? goals[goals.length - 1] : null;
-
-  useEffect(() => {
-    if (!last) {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = null;
-      lastIdRef.current = null;
-      expiredRef.current = false;
-      setVisible(null);
-      return;
-    }
-
-    if (last.id !== lastIdRef.current) {
-      // Gol novo (de verdade) — reinicia tudo, inclusive o timer.
-      lastIdRef.current = last.id;
-      expiredRef.current = false;
-      if (timerRef.current) clearTimeout(timerRef.current);
-
-      const remaining = hideAfterMs - (Date.now() - last.occurredAt);
-      if (remaining <= 0) {
-        timerRef.current = null;
-        expiredRef.current = true;
-        setVisible(null);
-        return;
-      }
-      timerRef.current = setTimeout(() => {
-        timerRef.current = null;
-        expiredRef.current = true;
-        setVisible(null);
-      }, remaining);
-    }
-
-    // Mesmo gol de antes — só resincroniza o conteúdo (nome do jogador pode ter chegado só agora,
-    // via atribuição) enquanto ele ainda estiver dentro da janela de exibição. Depois de expirado,
-    // este mesmo `last` vai continuar chegando aqui a cada snapshot (nenhum gol novo aconteceu),
-    // mas não deve mais reaparecer.
-    if (!expiredRef.current) {
-      setVisible(last);
-    }
-  }, [last, hideAfterMs]);
-
-  // Desmonte real do overlay (não um re-render) — o timer não tem mais pra onde publicar.
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  return visible;
+  if (!hydrated || !last) return null;
+  return now - last.occurredAt < hideAfterMs ? last : null;
 }
 
 export function Scoreboard({
@@ -319,7 +277,7 @@ export function Scoreboard({
   const [logoOk, setLogoOk] = useState(Boolean(logoUrl));
   // Hook incondicional (regra do React) mesmo a partida estando ociosa — state.goals é [] nesse
   // caso (EMPTY_MARKERS, ver runtime/match-store.ts) e o flash simplesmente nunca aparece.
-  const goalFlash = useGoalFlash(state.goals, goalFlashMs);
+  const goalFlash = useGoalFlash(state.goals, goalFlashMs, now);
 
   // Ocioso (nenhuma partida em andamento, ver runtime/match-actions.ts startMatch/finishMatch) —
   // some por completo (sem placar "fantasma" 0×0 entre partidas), a menos que o controle tenha

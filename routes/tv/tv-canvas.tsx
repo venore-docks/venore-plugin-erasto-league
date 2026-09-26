@@ -358,7 +358,7 @@ export function TvCanvas({
     if (pages.length <= 1) return;
     const timeoutId = setTimeout(() => setPageIndex((current) => (current + 1) % pages.length), PAGE_DURATION_MS);
     return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- avança por tempo, não por mudança de conteúdo
+    // Avança por tempo, não por mudança de conteúdo.
   }, [safePageIndex, pages.length]);
 
   const currentPage = pages[safePageIndex];

@@ -5,6 +5,9 @@ import { getTeam, listTeams } from "../../runtime/teams";
 import { getPlayerStats, listMvpMatchesForPlayer, listRecentMatchesForPlayer } from "../../runtime/stats";
 import { listFanVoteAwardsForPlayer } from "../../runtime/fan-votes";
 import { readFanVoteWindowHours } from "../../shared/config";
+import { resolveRequestOrigin } from "../../runtime/request-origin";
+import { formatScore } from "../../shared/score";
+import { storyPath } from "../../shared/story-request";
 import { PlayerProfileView, type PlayerAward } from "./player-profile-view";
 
 // Prêmios do jogador (MVP oficial + Jogador da Torcida) juntos por partida — quem levou os dois no
@@ -34,15 +37,26 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   }
 
   const windowHours = await readFanVoteWindowHours();
-  const [team, stats, recentMatches, allTeams, mvpMatches, fanVoteMatches] = await Promise.all([
+  const [team, stats, recentMatches, allTeams, mvpMatches, fanVoteMatches, { origin }] = await Promise.all([
     getTeam(player.teamId),
     getPlayerStats(player.id, player.teamId),
     listRecentMatchesForPlayer(player.teamId),
     listTeams(),
     listMvpMatchesForPlayer(player.id),
     listFanVoteAwardsForPlayer(player.id, windowHours),
+    resolveRequestOrigin(),
   ]);
   const teamById = new Map(allTeams.map((t) => [t.id, t]));
+  const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
+  const share = {
+    url: `${origin}/erasto-league/players/${player.slug}`,
+    text:
+      `⭐ ${player.name}${team ? ` (${team.name})` : ""} na Erasto League: ` +
+      `${formatScore(stats.goals)} ${plural(stats.goals, "gol", "gols")}, ` +
+      `${stats.mvpCount} ${plural(stats.mvpCount, "MVP", "MVPs")} e ` +
+      `${fanVoteMatches.length}× Jogador da Torcida`,
+    storyUrl: storyPath({ kind: "player", slug: player.slug }),
+  };
 
   return (
     <PlayerProfileView
@@ -53,6 +67,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
       awards={mergeAwards(mvpMatches, fanVoteMatches)}
       recentMatches={recentMatches}
       teamById={teamById}
+      share={share}
     />
   );
 }

@@ -1,5 +1,5 @@
 import type { BlockRendererProps } from "@venore/plugin-sdk";
-import { getNextFixture } from "../runtime/bracket";
+import { getNextFixture, type NextGameView } from "../runtime/bracket";
 
 function readString(data: Record<string, unknown>, key: string, fallback = ""): string {
   const value = data[key];
@@ -65,6 +65,12 @@ export async function ErastoLeagueNextGameAdBlock({ block }: BlockRendererProps)
     return <p className="text-sm text-muted-foreground">Nenhum próximo jogo agendado.</p>;
   }
 
+  return <NextGameAdCard next={next} title={title} />;
+}
+
+// O card em si, sem buscar dado — reusado pela página inicial completa (blocks/home), que já tem o
+// próximo jogo em mãos (e põe o "Adicionar à agenda" embaixo).
+export function NextGameAdCard({ next, title }: { next: NextGameView; title: string }) {
   const dateLabel = next.scheduledDate ? formatDateLabel(next.scheduledDate) : null;
 
   return (

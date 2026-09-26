@@ -40,8 +40,8 @@ export async function ErastoLeagueTeamSpotlightBlock({ block, mode }: BlockRende
         <img src={team.crestUrl} alt="" className="size-16 shrink-0 rounded-2xl object-cover" />
       ) : (
         <div
-          className="flex size-16 shrink-0 items-center justify-center rounded-2xl text-lg font-bold text-white"
-          style={{ background: team.primaryColor ?? "#334155" }}
+          className="flex size-16 shrink-0 items-center justify-center rounded-2xl border-4 bg-muted text-lg font-bold text-muted-foreground"
+          style={{ borderColor: team.primaryColor ?? "var(--border)" }}
         >
           {team.name.slice(0, 2).toUpperCase()}
         </div>

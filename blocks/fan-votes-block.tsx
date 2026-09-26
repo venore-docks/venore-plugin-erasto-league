@@ -16,7 +16,7 @@ function readNumber(data: Record<string, unknown>, key: string, fallback: number
   return Number.isFinite(value) && value > 0 ? Math.min(20, Math.round(value)) : fallback;
 }
 
-async function MatchPollPanel({ windowHours, limit }: { windowHours: number; limit: number }) {
+export async function MatchPollPanel({ windowHours, limit }: { windowHours: number; limit: number }) {
   const poll = await getFeaturedMatchPoll(windowHours);
   if (!poll) {
     return (
@@ -54,7 +54,7 @@ async function MatchPollPanel({ windowHours, limit }: { windowHours: number; lim
   );
 }
 
-async function FavoriteTeamPanel({ isOpen, limit }: { isOpen: boolean; limit: number }) {
+export async function FavoriteTeamPanel({ isOpen, limit }: { isOpen: boolean; limit: number }) {
   const results = await getFavoriteTeamResults(limit);
   return (
     <div className="space-y-3 rounded-panel border border-border bg-card p-4">

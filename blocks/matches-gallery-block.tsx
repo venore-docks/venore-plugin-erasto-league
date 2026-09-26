@@ -97,17 +97,31 @@ function TeamLine({ team, score, won, lost }: { team: TeamProfile | undefined; s
   );
 }
 
-function MatchCard({
-  match,
-  home,
-  away,
-  fixture,
-}: {
-  match: MatchSummary;
-  home: TeamProfile | undefined;
-  away: TeamProfile | undefined;
-  fixture: Fixture | undefined;
-}) {
+// Times e confrontos (fase/rodada/data) indexados pra montar os cards — carregados uma vez por
+// página/bloco (loadMatchCards).
+export type MatchCardContext = { teamById: Map<string, TeamProfile>; fixtureByMatchId: Map<string, Fixture> };
+
+// Partidas salvas pros cards, mais recente primeiro ("cancelled" — legado — fica de fora). Usado
+// por este bloco, pela página /erasto-league/jogos e pelos "Últimos jogos" da página inicial.
+export async function loadMatchCards(options: { onlyBroadcast?: boolean; limit?: number } = {}): Promise<{
+  matches: MatchSummary[];
+  context: MatchCardContext;
+}> {
+  const [matches, teams, fixtures] = await Promise.all([listMatches(), listTeams(), listFixtures()]);
+  const visible = matches.filter((match) => match.status !== "cancelled" && (!options.onlyBroadcast || match.youtubeUrl));
+  return {
+    matches: typeof options.limit === "number" ? visible.slice(0, options.limit) : visible,
+    context: {
+      teamById: new Map(teams.map((team) => [team.id, team])),
+      fixtureByMatchId: new Map(fixtures.filter((fixture) => fixture.matchId).map((fixture) => [fixture.matchId!, fixture])),
+    },
+  };
+}
+
+export function MatchCard({ match, context, className = "" }: { match: MatchSummary; context: MatchCardContext; className?: string }) {
+  const home = context.teamById.get(match.homeTeamId);
+  const away = context.teamById.get(match.awayTeamId);
+  const fixture = context.fixtureByMatchId.get(match.id);
   const finished = match.status === "finished";
   const homeWon = finished && match.homeScore > match.awayScore;
   const awayWon = finished && match.awayScore > match.homeScore;
@@ -116,7 +130,7 @@ function MatchCard({
   return (
     <Link
       href={`/erasto-league/jogos/${match.id}`}
-      className="group flex flex-col overflow-hidden rounded-panel border border-border bg-card shadow-sm ui-motion-base hover:border-ring"
+      className={`group flex flex-col overflow-hidden rounded-panel border border-border bg-card shadow-sm ui-motion-base hover:border-ring ${className}`}
     >
       <Thumbnail match={match} home={home} away={away} />
       <div className="space-y-1.5 p-3">
@@ -137,10 +151,7 @@ export async function ErastoLeagueMatchesGalleryBlock({ block }: BlockRendererPr
   const title = readString(block.data, "title", "Jogos");
   const onlyBroadcast = readString(block.data, "filter", "all") === "broadcast";
 
-  const [matches, teams, fixtures] = await Promise.all([listMatches(), listTeams(), listFixtures()]);
-  const teamById = new Map(teams.map((team) => [team.id, team]));
-  const fixtureByMatchId = new Map(fixtures.filter((fixture) => fixture.matchId).map((fixture) => [fixture.matchId!, fixture]));
-  const visible = matches.filter((match) => match.status !== "cancelled" && (!onlyBroadcast || match.youtubeUrl));
+  const { matches: visible, context } = await loadMatchCards({ onlyBroadcast });
 
   return (
     <div className="space-y-4">
@@ -162,13 +173,7 @@ export async function ErastoLeagueMatchesGalleryBlock({ block }: BlockRendererPr
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((match) => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              home={teamById.get(match.homeTeamId)}
-              away={teamById.get(match.awayTeamId)}
-              fixture={fixtureByMatchId.get(match.id)}
-            />
+            <MatchCard key={match.id} match={match} context={context} />
           ))}
         </div>
       )}
