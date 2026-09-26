@@ -3,10 +3,13 @@ import {
   buildAuditGroups,
   classifyAuditGroup,
   computeVoteShares,
+  isVoteWindowClosed,
   isVoteWindowOpen,
   normalizeIpForGrouping,
   pickClientIp,
+  rankPositions,
   resolveMatchVoteWindow,
+  resolveTopChoiceIds,
   type AuditVoteRow,
 } from "./fan-votes";
 
@@ -39,6 +42,42 @@ describe("resolveMatchVoteWindow / isVoteWindowOpen", () => {
     const window = resolveMatchVoteWindow({ status: "cancelled", startedAt: START, finishedAt: null }, 48);
     expect(window).toBeNull();
     expect(isVoteWindowOpen(window, START)).toBe(false);
+  });
+});
+
+describe("isVoteWindowClosed", () => {
+  it("só fecha de vez depois da janela de uma partida encerrada", () => {
+    const finishedAt = START + 25 * 60 * 1000;
+    const finished = resolveMatchVoteWindow({ status: "finished", startedAt: START, finishedAt }, 48);
+    expect(isVoteWindowClosed(finished, finishedAt + 47 * HOUR)).toBe(false);
+    expect(isVoteWindowClosed(finished, finishedAt + 48 * HOUR)).toBe(true);
+
+    const live = resolveMatchVoteWindow({ status: "in_progress", startedAt: START, finishedAt: null }, 48);
+    expect(isVoteWindowClosed(live, START + 500 * HOUR)).toBe(false);
+    expect(isVoteWindowClosed(null, START)).toBe(false);
+  });
+});
+
+describe("resolveTopChoiceIds", () => {
+  it("o mais votado leva", () => {
+    expect(resolveTopChoiceIds([{ id: "a", votes: 3 }, { id: "b", votes: 5 }, { id: "c", votes: 1 }])).toEqual(["b"]);
+  });
+
+  it("empate no topo: todos os empatados levam", () => {
+    expect(resolveTopChoiceIds([{ id: "a", votes: 4 }, { id: "b", votes: 2 }, { id: "c", votes: 4 }])).toEqual(["a", "c"]);
+  });
+
+  it("sem voto ninguém leva", () => {
+    expect(resolveTopChoiceIds([])).toEqual([]);
+    expect(resolveTopChoiceIds([{ id: "a", votes: 0 }])).toEqual([]);
+  });
+});
+
+describe("rankPositions", () => {
+  it("empate divide a posição e pula a seguinte", () => {
+    expect(rankPositions([7, 5, 5, 2, 2, 2, 1])).toEqual([1, 2, 2, 4, 4, 4, 7]);
+    expect(rankPositions([3, 3])).toEqual([1, 1]);
+    expect(rankPositions([])).toEqual([]);
   });
 });
 

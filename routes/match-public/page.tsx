@@ -52,7 +52,12 @@ export default async function MatchPublicPage({ params }: { params: Promise<{ id
       playerById={playerById}
       boosts={boosts}
       powerBoosts={powerBoosts}
-      fanVote={{ isOpen: fanVotePoll.isOpen, leader: fanVoteResults.entries[0] ?? null, totalVotes: fanVoteResults.totalVotes }}
+      fanVote={{
+        isOpen: fanVotePoll.isOpen,
+        leaders: fanVoteResults.leaders,
+        leaderPercent: fanVoteResults.entries[0]?.percent ?? 0,
+        totalVotes: fanVoteResults.totalVotes,
+      }}
     />
   );
 }

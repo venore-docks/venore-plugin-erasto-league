@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNotNull, isNull, lte, notInArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@venore/plugin-sdk";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
@@ -15,7 +15,9 @@ import {
   computeVoteShares,
   isVoteWindowOpen,
   resolveMatchVoteWindow,
+  resolveTopChoiceIds,
   type AuditGroup,
+  type VoteCount,
   type VoteWindow,
 } from "../shared/fan-votes";
 import type { MatchSummary } from "../contracts/types";
@@ -49,9 +51,18 @@ export type FanVoteResultEntry = {
   percent: number;
 };
 
-export type FanVoteResults = { totalVotes: number; entries: FanVoteResultEntry[] };
+// Quem está no topo (todos, em caso de empate — shared/fan-votes.ts resolveTopChoiceIds), calculado
+// sobre a lista inteira, não só sobre as `entries` cortadas pelo limit.
+export type FanVoteLeader = { id: string; name: string; votes: number };
 
-const EMPTY_RESULTS: FanVoteResults = { totalVotes: 0, entries: [] };
+export type FanVoteResults = { totalVotes: number; entries: FanVoteResultEntry[]; leaders: FanVoteLeader[] };
+
+const EMPTY_RESULTS: FanVoteResults = { totalVotes: 0, entries: [], leaders: [] };
+
+function pickLeaders(shares: VoteCount[], nameById: Map<string, string>): FanVoteLeader[] {
+  const leaderIds = new Set(resolveTopChoiceIds(shares));
+  return shares.filter((share) => leaderIds.has(share.id)).map((share) => ({ id: share.id, name: nameById.get(share.id) ?? "—", votes: share.votes }));
+}
 
 export type CastVoteResult =
   | { ok: true; choiceId: string; changed: boolean }
@@ -150,7 +161,51 @@ export async function getMatchFanVoteResults(matchId: string, limit?: number): P
     }),
   );
 
-  return { totalVotes: shares.reduce((sum, share) => sum + share.votes, 0), entries };
+  return {
+    totalVotes: shares.reduce((sum, share) => sum + share.votes, 0),
+    entries,
+    leaders: pickLeaders(shares, new Map(rows.map((row) => [row.playerId, row.name]))),
+  };
+}
+
+// Partidas em que o jogador foi o Jogador da Torcida — só votação JÁ ENCERRADA (parcial não é
+// prêmio), ele no topo dos votos válidos, e empate no topo contando pra todos os empatados
+// (shared/fan-votes.ts resolveTopChoiceIds — mesma regra da página do jogo). Mais recente primeiro.
+export async function listFanVoteAwardsForPlayer(playerId: string, windowHours: number, now = Date.now()): Promise<MatchSummary[]> {
+  const closedBefore = new Date(now - windowHours * HOUR_MS);
+  // Candidatas: partidas encerradas há mais de windowHours em que ele teve ao menos 1 voto válido
+  // (súmula manual sem finishedAt fecha a contar do início, igual a resolveMatchVoteWindow).
+  const candidates = await db
+    .selectDistinct({ matchId: matchFanVotesTable.matchId })
+    .from(matchFanVotesTable)
+    .innerJoin(matchesTable, eq(matchFanVotesTable.matchId, matchesTable.id))
+    .where(
+      and(
+        eq(matchFanVotesTable.playerId, playerId),
+        isNull(matchFanVotesTable.voidedAt),
+        eq(matchesTable.status, "finished"),
+        or(lte(matchesTable.finishedAt, closedBefore), and(isNull(matchesTable.finishedAt), lte(matchesTable.startedAt, closedBefore))),
+      ),
+    );
+  if (candidates.length === 0) return [];
+
+  const counts = await db
+    .select({ matchId: matchFanVotesTable.matchId, playerId: matchFanVotesTable.playerId, votes: count(matchFanVotesTable.id) })
+    .from(matchFanVotesTable)
+    .where(and(inArray(matchFanVotesTable.matchId, candidates.map((row) => row.matchId)), isNull(matchFanVotesTable.voidedAt)))
+    .groupBy(matchFanVotesTable.matchId, matchFanVotesTable.playerId);
+
+  const countsByMatch = new Map<string, VoteCount[]>();
+  for (const row of counts) {
+    const list = countsByMatch.get(row.matchId) ?? [];
+    list.push({ id: row.playerId, votes: row.votes });
+    countsByMatch.set(row.matchId, list);
+  }
+  const wonMatchIds = [...countsByMatch].filter(([, list]) => resolveTopChoiceIds(list).includes(playerId)).map(([matchId]) => matchId);
+  if (wonMatchIds.length === 0) return [];
+
+  const rows = await db.select().from(matchesTable).where(inArray(matchesTable.id, wonMatchIds)).orderBy(desc(matchesTable.startedAt));
+  return rows.map(rowToSummary);
 }
 
 // Em quem ESTE aparelho votou nesta partida (inclusive voto anulado — quem votou não fica sabendo
@@ -258,7 +313,11 @@ export async function getFavoriteTeamResults(limit?: number): Promise<FanVoteRes
     }),
   );
 
-  return { totalVotes: shares.reduce((sum, share) => sum + share.votes, 0), entries };
+  return {
+    totalVotes: shares.reduce((sum, share) => sum + share.votes, 0),
+    entries,
+    leaders: pickLeaders(shares, new Map(rows.map((row) => [row.teamId, row.name]))),
+  };
 }
 
 export async function getVoterFavoriteTeam(voterKey: string | null): Promise<string | null> {

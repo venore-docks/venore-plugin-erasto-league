@@ -8,6 +8,10 @@ function formatMatchDate(epochMs: number): string {
   return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
 }
 
+// Prêmios do jogador numa partida (routes/players-public/page.tsx mergeAwards) — MVP oficial
+// (súmula) e/ou Jogador da Torcida (votação encerrada).
+export type PlayerAward = { match: MatchSummary; mvp: boolean; fanVote: boolean };
+
 const RESULT_STYLE: Record<"win" | "draw" | "loss", { label: string; className: string }> = {
   win: { label: "V", className: "bg-success-soft text-success" },
   draw: { label: "E", className: "bg-warning-soft text-warning" },
@@ -17,16 +21,30 @@ const RESULT_STYLE: Record<"win" | "draw" | "loss", { label: string; className: 
 // Perfil público do jogador — DENTRO da shell/tema do host, mesmo princípio do team-profile-view.tsx
 // (só tokens shadcn; team?.primaryColor é dado do cadastro, não decisão de design, misturado em
 // var(--card) via color-mix como o hero-block já faz com config.accentColor).
+// "vs <adversário>" do ponto de vista do time ATUAL do jogador; se ele trocou de time depois do
+// jogo, mostra o confronto inteiro.
+function describeOpponent(match: MatchSummary, playerTeamId: string, teamById: Map<string, TeamProfile>): string {
+  const nameOf = (id: string) => teamById.get(id)?.name ?? "—";
+  if (match.homeTeamId === playerTeamId) return `vs ${nameOf(match.awayTeamId)}`;
+  if (match.awayTeamId === playerTeamId) return `vs ${nameOf(match.homeTeamId)}`;
+  return `${nameOf(match.homeTeamId)} × ${nameOf(match.awayTeamId)}`;
+}
+
 export function PlayerProfileView({
   player,
   team,
   stats,
+  fanVoteWins,
+  awards,
   recentMatches,
   teamById,
 }: {
   player: PlayerProfile;
   team: TeamProfile | null;
   stats: PlayerStats;
+  // Quantas vezes foi o Jogador da Torcida (votação encerrada, empate no topo conta).
+  fanVoteWins: number;
+  awards: PlayerAward[];
   recentMatches: MatchSummary[];
   teamById: Map<string, TeamProfile>;
 }) {
@@ -71,24 +89,55 @@ export function PlayerProfileView({
         </div>
       </div>
 
-      {stats.matchesPlayed > 0 && (
-        <div className="grid grid-cols-3 gap-px overflow-hidden rounded-panel border border-border bg-border sm:grid-cols-5">
+      {(stats.matchesPlayed > 0 || awards.length > 0) && (
+        // Gols, MVPs e Jogador da Torcida primeiro (1ª linha no celular) — os números que a torcida
+        // procura; jogos e cartões depois.
+        <div className="grid grid-cols-3 gap-px overflow-hidden rounded-panel border border-border bg-border sm:grid-cols-6">
           {[
-            { label: "Gols", value: formatScore(stats.goals) },
+            { label: "⚽ Gols", value: formatScore(stats.goals) },
+            { label: "⭐ MVPs", value: stats.mvpCount },
+            { label: "📣 Jogador da Torcida", value: fanVoteWins },
             { label: "Jogos", value: stats.matchesPlayed },
-            { label: "MVPs", value: stats.mvpCount },
             { label: "🟨 Amarelos", value: stats.yellowCards },
             { label: "🟥 Vermelhos", value: stats.redCards },
           ].map((stat) => (
             <div key={stat.label} className="bg-card px-2 py-3 text-center">
               <p className="text-xl font-extrabold tabular-nums text-foreground">{stat.value}</p>
-              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{stat.label}</p>
+              <p className="mt-0.5 text-[10px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground">{stat.label}</p>
             </div>
           ))}
         </div>
       )}
 
       {player.bio && <p className="max-w-2xl text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">{player.bio}</p>}
+
+      {awards.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Prêmios</h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {awards.map((award) => (
+              <Link
+                key={award.match.id}
+                href={`/erasto-league/jogos/${award.match.id}`}
+                className="flex flex-col gap-1.5 rounded-panel border border-border bg-card px-4 py-3 ui-motion-base hover:border-ring"
+              >
+                <span className="flex flex-wrap gap-1.5">
+                  {award.mvp && <span className="rounded-full bg-warning-soft px-2 py-0.5 text-[11px] font-bold text-warning">⭐ MVP</span>}
+                  {award.fanVote && (
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">📣 Jogador da Torcida</span>
+                  )}
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                    {describeOpponent(award.match, player.teamId, teamById)}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{formatMatchDate(award.match.finishedAt ?? award.match.startedAt)}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3">
         <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Últimos jogos</h2>

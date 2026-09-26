@@ -60,6 +60,30 @@ export function computeVoteShares(counts: VoteCount[]): VoteShare[] {
   return sorted.map((entry, index) => ({ ...entry, percent: floors[index] }));
 }
 
+// Votação que já terminou de vez (partida encerrada + janela passada) — só aí o mais votado vira
+// "Jogador da Torcida" de verdade (perfil do jogador, página do jogo). Em andamento/parcial, não.
+export function isVoteWindowClosed(window: VoteWindow | null, now: number): boolean {
+  return window !== null && window.closesAt !== null && now >= window.closesAt;
+}
+
+// Quem leva o prêmio: o mais votado. Empate no topo = todos os empatados levam (nenhum critério
+// de desempate é justo aqui — ordem alfabética daria o prêmio pelo nome); sem voto = ninguém.
+export function resolveTopChoiceIds(counts: VoteCount[]): string[] {
+  const top = counts.reduce((max, entry) => Math.max(max, entry.votes), 0);
+  if (top <= 0) return [];
+  return counts.filter((entry) => entry.votes === top).map((entry) => entry.id);
+}
+
+// Posição de cada linha de um ranking já ordenado por votos (mais votado primeiro), com empate
+// dividindo a posição ("1, 1, 3") — pra medalha 🥇 não ir só pro primeiro de dois empatados.
+export function rankPositions(sortedVotes: number[]): number[] {
+  const positions: number[] = [];
+  sortedVotes.forEach((votes, index) => {
+    positions.push(index > 0 && votes === sortedVotes[index - 1] ? positions[index - 1] : index + 1);
+  });
+  return positions;
+}
+
 // Agrupamento de IP pra auditoria: IPv4 inteiro; IPv6 pelo prefixo /64 (uma casa/aparelho recebe um
 // /64 inteiro e troca o sufixo à vontade — agrupar pelo endereço completo deixaria quem gira o
 // sufixo parecer N pessoas diferentes). "::ffff:1.2.3.4" (IPv4 mapeado) vira o IPv4.

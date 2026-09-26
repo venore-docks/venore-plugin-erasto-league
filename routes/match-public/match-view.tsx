@@ -1,7 +1,8 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Badge } from "@venore/plugin-sdk/ui";
 import type { MatchEvent, MatchSummary, PlayerProfile, PowerBoost, PowerBoostUse, TeamProfile } from "../../contracts/types";
-import type { FanVoteResultEntry } from "../../runtime/fan-votes";
+import type { FanVoteLeader } from "../../runtime/fan-votes";
 import { formatScore } from "../../shared/score";
 import { MATCH_STATUS_BADGE_VARIANT, MATCH_STATUS_LABEL } from "../../shared/match-status";
 import { extractYoutubeVideoId } from "../../shared/youtube";
@@ -150,16 +151,43 @@ function BoostRow({
   );
 }
 
+type FanVoteSummary = { isOpen: boolean; leaders: FanVoteLeader[]; leaderPercent: number; totalVotes: number };
+
+function joinNames(names: string[]): string {
+  return names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
+}
+
 // Jogador da Torcida (votação aberta, routes/vote-public) — chamada pra votar enquanto aberta,
-// líder parcial/final quando já tem voto. Separado do MVP oficial (escolhido pelo admin).
-function FanVoteCallout({
-  matchId,
-  fanVote,
-}: {
-  matchId: string;
-  fanVote: { isOpen: boolean; leader: FanVoteResultEntry | null; totalVotes: number };
-}) {
-  if (!fanVote.isOpen && !fanVote.leader) return null;
+// líder parcial/vencedor final quando já tem voto. Empate no topo: todos os empatados levam (mesma
+// regra do perfil do jogador, shared/fan-votes.ts resolveTopChoiceIds). Separado do MVP oficial
+// (escolhido pelo admin).
+function FanVoteCallout({ matchId, fanVote }: { matchId: string; fanVote: FanVoteSummary }) {
+  const { isOpen, leaders, leaderPercent, totalVotes } = fanVote;
+  if (!isOpen && leaders.length === 0) return null;
+
+  const votesLabel = (votes: number) => `${votes} voto${votes === 1 ? "" : "s"}`;
+  let detail: ReactNode;
+  if (leaders.length === 0) {
+    detail = " — votação aberta, ninguém votou ainda";
+  } else if (leaders.length === 1) {
+    detail = (
+      <>
+        {" "}
+        — {isOpen ? "liderando" : "vencedor"}: <span className="font-semibold text-foreground">{leaders[0].name}</span> ({leaderPercent}% de{" "}
+        {votesLabel(totalVotes)})
+      </>
+    );
+  } else {
+    detail = (
+      <>
+        {" "}
+        — {isOpen ? "empate na liderança" : "empate, vencedores"}:{" "}
+        <span className="font-semibold text-foreground">{joinNames(leaders.map((leader) => leader.name))}</span> ({votesLabel(leaders[0].votes)}{" "}
+        cada, de {totalVotes})
+      </>
+    );
+  }
+
   return (
     <Link
       href={`/erasto-league/votar/jogo/${matchId}`}
@@ -168,17 +196,9 @@ function FanVoteCallout({
       <span className="text-lg leading-none">📣</span>
       <p className="min-w-0 flex-1 text-sm font-semibold text-foreground">
         Jogador da Torcida
-        {fanVote.leader ? (
-          <span className="font-normal text-muted-foreground">
-            {" "}
-            — {fanVote.isOpen ? "liderando" : "vencedor"}: <span className="font-semibold text-foreground">{fanVote.leader.name}</span> (
-            {fanVote.leader.percent}% de {fanVote.totalVotes} voto{fanVote.totalVotes === 1 ? "" : "s"})
-          </span>
-        ) : (
-          <span className="font-normal text-muted-foreground"> — votação aberta, ninguém votou ainda</span>
-        )}
+        <span className="font-normal text-muted-foreground">{detail}</span>
       </p>
-      <span className="shrink-0 text-sm font-bold text-primary">{fanVote.isOpen ? "Votar →" : "Ver resultado →"}</span>
+      <span className="shrink-0 text-sm font-bold text-primary">{isOpen ? "Votar →" : "Ver resultado →"}</span>
     </Link>
   );
 }
@@ -204,7 +224,7 @@ export function MatchView({
   playerById: Map<string, PlayerProfile>;
   boosts: PowerBoostUse[];
   powerBoosts: PowerBoost[];
-  fanVote: { isOpen: boolean; leader: FanVoteResultEntry | null; totalVotes: number };
+  fanVote: FanVoteSummary;
 }) {
   const mvpPlayer = match.mvpPlayerId ? (playerById.get(match.mvpPlayerId) ?? null) : null;
   const goalsAndCards = events.filter((event) => event.kind !== "foul");

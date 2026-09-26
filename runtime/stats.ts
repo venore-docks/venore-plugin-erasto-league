@@ -56,6 +56,17 @@ export async function getPlayerStats(playerId: string, teamId: string): Promise<
   return stats;
 }
 
+// Partidas em que o jogador foi o MVP oficial (súmula/controle) — lista de prêmios do perfil
+// público, mesmo filtro de getPlayerStats.mvpCount (só encerradas). Mais recente primeiro.
+export async function listMvpMatchesForPlayer(playerId: string): Promise<MatchSummary[]> {
+  const rows = await db
+    .select()
+    .from(matchesTable)
+    .where(and(eq(matchesTable.mvpPlayerId, playerId), eq(matchesTable.status, "finished")))
+    .orderBy(desc(matchesTable.startedAt));
+  return rows.map(rowToSummary);
+}
+
 // Últimos jogos de um jogador — mesma fonte de runtime/matches.ts listRecentMatchesForTeam (todas
 // as partidas encerradas DO TIME dele, não só as que têm algum evento seu atribuído — mesmo motivo
 // de getPlayerStats acima). Reaproveita a mesma query, sem duplicar.
