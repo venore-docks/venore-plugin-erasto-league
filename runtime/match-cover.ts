@@ -4,7 +4,7 @@ import { fixtures as fixturesTable, teams as teamsTable } from "../database/sche
 import { getMatch } from "./matches";
 import { getTeam } from "./teams";
 import { resolveErastoLeagueConfig } from "../shared/config";
-import { FIXTURE_PHASE_LABEL } from "../shared/fixture-phase";
+import { describeFixtureStage, describeMatchDate } from "../shared/match-labels";
 import { getMediaAsset } from "@venore/plugin-sdk/media";
 
 // Tudo que a capa 1280×720 de um jogo precisa (runtime/match-cover-image.tsx) — SEM placar
@@ -29,27 +29,6 @@ export type MatchCoverData = {
 };
 
 type FixtureRow = typeof fixturesTable.$inferSelect;
-
-function formatDayMonth(epochMs: number): string {
-  return new Date(epochMs).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
-}
-
-// "Semifinal", "Grupo A · 2ª Rodada"... do confronto vinculado à partida (tabela de jogos).
-function describeStage(fixture: FixtureRow | undefined): string | null {
-  if (!fixture) return null;
-  if (fixture.phase !== "group") return FIXTURE_PHASE_LABEL[fixture.phase];
-  const group = fixture.groupName ? `Grupo ${fixture.groupName}` : null;
-  return [group, fixture.roundLabel].filter(Boolean).join(" · ") || FIXTURE_PHASE_LABEL.group;
-}
-
-// Data do confronto (texto puro, sem fuso) ou, sem confronto, do apito inicial em Brasília.
-function describeDate(startedAt: number, fixture: FixtureRow | undefined): string {
-  if (fixture?.scheduledDate) {
-    const [, month, day] = fixture.scheduledDate.split("-");
-    if (month && day) return `${day}/${month}`;
-  }
-  return formatDayMonth(startedAt);
-}
 
 async function findLinkedFixture(matchId: string): Promise<FixtureRow | undefined> {
   const [fixture] = await db.select().from(fixturesTable).where(eq(fixturesTable.matchId, matchId)).limit(1);
@@ -83,8 +62,8 @@ export async function loadMatchShareInfo(matchId: string): Promise<MatchShareInf
     coverMediaId: match.coverMediaId,
     homeName: nameOf(match.homeTeamId),
     awayName: nameOf(match.awayTeamId),
-    stageLabel: describeStage(fixture),
-    dateLabel: describeDate(match.startedAt, fixture),
+    stageLabel: describeFixtureStage(fixture),
+    dateLabel: describeMatchDate(match.startedAt, fixture),
   };
 }
 
@@ -116,8 +95,8 @@ export async function loadMatchCoverData(matchId: string): Promise<MatchCoverDat
     awayCrestUrl: awayTeam?.crestUrl ?? null,
     homeColor: homeTeam?.primaryColor ?? null,
     awayColor: awayTeam?.primaryColor ?? null,
-    stageLabel: describeStage(fixture),
-    dateLabel: describeDate(match.startedAt, fixture),
+    stageLabel: describeFixtureStage(fixture),
+    dateLabel: describeMatchDate(match.startedAt, fixture),
     leagueLogoUrl: config.logoUrl || null,
     accentColor: config.accentColor,
   };

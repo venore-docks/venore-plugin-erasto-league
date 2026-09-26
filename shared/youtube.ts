@@ -54,3 +54,14 @@ export function extractYoutubeVideoId(rawUrl: string): string | null {
 
   return id && YOUTUBE_ID.test(id) ? id : null;
 }
+
+// Miniatura do vídeo servida pela CDN do YouTube (i.ytimg.com) — a galeria de jogos
+// (blocks/matches-gallery-block.tsx) usa isto em vez da capa gerada em /api/.../cover: é a mesma
+// imagem quando o admin sobe a capa no YouTube, e não custa CPU da Vercel pra N jogos de uma vez.
+// hqdefault (480×360) existe pra todo vídeo/live; o conteúdo 16:9 vem com faixa preta em cima e
+// embaixo, então quem exibe recorta com object-cover num box aspect-video.
+export function youtubeThumbnailUrl(rawUrl: string | null): string | null {
+  if (!rawUrl) return null;
+  const id = extractYoutubeVideoId(rawUrl);
+  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
+}

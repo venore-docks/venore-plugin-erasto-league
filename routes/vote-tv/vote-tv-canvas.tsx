@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { resolveTvStageTransform, type TvStageTransform } from "../../shared/tv-stage";
 import type { QrSvg } from "../../shared/qr";
 import type { FanVoteResults } from "../../runtime/fan-votes";
+import { rankPositions } from "../../shared/fan-votes";
 import type { VoteTvData, VoteTvMatch } from "../../runtime/vote-tv";
 import { getVoteTvDataAction, getVoteTvVersionAction } from "./actions";
 
@@ -82,22 +83,24 @@ const CSS = `
 
 type VotePage = "match" | "favorite";
 
-const RANK_MEDAL: Record<number, string> = { 0: "🥇", 1: "🥈", 2: "🥉" };
+// Por posição (1, 2, 3) — empatados dividem a posição e a medalha (shared/fan-votes.ts rankPositions).
+const RANK_MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 function ResultRows({ results, emptyMessage }: { results: FanVoteResults; emptyMessage: string }) {
   if (results.entries.length === 0) {
     return <p className="elvt-empty">{emptyMessage}</p>;
   }
+  const positions = rankPositions(results.entries.map((entry) => entry.votes));
   return (
     <div className="elvt-list">
       {results.entries.map((entry, index) => (
         <div
           key={entry.id}
-          className={`elvt-row ${index === 0 ? "top" : ""}`}
+          className={`elvt-row ${positions[index] === 1 ? "top" : ""}`}
           style={{ "--row-color": entry.color ?? undefined } as CSSProperties}
         >
           <span className="elvt-row-fill" style={{ width: `${entry.percent}%` }} />
-          <span className="elvt-rank">{RANK_MEDAL[index] ?? index + 1}</span>
+          <span className="elvt-rank">{RANK_MEDAL[positions[index]] ?? positions[index]}</span>
           {entry.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img className="elvt-avatar" src={entry.imageUrl} alt="" />

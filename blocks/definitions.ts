@@ -12,6 +12,7 @@ import { erastoLeagueScheduleBlockDefinition } from "./schedule";
 import { erastoLeagueNextGameAdBlockDefinition } from "./next-game-ad";
 import { erastoLeagueBroadcastBlockDefinition } from "./broadcast";
 import { erastoLeagueFanVotesBlockDefinition } from "./fan-votes";
+import { erastoLeagueMatchesGalleryBlockDefinition } from "./matches-gallery";
 
 export const blockDefinitions: BlockDefinition[] = [
   erastoLeagueHeroBlockDefinition,
@@ -27,4 +28,5 @@ export const blockDefinitions: BlockDefinition[] = [
   erastoLeagueNextGameAdBlockDefinition,
   erastoLeagueBroadcastBlockDefinition,
   erastoLeagueFanVotesBlockDefinition,
+  erastoLeagueMatchesGalleryBlockDefinition,
 ];

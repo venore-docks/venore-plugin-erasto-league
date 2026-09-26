@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import type { FanVoteResults } from "../runtime/fan-votes";
+import { rankPositions } from "../shared/fan-votes";
 
-const RANK_MEDAL: Record<number, string> = { 0: "🥇", 1: "🥈", 2: "🥉" };
+// Por posição (1, 2, 3) — empatados dividem a posição e a medalha (shared/fan-votes.ts rankPositions).
+const RANK_MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 function AvatarPlaceholder({ label }: { label: string }) {
   return (
@@ -31,6 +33,8 @@ export function VoteResultsList({
     return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
   }
 
+  const positions = rankPositions(results.entries.map((entry) => entry.votes));
+
   return (
     <div className="space-y-3">
       <ol className="space-y-2">
@@ -56,7 +60,7 @@ export function VoteResultsList({
                   }
                 />
                 <span className="relative w-6 shrink-0 text-center text-sm font-bold text-muted-foreground">
-                  {RANK_MEDAL[index] ?? index + 1}
+                  {RANK_MEDAL[positions[index]] ?? positions[index]}
                 </span>
                 {entry.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element

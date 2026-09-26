@@ -31,9 +31,10 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
   (opcional, só pra sinalizar), capitão (flag), foto, bio. Perfis públicos em
   `/erasto-league/teams/:slug` e `/erasto-league/players/:slug` — DENTRO da shell/tema do site
   (rota "public", não mais `/ext/`): capa, recorde (V/E/D/saldo/pontos) e últimos jogos encerrados
-  pro time; gols/cartões (só dos eventos atribuídos a ele) e últimos jogos do TIME (não só os jogos
-  em que ele tem evento atribuído — ver `runtime/stats.ts`) pro jogador (capitão aparece com um selo
-  "C"). A lista de
+  pro time; gols, MVPs, vezes que foi o Jogador da Torcida, jogos e cartões (gols/cartões só dos
+  eventos atribuídos a ele), uma lista de **Prêmios** (cada partida em que foi MVP oficial e/ou
+  Jogador da Torcida, com link pro jogo) e últimos jogos do TIME (não só os jogos em que ele tem
+  evento atribuído — ver `runtime/stats.ts`) pro jogador (capitão aparece com um selo "C"). A lista de
   todos os times não é mais uma rota fixa — virou o bloco **Erasto League — Times**
   (`erasto-league.teams`, ver lista de blocos abaixo), pra o admin colocar em qualquer página.
   Excluir time/jogador é seguro: bloqueado de verdade se o time tem partida registrada (senão o
@@ -83,6 +84,14 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     hora de renderizar (nunca lida do que foi salvo).
   - **Erasto League — Últimos resultados** (`erasto-league.recent-results`) — últimas N partidas
     encerradas, cartão com placar em destaque e brasão dos dois times.
+  - **Erasto League — Jogos e transmissões** (`erasto-league.matches-gallery`) — TODAS as partidas
+    salvas (súmulas), mais recente primeiro, em grade de cards: miniatura do vídeo, fase/rodada,
+    data, times e placar (selo "Ao vivo" na partida em andamento). Cada card leva pra página do jogo
+    (vídeo embutido + súmula). Opção "Só os que têm transmissão" esconde os jogos sem link do
+    YouTube. A miniatura vem da CDN do YouTube (`i.ytimg.com`), não da capa gerada pelo plugin —
+    com dezenas de jogos na página, gerar uma capa por card gastaria CPU do servidor à toa, e quando
+    o admin sobe a capa no YouTube a miniatura já é a capa. Sem link (ou se a miniatura não carregar),
+    o card mostra as cores e os brasões dos dois times.
   - **Erasto League — Artilharia** (`erasto-league.top-scorers`) — ranking de gols por jogador,
     com foto (placeholder de avatar quando não há foto) e time abaixo do nome.
   - **Erasto League — Time em destaque** (`erasto-league.team-spotlight`) — card compacto de UM
@@ -174,6 +183,9 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
 - **Votação da torcida (sem login)** — dois prêmios da torcida, separados do MVP oficial:
   - **Jogador da Torcida** — um voto por aparelho por jogo, abre no apito inicial e fecha N horas
     depois do fim (`erasto-league.fanVoteWindowHours`, padrão 48h: os alunos só votam de casa).
+    Quando a votação fecha, o mais votado (só votos não anulados) vira o Jogador da Torcida do jogo
+    e isso conta no perfil dele. **Empate no topo: todos os empatados levam** (página do jogo, perfil
+    e medalhas dos rankings seguem a mesma regra — `shared/fan-votes.ts` `resolveTopChoiceIds`).
   - **Time favorito** — um voto por aparelho na temporada, **pode trocar** enquanto aberta; o admin
     abre/fecha e zera na virada de temporada.
   - Hub público `/erasto-league/votar` (destino do QR e do link na descrição do YouTube), mais
