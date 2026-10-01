@@ -235,6 +235,12 @@ Placar de futebol ao vivo pro Venore Docks. Semente do futuro site *Erasto Leagu
     "Manter 1 por navegador", "Anular todos" ou "Restaurar" — nada é anulado sozinho.
   - Anti-robô opcional: Cloudflare Turnstile, ligado só com `ERASTO_LEAGUE_TURNSTILE_SITE_KEY` +
     `ERASTO_LEAGUE_TURNSTILE_SECRET_KEY` no ambiente.
+  - **Custo de cada voto** — votar de novo por aba anônima continua possível (faz parte do
+    engajamento), mas cada voto espera antes de valer: o toque em "Votar" pede um ticket assinado
+    (`runtime/vote-ticket.ts`, uso único — o nonce vai gravado no voto) e o servidor só aceita o voto
+    depois de `base + passo × votos que já saíram da mesma rede` segundos (até o máximo), recalculado
+    na hora do voto — pedir vários tickets de uma vez não adianta. Teto opcional de votos por rede em
+    cada votação. Tudo em `/admin/erasto-league/votes` → "Custo de cada voto".
   - **Overlay do QR** `/ext/erasto-league/vote-overlay` — fonte do OBS **separada** do placar (o
     operador do OBS liga/desliga; o controle de gols não mexe nela). Chama o Jogador da Torcida com
     votação aberta, senão o Time favorito, senão fica transparente. `?pos=top-left|top-right|bottom-left|bottom-right`.
@@ -280,6 +286,10 @@ Tudo em `/admin/erasto-league` (contexts/settings do host):
 | `erasto-league.youtubeChannelId` | (vazio) | Id do canal do YouTube da transmissão (bloco `erasto-league.broadcast`). |
 | `erasto-league.fanVoteWindowHours` | 48 | Horas que a votação do Jogador da Torcida fica aberta depois do jogo (`/admin/erasto-league/votes`). |
 | `erasto-league.favoriteTeamVotingOpen` | `true` | Votação do Time favorito aberta (`/admin/erasto-league/votes`). |
+| `erasto-league.voteWaitBaseSeconds` | 5 | Espera (s) do primeiro voto de uma rede em cada votação. |
+| `erasto-league.voteWaitStepSeconds` | 5 | Espera a mais (s) por voto que já saiu da mesma rede. |
+| `erasto-league.voteWaitMaxSeconds` | 60 | Espera máxima (s) por voto. |
+| `erasto-league.voteMaxPerNetwork` | 30 | Teto de votos por rede em cada votação (0 = sem teto). |
 
 ## Relógio
 

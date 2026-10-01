@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { MonitorPlay, QrCode, Tv, Vote } from "lucide-react";
+import { Hourglass, MonitorPlay, QrCode, Tv, Vote } from "lucide-react";
 import { getPluginAdminPageData } from "@venore/plugin-sdk/admin";
 import { AdminAccessDenied, AdminPageHeader, AdminStatTile, Badge, Button } from "@venore/plugin-sdk/ui";
-import { resolveErastoLeagueConfig } from "../../../shared/config";
+import { readVoteCostPolicyFresh, resolveErastoLeagueConfig } from "../../../shared/config";
 import { listMatches } from "../../../runtime/matches";
 import { listTeams } from "../../../runtime/teams";
 import {
@@ -15,6 +15,7 @@ import { getTurnstileSiteKey } from "../../../runtime/turnstile";
 import { VoteResultsList } from "../../../blocks/vote-results-list";
 import { VoteAuditGroups } from "./audit-groups";
 import { VoteWindowForm } from "./vote-window-form";
+import { VoteCostForm } from "./vote-cost-form";
 import { ResetFavoriteVotesControl } from "./reset-favorite-votes-control";
 import { setFavoriteVotingOpenAction } from "./actions";
 
@@ -29,8 +30,9 @@ export default async function VotesAdminPage() {
     return <AdminAccessDenied message="Você não tem permissão para ver o Erasto League." />;
   }
 
-  const [config, matches, teams, favoriteResults, favoriteAudit] = await Promise.all([
+  const [config, voteCost, matches, teams, favoriteResults, favoriteAudit] = await Promise.all([
     resolveErastoLeagueConfig(),
+    readVoteCostPolicyFresh(),
     listMatches(),
     listTeams(),
     getFavoriteTeamResults(),
@@ -93,6 +95,20 @@ export default async function VotesAdminPage() {
             <code>ERASTO_LEAGUE_TURNSTILE_SITE_KEY</code> e <code>ERASTO_LEAGUE_TURNSTILE_SECRET_KEY</code> e faça o redeploy.
           </p>
         )}
+      </section>
+
+      <section className="space-y-3 rounded-panel border border-border bg-card p-4">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Hourglass className="size-4 text-muted-foreground" /> Custo de cada voto
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          Votar de novo (aba anônima, outro navegador) continua possível, mas cada voto espera alguns segundos antes de valer — e
+          espera mais a cada voto que já saiu da mesma rede (IP) naquela votação. Hoje: o 1º voto de uma rede espera{" "}
+          {voteCost.baseSeconds}s, o 5º espera {Math.min(voteCost.baseSeconds + voteCost.stepSeconds * 4, Math.max(voteCost.baseSeconds, voteCost.maxSeconds))}s
+          {voteCost.maxPerNetwork > 0 ? `, e a rede para no ${voteCost.maxPerNetwork}º voto` : ", sem teto por rede"}. A espera é contada no
+          servidor; vale pros dois tipos de votação.
+        </p>
+        <VoteCostForm policy={voteCost} />
       </section>
 
       <section className="space-y-4 rounded-panel border border-border bg-card p-4">

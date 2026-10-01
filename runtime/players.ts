@@ -1,6 +1,5 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
-import { getMediaAsset } from "@venore/plugin-sdk/media";
 import {
   matchEvents as matchEventsTable,
   matchFanVotes as matchFanVotesTable,
@@ -9,14 +8,9 @@ import {
 } from "../database/schema";
 import { slugify } from "../shared/slug";
 import type { PlayerGender, PlayerPosition, PlayerProfile } from "../contracts/types";
+import { resolveMediaImageUrl } from "../shared/media-url";
 
 type PlayerRow = typeof playersTable.$inferSelect;
-
-async function resolveMediaUrl(mediaId: string | null): Promise<string | null> {
-  if (!mediaId) return null;
-  const result = await getMediaAsset({ id: mediaId });
-  return result.success && result.data ? result.data.url : null;
-}
 
 async function rowToProfile(row: PlayerRow): Promise<PlayerProfile> {
   return {
@@ -29,7 +23,7 @@ async function rowToProfile(row: PlayerRow): Promise<PlayerProfile> {
     position: row.position,
     isCaptain: row.isCaptain,
     photoMediaId: row.photoMediaId,
-    photoUrl: await resolveMediaUrl(row.photoMediaId),
+    photoUrl: await resolveMediaImageUrl(row.photoMediaId),
     bio: row.bio,
   };
 }

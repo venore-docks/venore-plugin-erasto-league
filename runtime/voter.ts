@@ -63,12 +63,19 @@ export async function ensureVoterIdentity(): Promise<VoterIdentity> {
   });
 
   const headerList = await headers();
-  const ip = normalizeIpForGrouping(pickClientIp(headerList.get("x-real-ip"), headerList.get("x-forwarded-for")));
   const userAgent = headerList.get("user-agent")?.trim() ?? "";
 
   return {
     voterKey: voterKeyFromToken(token),
-    ipHash: ip ? keyedHash("ip", ip, 16) : null,
+    ipHash: await readNetworkHash(),
     uaHash: userAgent ? keyedHash("ua", userAgent, 12) : null,
   };
+}
+
+// Só o hash da rede (IP agrupado) do request atual — o que o custo do voto conta
+// (routes/vote-public/actions.ts). Não mexe em cookie.
+export async function readNetworkHash(): Promise<string | null> {
+  const headerList = await headers();
+  const ip = normalizeIpForGrouping(pickClientIp(headerList.get("x-real-ip"), headerList.get("x-forwarded-for")));
+  return ip ? keyedHash("ip", ip, 16) : null;
 }

@@ -1,6 +1,5 @@
 import { asc, eq, ilike, or } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
-import { getMediaAsset } from "@venore/plugin-sdk/media";
 import {
   favoriteTeamVotes as favoriteTeamVotesTable,
   fixtures as fixturesTable,
@@ -11,14 +10,9 @@ import {
 import { deletePlayer } from "./players";
 import { slugify } from "../shared/slug";
 import type { TeamProfile } from "../contracts/types";
+import { resolveMediaImageUrl } from "../shared/media-url";
 
 type TeamRow = typeof teamsTable.$inferSelect;
-
-async function resolveMediaUrl(mediaId: string | null): Promise<string | null> {
-  if (!mediaId) return null;
-  const result = await getMediaAsset({ id: mediaId });
-  return result.success && result.data ? result.data.url : null;
-}
 
 async function rowToProfile(row: TeamRow): Promise<TeamProfile> {
   return {
@@ -26,7 +20,7 @@ async function rowToProfile(row: TeamRow): Promise<TeamProfile> {
     slug: row.slug,
     name: row.name,
     crestMediaId: row.crestMediaId,
-    crestUrl: await resolveMediaUrl(row.crestMediaId),
+    crestUrl: await resolveMediaImageUrl(row.crestMediaId),
     primaryColor: row.primaryColor,
     secondaryColor: row.secondaryColor,
     description: row.description,

@@ -5,7 +5,7 @@ import { getMatch } from "./matches";
 import { getTeam } from "./teams";
 import { resolveErastoLeagueConfig } from "../shared/config";
 import { describeFixtureStage, describeMatchDate } from "../shared/match-labels";
-import { getMediaAsset } from "@venore/plugin-sdk/media";
+import { resolveMediaImageUrl } from "../shared/media-url";
 
 // Tudo que a capa 1280×720 de um jogo precisa (runtime/match-cover-image.tsx) — SEM placar
 // (pedido explícito: a capa vai pro YouTube, e placar na miniatura estraga o replay). Recalculado a
@@ -67,12 +67,6 @@ export async function loadMatchShareInfo(matchId: string): Promise<MatchShareInf
   };
 }
 
-async function resolveMediaUrl(mediaId: string | null): Promise<string | null> {
-  if (!mediaId) return null;
-  const result = await getMediaAsset({ id: mediaId });
-  return result.success && result.data ? result.data.url : null;
-}
-
 export async function loadMatchCoverData(matchId: string): Promise<MatchCoverData | null> {
   const match = await getMatch(matchId);
   if (!match) return null;
@@ -82,7 +76,8 @@ export async function loadMatchCoverData(matchId: string): Promise<MatchCoverDat
     getTeam(match.awayTeamId),
     findLinkedFixture(matchId),
     resolveErastoLeagueConfig(),
-    resolveMediaUrl(match.coverMediaId),
+    // Capa 1280×720 gerada no servidor: largura real, sem densidade (variante de 1920).
+    resolveMediaImageUrl(match.coverMediaId, 1280, 1),
   ]);
 
   return {

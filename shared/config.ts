@@ -1,26 +1,22 @@
 import { getSetting, type GetSettingResult } from "@venore/plugin-sdk/settings";
-import { getMediaAsset } from "@venore/plugin-sdk/media";
 import {
   ERASTO_LEAGUE_SETTINGS,
   clampFanVoteWindowHours,
   clampGoalFlashSeconds,
   clampPeriodCount,
   clampPeriodMinutes,
+  clampVoteMaxPerNetwork,
+  clampVoteWaitSeconds,
   sanitizeAccentColor,
   type ErastoLeagueConfig,
 } from "./settings";
+import { resolveMediaImageUrl } from "./media-url";
+import type { VoteCostPolicy } from "./fan-votes";
 
 function asString(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim().length > 0 ? value : fallback;
 }
 
-// Mesmo resolveMediaUrl duplicado em runtime/teams.ts/runtime/players.ts — 4 linhas, não vale a
-// pena um módulo compartilhado só por isso.
-async function resolveMediaUrl(mediaId: string): Promise<string> {
-  if (!mediaId) return "";
-  const result = await getMediaAsset({ id: mediaId });
-  return result.success && result.data ? result.data.url : "";
-}
 
 function asNumber(value: unknown, fallback: number): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -57,6 +53,25 @@ export async function readFanVoteWindowHours(): Promise<number> {
   return clampFanVoteWindowHours(asNumber(value, S.fanVoteWindowHours.defaultValue));
 }
 
+// Custo de cada voto (shared/fan-votes.ts VoteCostPolicy) — sem cache, pelo mesmo motivo de
+// readFavoriteTeamVotingOpenFresh: o admin mudar a espera/teto vale na hora em toda instância.
+export async function readVoteCostPolicyFresh(): Promise<VoteCostPolicy> {
+  const S = ERASTO_LEAGUE_SETTINGS;
+  const [base, step, max, cap] = await Promise.all([
+    getSetting({ key: S.voteWaitBaseSeconds.key, skipCache: true }),
+    getSetting({ key: S.voteWaitStepSeconds.key, skipCache: true }),
+    getSetting({ key: S.voteWaitMaxSeconds.key, skipCache: true }),
+    getSetting({ key: S.voteMaxPerNetwork.key, skipCache: true }),
+  ]);
+  const read = (r: GetSettingResult): unknown => (r.success && r.data ? r.data.value : undefined);
+  return {
+    baseSeconds: clampVoteWaitSeconds(asNumber(read(base), S.voteWaitBaseSeconds.defaultValue), S.voteWaitBaseSeconds.defaultValue),
+    stepSeconds: clampVoteWaitSeconds(asNumber(read(step), S.voteWaitStepSeconds.defaultValue), S.voteWaitStepSeconds.defaultValue),
+    maxSeconds: clampVoteWaitSeconds(asNumber(read(max), S.voteWaitMaxSeconds.defaultValue), S.voteWaitMaxSeconds.defaultValue),
+    maxPerNetwork: clampVoteMaxPerNetwork(asNumber(read(cap), S.voteMaxPerNetwork.defaultValue)),
+  };
+}
+
 // Lê todas as settings do plugin de uma vez e devolve o snapshot já saneado que overlay/console/
 // admin consomem. Uma ida ao contexts/settings por chave, em paralelo.
 export async function resolveErastoLeagueConfig(): Promise<ErastoLeagueConfig> {
@@ -81,7 +96,7 @@ export async function resolveErastoLeagueConfig(): Promise<ErastoLeagueConfig> {
     periodCount: clampPeriodCount(asNumber(read(periodCount), S.periodCount.defaultValue)),
     accentColor: sanitizeAccentColor(asString(read(accent), S.accentColor.defaultValue)),
     logoMediaId,
-    logoUrl: await resolveMediaUrl(logoMediaId),
+    logoUrl: (await resolveMediaImageUrl(logoMediaId || null)) ?? "",
     youtubeChannelId: asString(read(youtubeChannelId), S.youtubeChannelId.defaultValue).trim(),
     goalFlashMs: clampGoalFlashSeconds(asNumber(read(goalFlashSeconds), S.goalFlashSeconds.defaultValue)) * 1_000,
     fanVoteWindowHours: clampFanVoteWindowHours(asNumber(read(fanVoteWindowHours), S.fanVoteWindowHours.defaultValue)),

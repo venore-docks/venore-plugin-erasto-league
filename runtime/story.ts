@@ -8,6 +8,7 @@ import { readFanVoteWindowHours, resolveErastoLeagueConfig } from "../shared/con
 import { formatScore } from "../shared/score";
 import type { StoryRequest } from "../shared/story-request";
 import type { StoryData, StoryTeam } from "./story-image";
+import { resolveMediaImageUrl } from "../shared/media-url";
 
 // Dados de cada story do Instagram (runtime/story-image.tsx) — mesmo conteúdo das páginas que têm o
 // botão (jogo, votação, jogador, time favorito). null = jogo/jogador não existe mais.
@@ -58,7 +59,8 @@ async function loadPlayerStory(slug: string, domain: string): Promise<StoryData 
       kind: "player",
       name: player.name,
       subtitle: [player.number != null ? `#${player.number}` : null, team?.name].filter(Boolean).join(" · "),
-      photoUrl: player.photoUrl,
+      // Foto do story sai em 640×640 (runtime/story-image.tsx) — maior que a de exibição do site.
+      photoUrl: await resolveMediaImageUrl(player.photoMediaId, 640, 1),
       color: team?.primaryColor ?? null,
       stats: [
         { label: "Gols", value: formatScore(stats.goals) },

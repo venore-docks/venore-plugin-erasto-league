@@ -3,12 +3,15 @@ import {
   buildAuditGroups,
   classifyAuditGroup,
   computeVoteShares,
+  evaluateVoteCost,
+  isNetworkVoteCapReached,
   isVoteWindowClosed,
   isVoteWindowOpen,
   normalizeIpForGrouping,
   pickClientIp,
   resolveMatchVoteWindow,
   resolveTopChoiceIds,
+  resolveVoteWaitSeconds,
   type AuditVoteRow,
 } from "./fan-votes";
 
@@ -168,5 +171,49 @@ describe("buildAuditGroups", () => {
     expect(classifyAuditGroup(5, 1)).toBe("suspect");
     expect(classifyAuditGroup(6, 2)).toBe("suspect");
     expect(classifyAuditGroup(6, 3)).toBe("watch");
+  });
+});
+
+describe("resolveVoteWaitSeconds", () => {
+  const policy = { baseSeconds: 5, stepSeconds: 5, maxSeconds: 60, maxPerNetwork: 30 };
+
+  it("primeiro voto da rede espera a base; cada voto a mais soma o passo, até o máximo", () => {
+    expect(resolveVoteWaitSeconds(0, policy)).toBe(5);
+    expect(resolveVoteWaitSeconds(1, policy)).toBe(10);
+    expect(resolveVoteWaitSeconds(4, policy)).toBe(25);
+    expect(resolveVoteWaitSeconds(50, policy)).toBe(60);
+  });
+
+  it("máximo menor que a base não reduz a espera abaixo da base; contagem inválida vira zero", () => {
+    expect(resolveVoteWaitSeconds(3, { ...policy, baseSeconds: 20, maxSeconds: 10 })).toBe(20);
+    expect(resolveVoteWaitSeconds(-2, policy)).toBe(5);
+  });
+
+  it("espera zerada no admin desliga o custo", () => {
+    expect(resolveVoteWaitSeconds(10, { ...policy, baseSeconds: 0, stepSeconds: 0 })).toBe(0);
+  });
+});
+
+describe("isNetworkVoteCapReached", () => {
+  it("bloqueia a partir do teto; teto 0 = sem limite", () => {
+    const policy = { baseSeconds: 5, stepSeconds: 5, maxSeconds: 60, maxPerNetwork: 3 };
+    expect(isNetworkVoteCapReached(2, policy)).toBe(false);
+    expect(isNetworkVoteCapReached(3, policy)).toBe(true);
+    expect(isNetworkVoteCapReached(999, { ...policy, maxPerNetwork: 0 })).toBe(false);
+  });
+});
+
+describe("evaluateVoteCost", () => {
+  const policy = { baseSeconds: 5, stepSeconds: 5, maxSeconds: 60, maxPerNetwork: 3 };
+
+  it("libera depois da espera exigida pela contagem atual, contada desde o ticket", () => {
+    expect(evaluateVoteCost(0, policy, 0, 5_000)).toEqual({ ok: true });
+    expect(evaluateVoteCost(1, policy, 0, 5_000)).toEqual({ ok: false, reason: "wait", retryAfterSeconds: 5 });
+    expect(evaluateVoteCost(1, policy, 0, 9_100)).toEqual({ ok: false, reason: "wait", retryAfterSeconds: 1 });
+    expect(evaluateVoteCost(1, policy, 0, 10_000)).toEqual({ ok: true });
+  });
+
+  it("teto vem antes da espera", () => {
+    expect(evaluateVoteCost(3, policy, 0, 999_999)).toEqual({ ok: false, reason: "cap" });
   });
 });

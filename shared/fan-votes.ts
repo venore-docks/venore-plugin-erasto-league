@@ -197,3 +197,40 @@ export function buildAuditGroups(rows: AuditVoteRow[], minVotes = AUDIT_MIN_GROU
   const levelRank: Record<AuditGroup["level"], number> = { suspect: 0, watch: 1, none: 2 };
   return groups.sort((a, b) => levelRank[a.level] - levelRank[b.level] || b.totalVotes - a.totalVotes);
 }
+
+// ---------------------------------------------------------------------------------------------
+// Custo de cada voto (espera crescente por rede)
+// ---------------------------------------------------------------------------------------------
+
+export type VoteCostPolicy = {
+  baseSeconds: number;
+  stepSeconds: number;
+  maxSeconds: number;
+  // 0 = sem teto.
+  maxPerNetwork: number;
+};
+
+// Quanto tempo o voto precisa esperar desde o ticket, dado quantos votos já saíram da mesma rede
+// nesta votação. Primeiro voto da casa = base; cada voto a mais soma `step`, até `max` (nunca
+// abaixo da base, mesmo que o admin configure max < base).
+export function resolveVoteWaitSeconds(priorVotesFromNetwork: number, policy: VoteCostPolicy): number {
+  const prior = Math.max(0, Math.floor(priorVotesFromNetwork));
+  const ceiling = Math.max(policy.baseSeconds, policy.maxSeconds);
+  return Math.min(policy.baseSeconds + policy.stepSeconds * prior, ceiling);
+}
+
+export function isNetworkVoteCapReached(priorVotesFromNetwork: number, policy: VoteCostPolicy): boolean {
+  return policy.maxPerNetwork > 0 && priorVotesFromNetwork >= policy.maxPerNetwork;
+}
+
+export type VoteCostCheck = { ok: true } | { ok: false; reason: "cap" } | { ok: false; reason: "wait"; retryAfterSeconds: number };
+
+// O voto pode valer agora? Teto da rede, e a espera exigida pela contagem ATUAL contada desde a
+// emissão do ticket. Usado na pré-checagem (antes do Turnstile) e de novo, travado por rede, no
+// insert (runtime/fan-votes.ts) — é essa segunda que vale.
+export function evaluateVoteCost(priorVotesFromNetwork: number, policy: VoteCostPolicy, ticketIssuedAt: number, now: number): VoteCostCheck {
+  if (isNetworkVoteCapReached(priorVotesFromNetwork, policy)) return { ok: false, reason: "cap" };
+  const remainingMs = resolveVoteWaitSeconds(priorVotesFromNetwork, policy) * 1000 - (now - ticketIssuedAt);
+  if (remainingMs > 0) return { ok: false, reason: "wait", retryAfterSeconds: Math.ceil(remainingMs / 1000) };
+  return { ok: true };
+}

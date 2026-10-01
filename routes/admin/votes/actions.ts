@@ -11,7 +11,7 @@ import {
   voidMatchVotesByIp,
   type VoidMode,
 } from "../../../runtime/fan-votes";
-import { ERASTO_LEAGUE_SETTINGS, clampFanVoteWindowHours } from "../../../shared/settings";
+import { ERASTO_LEAGUE_SETTINGS, clampFanVoteWindowHours, clampVoteMaxPerNetwork, clampVoteWaitSeconds } from "../../../shared/settings";
 
 // Admin da votação da torcida — mesmo gate de todo o resto do plugin (erasto-league.manage, via
 // getPluginAdminPageData); gravar setting ainda passa pelo gate do core (settings.manage) dentro
@@ -37,6 +37,24 @@ export async function saveVoteWindowAction(_prev: VoteSettingsState, formData: F
   const hours = clampFanVoteWindowHours(Number(String(formData.get("fanVoteWindowHours") ?? "")));
   const result = await setSetting({ key: S.fanVoteWindowHours.key, value: hours });
   if (!result.success) return { error: result.error.message, savedAt: null };
+  revalidateVoteScreens();
+  return { error: null, savedAt: Date.now() };
+}
+
+// Custo de cada voto — as 4 settings de uma vez (routes/admin/votes/vote-cost-form.tsx).
+export async function saveVoteCostAction(_prev: VoteSettingsState, formData: FormData): Promise<VoteSettingsState> {
+  if (!(await isGranted())) return { error: DENIED, savedAt: null };
+  const num = (name: string) => Number(String(formData.get(name) ?? ""));
+  const values: { key: string; value: number }[] = [
+    { key: S.voteWaitBaseSeconds.key, value: clampVoteWaitSeconds(num("baseSeconds"), S.voteWaitBaseSeconds.defaultValue) },
+    { key: S.voteWaitStepSeconds.key, value: clampVoteWaitSeconds(num("stepSeconds"), S.voteWaitStepSeconds.defaultValue) },
+    { key: S.voteWaitMaxSeconds.key, value: clampVoteWaitSeconds(num("maxSeconds"), S.voteWaitMaxSeconds.defaultValue) },
+    { key: S.voteMaxPerNetwork.key, value: clampVoteMaxPerNetwork(num("maxPerNetwork")) },
+  ];
+  for (const { key, value } of values) {
+    const result = await setSetting({ key, value });
+    if (!result.success) return { error: result.error.message, savedAt: null };
+  }
   revalidateVoteScreens();
   return { error: null, savedAt: Date.now() };
 }

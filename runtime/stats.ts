@@ -1,10 +1,10 @@
 import { and, count, desc, eq, isNotNull, or, sql } from "drizzle-orm";
 import { db } from "@venore/plugin-sdk";
-import { getMediaAsset } from "@venore/plugin-sdk/media";
 import { matchEvents as matchEventsTable, matches as matchesTable, players as playersTable, teams as teamsTable } from "../database/schema";
 import { rowToSummary } from "./matches";
 import { clampScore } from "../shared/score";
 import type { MatchSummary } from "../contracts/types";
+import { resolveMediaImageUrl } from "../shared/media-url";
 
 // Stats de um jogador (perfil público, Fase 4) — só eventos de partidas encerradas contam (mesmo
 // filtro de runtime/standings.ts). "Jogos" vem das partidas ENCERRADAS DO TIME do jogador, não de
@@ -132,8 +132,7 @@ export async function listTopScorers(limit?: number): Promise<ScorerEntry[]> {
 
   const entries = await Promise.all(
     rows.map(async (row) => {
-      const photoResult = row.photoMediaId ? await getMediaAsset({ id: row.photoMediaId }) : null;
-      const photoUrl = photoResult?.success && photoResult.data ? photoResult.data.url : null;
+      const photoUrl = await resolveMediaImageUrl(row.photoMediaId);
       return {
         playerId: row.playerId,
         slug: row.slug,
@@ -188,8 +187,7 @@ export async function listTopMvps(limit?: number): Promise<MvpEntry[]> {
 
   return Promise.all(
     rows.map(async (row) => {
-      const photoResult = row.photoMediaId ? await getMediaAsset({ id: row.photoMediaId }) : null;
-      const photoUrl = photoResult?.success && photoResult.data ? photoResult.data.url : null;
+      const photoUrl = await resolveMediaImageUrl(row.photoMediaId);
       return {
         playerId: row.playerId,
         slug: row.slug,

@@ -113,6 +113,13 @@
       "when": 1790357033540,
       "tag": "0015_fan_votes_and_match_cover",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790812730677,
+      "tag": "0016_vote_ticket_nonce",
+      "breakpoints": true
     }
   ]
 }

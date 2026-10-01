@@ -60,6 +60,32 @@ export const ERASTO_LEAGUE_SETTINGS = {
     defaultValue: true,
     label: "Votação do Time favorito aberta",
   },
+  // "Custo" de cada voto da torcida (shared/fan-votes.ts resolveVoteWaitSeconds): o voto só é
+  // aceito depois de uma espera, contada no servidor a partir do ticket emitido no clique. A espera
+  // cresce com quantos votos já saíram da mesma rede (IP) naquela votação — votar de novo por aba
+  // anônima continua possível (pedido: faz parte do engajamento), só vai ficando mais demorado.
+  voteWaitBaseSeconds: {
+    key: "erasto-league.voteWaitBaseSeconds",
+    defaultValue: 5,
+    label: "Espera do primeiro voto de uma rede (segundos)",
+  },
+  voteWaitStepSeconds: {
+    key: "erasto-league.voteWaitStepSeconds",
+    defaultValue: 5,
+    label: "Espera a mais por voto já dado na mesma rede (segundos)",
+  },
+  voteWaitMaxSeconds: {
+    key: "erasto-league.voteWaitMaxSeconds",
+    defaultValue: 60,
+    label: "Espera máxima por voto (segundos)",
+  },
+  // Teto de votos por rede em cada votação (0 = sem teto) — segura um script ou uma aba anônima em
+  // loop sem travar família/república votando da mesma casa.
+  voteMaxPerNetwork: {
+    key: "erasto-league.voteMaxPerNetwork",
+    defaultValue: 30,
+    label: "Máximo de votos por rede em cada votação (0 = sem limite)",
+  },
 } as const;
 
 export type ErastoLeagueSettingField = keyof typeof ERASTO_LEAGUE_SETTINGS;
@@ -102,6 +128,16 @@ export function clampPeriodCount(raw: number): number {
 export function clampGoalFlashSeconds(raw: number): number {
   if (!Number.isFinite(raw)) return ERASTO_LEAGUE_SETTINGS.goalFlashSeconds.defaultValue;
   return Math.min(30, Math.max(2, Math.round(raw)));
+}
+
+export function clampVoteWaitSeconds(raw: number, fallback: number): number {
+  if (!Number.isFinite(raw)) return fallback;
+  return Math.min(600, Math.max(0, Math.round(raw)));
+}
+
+export function clampVoteMaxPerNetwork(raw: number): number {
+  if (!Number.isFinite(raw)) return ERASTO_LEAGUE_SETTINGS.voteMaxPerNetwork.defaultValue;
+  return Math.min(10_000, Math.max(0, Math.round(raw)));
 }
 
 // Até 30 dias — mais que isso a "votação do jogo" vira votação da temporada, que já é o papel do

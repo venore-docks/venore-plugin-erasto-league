@@ -13,7 +13,9 @@ const FETCH_TIMEOUT_MS = 8_000;
 const SATORI_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/svg+xml"]);
 
 export type FetchedImage = { buffer: Buffer; contentType: string };
-export type SharpFactory = typeof import("sharp");
+// O construtor (default export) — `typeof import("sharp")` é o namespace do módulo, que a partir do
+// sharp 0.35 (ESM, com .d.mts) não é mais chamável.
+export type SharpFactory = typeof import("sharp").default;
 
 let sharpPromise: Promise<SharpFactory | null> | null = null;
 

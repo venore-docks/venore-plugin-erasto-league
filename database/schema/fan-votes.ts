@@ -26,12 +26,16 @@ export const matchFanVotes = erastoLeagueSchema.table(
     voterKey: text("voter_key").notNull(),
     ipHash: text("ip_hash"),
     uaHash: text("ua_hash"),
+    // Nonce do ticket de espera (runtime/vote-ticket.ts) que pagou este voto — único, então um
+    // ticket vale um voto só. Nulo nos votos anteriores ao ticket.
+    ticketNonce: text("ticket_nonce"),
     voidedAt: timestamp("voided_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("match_fan_votes_match_voter_unique").on(table.matchId, table.voterKey),
     index("match_fan_votes_match_ip_idx").on(table.matchId, table.ipHash),
+    uniqueIndex("match_fan_votes_ticket_nonce_unique").on(table.ticketNonce),
   ],
 );
 
@@ -49,9 +53,15 @@ export const favoriteTeamVotes = erastoLeagueSchema.table(
     voterKey: text("voter_key").notNull().unique(),
     ipHash: text("ip_hash"),
     uaHash: text("ua_hash"),
+    // Mesmo papel de matchFanVotes.ticketNonce — trocar o voto grava o nonce do ticket novo.
+    ticketNonce: text("ticket_nonce"),
     voidedAt: timestamp("voided_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("favorite_team_votes_ip_idx").on(table.ipHash), index("favorite_team_votes_team_idx").on(table.teamId)],
+  (table) => [
+    index("favorite_team_votes_ip_idx").on(table.ipHash),
+    index("favorite_team_votes_team_idx").on(table.teamId),
+    uniqueIndex("favorite_team_votes_ticket_nonce_unique").on(table.ticketNonce),
+  ],
 );

@@ -1,7 +1,6 @@
 import { and, count, desc, eq, gt, inArray, isNotNull, isNull, lte, notInArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@venore/plugin-sdk";
-import { getMediaAsset } from "@venore/plugin-sdk/media";
 import {
   favoriteTeamVotes as favoriteTeamVotesTable,
   matchFanVotes as matchFanVotesTable,
@@ -13,15 +12,18 @@ import { rowToSummary } from "./matches";
 import {
   buildAuditGroups,
   computeVoteShares,
+  evaluateVoteCost,
   isVoteWindowOpen,
   resolveMatchVoteWindow,
   resolveTopChoiceIds,
   type AuditGroup,
+  type VoteCostPolicy,
   type VoteCount,
   type VoteWindow,
 } from "../shared/fan-votes";
 import type { MatchSummary } from "../contracts/types";
 import type { VoterIdentity } from "./voter";
+import { resolveMediaImageUrl } from "../shared/media-url";
 
 // Votação da torcida — "Jogador da Torcida" (um voto por aparelho por partida, janela até N horas
 // depois do jogo) e "Time favorito" (um voto por aparelho na temporada, pode trocar). Regras puras
@@ -30,12 +32,6 @@ import type { VoterIdentity } from "./voter";
 // (anular/restaurar/zerar) checam getPluginAdminPageData antes de chamar.
 
 const HOUR_MS = 60 * 60 * 1000;
-
-async function resolveMediaUrl(mediaId: string | null): Promise<string | null> {
-  if (!mediaId) return null;
-  const result = await getMediaAsset({ id: mediaId });
-  return result.success && result.data ? result.data.url : null;
-}
 
 // Uma linha do resultado, já pronta pra exibir (site, TV, admin) — jogador (foto + time) ou time
 // (brasão + cor).
@@ -66,7 +62,79 @@ function pickLeaders(shares: VoteCount[], nameById: Map<string, string>): FanVot
 
 export type CastVoteResult =
   | { ok: true; choiceId: string; changed: boolean }
-  | { ok: false; code: "closed" | "invalid_choice" | "already_voted" | "not_found"; message: string; choiceId?: string };
+  | {
+      ok: false;
+      code: "closed" | "invalid_choice" | "already_voted" | "not_found" | "ticket_used" | "wait" | "network_cap";
+      message: string;
+      choiceId?: string;
+      // code "wait": quanto falta pra espera exigida (outro voto da mesma rede entrou no meio).
+      retryAfterSeconds?: number;
+    };
+
+export type VoteScope = { kind: "match"; matchId: string } | { kind: "favorite" };
+
+// O "custo" do voto checado DENTRO da transação do insert, com a rede travada
+// (lockNetworkForVote): sem isso, N abas da mesma rede votando no mesmo instante contavam a mesma
+// contagem e pagavam uma espera só.
+export type NetworkVoteGate = {
+  ipHash: string | null;
+  ticketIssuedAt: number;
+  policy: VoteCostPolicy;
+};
+
+export const NETWORK_CAP_MESSAGE = "Esta rede já chegou ao limite de votos desta votação.";
+export const WAIT_MORE_MESSAGE = "Mais gente votou desta rede agora há pouco — seu voto precisa de mais alguns segundos.";
+
+type DbExecutor = Pick<typeof db, "select" | "execute">;
+type VoteTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+function scopeLockKey(scope: VoteScope, ipHash: string): string {
+  return `erasto-league:vote:${scope.kind === "match" ? scope.matchId : "favorite"}:${ipHash}`;
+}
+
+// Lock de transação por (votação, rede) — solto sozinho no commit/rollback. Votos de redes
+// diferentes não se esperam.
+async function lockNetworkForVote(tx: VoteTransaction, scope: VoteScope, ipHash: string | null): Promise<void> {
+  if (!ipHash) return;
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${scopeLockKey(scope, ipHash)}, 0))`);
+}
+
+async function checkNetworkGate(tx: VoteTransaction, scope: VoteScope, gate: NetworkVoteGate, now: number): Promise<CastVoteResult | null> {
+  const prior = await countPollVotesFromNetwork(scope, gate.ipHash, tx);
+  const check = evaluateVoteCost(prior, gate.policy, gate.ticketIssuedAt, now);
+  if (check.ok) return null;
+  if (check.reason === "cap") return { ok: false, code: "network_cap", message: NETWORK_CAP_MESSAGE };
+  return { ok: false, code: "wait", message: WAIT_MORE_MESSAGE, retryAfterSeconds: check.retryAfterSeconds };
+}
+
+const TICKET_USED: CastVoteResult = {
+  ok: false,
+  code: "ticket_used",
+  message: "Essa confirmação de voto já foi usada — toque em votar de novo.",
+};
+
+// Postgres unique_violation — o índice único de ticket_nonce pegou uma corrida (mesmo ticket em
+// duas abas ao mesmo tempo).
+function isUniqueViolation(error: unknown): boolean {
+  const code = (error as { code?: string; cause?: { code?: string } } | null)?.code ?? (error as { cause?: { code?: string } } | null)?.cause?.code;
+  return code === "23505";
+}
+
+// Quantos votos já saíram desta rede (ipHash) nesta votação, anulados inclusive — é a base do
+// custo do próximo voto (shared/fan-votes.ts resolveVoteWaitSeconds). Rede desconhecida (sem IP no
+// request) conta como zero.
+export async function countPollVotesFromNetwork(scope: VoteScope, ipHash: string | null, executor: DbExecutor = db): Promise<number> {
+  if (!ipHash) return 0;
+  if (scope.kind === "match") {
+    const [row] = await executor
+      .select({ total: count() })
+      .from(matchFanVotesTable)
+      .where(and(eq(matchFanVotesTable.matchId, scope.matchId), eq(matchFanVotesTable.ipHash, ipHash)));
+    return row?.total ?? 0;
+  }
+  const [row] = await executor.select({ total: count() }).from(favoriteTeamVotesTable).where(eq(favoriteTeamVotesTable.ipHash, ipHash));
+  return row?.total ?? 0;
+}
 
 // ---------------------------------------------------------------------------------------------
 // Jogador da Torcida (por partida)
@@ -151,7 +219,7 @@ export async function getMatchFanVoteResults(matchId: string, limit?: number): P
       return {
         id: row.playerId,
         name: row.name,
-        imageUrl: await resolveMediaUrl(row.photoMediaId),
+        imageUrl: await resolveMediaImageUrl(row.photoMediaId),
         subtitle: row.teamName,
         href: `/erasto-league/players/${row.slug}`,
         color: row.teamColor,
@@ -258,7 +326,7 @@ export async function listFanVoteRanking(windowHours: number, limit?: number, no
   const visible = typeof limit === "number" ? sorted.slice(0, limit) : sorted;
 
   return Promise.all(
-    visible.map(async ({ photoMediaId, ...row }) => ({ ...row, photoUrl: await resolveMediaUrl(photoMediaId) })),
+    visible.map(async ({ photoMediaId, ...row }) => ({ ...row, photoUrl: await resolveMediaImageUrl(photoMediaId) })),
   );
 }
 
@@ -278,6 +346,9 @@ export async function castMatchFanVote(input: {
   playerId: string;
   voter: VoterIdentity;
   windowHours: number;
+  // Nonce do ticket de espera já validado (runtime/vote-ticket.ts) — gravado no voto, único.
+  ticketNonce: string;
+  gate: NetworkVoteGate;
   now?: number;
 }): Promise<CastVoteResult> {
   const now = input.now ?? Date.now();
@@ -300,25 +371,37 @@ export async function castMatchFanVote(input: {
     return { ok: false, code: "invalid_choice", message: "Esse jogador não está em nenhum dos dois times deste jogo." };
   }
 
-  const inserted = await db
-    .insert(matchFanVotesTable)
-    .values({
-      matchId: input.matchId,
-      playerId: input.playerId,
-      voterKey: input.voter.voterKey,
-      ipHash: input.voter.ipHash,
-      uaHash: input.voter.uaHash,
-    })
-    .onConflictDoNothing({ target: [matchFanVotesTable.matchId, matchFanVotesTable.voterKey] })
-    .returning({ id: matchFanVotesTable.id });
+  const scope: VoteScope = { kind: "match", matchId: input.matchId };
+  const outcome = await db.transaction(async (tx) => {
+    await lockNetworkForVote(tx, scope, input.gate.ipHash);
+    const blocked = await checkNetworkGate(tx, scope, input.gate, Date.now());
+    if (blocked) return { blocked, inserted: 0 };
+    const rows = await tx
+      .insert(matchFanVotesTable)
+      .values({
+        matchId: input.matchId,
+        playerId: input.playerId,
+        voterKey: input.voter.voterKey,
+        ipHash: input.voter.ipHash,
+        uaHash: input.voter.uaHash,
+        ticketNonce: input.ticketNonce,
+      })
+      // Sem target: tanto "este aparelho já votou" (matchId+voterKey) quanto "ticket já usado"
+      // (ticket_nonce) caem aqui — a busca abaixo separa os dois.
+      .onConflictDoNothing()
+      .returning({ id: matchFanVotesTable.id });
+    return { blocked: null, inserted: rows.length };
+  });
+  if (outcome.blocked) return outcome.blocked;
 
-  if (inserted.length === 0) {
+  if (outcome.inserted === 0) {
     const existing = await getVoterMatchChoice(input.matchId, input.voter.voterKey);
+    if (!existing) return TICKET_USED;
     return {
       ok: false,
       code: "already_voted",
       message: "Este aparelho já votou neste jogo.",
-      choiceId: existing ?? undefined,
+      choiceId: existing,
     };
   }
 
@@ -357,7 +440,7 @@ export async function getFavoriteTeamResults(limit?: number): Promise<FanVoteRes
       return {
         id: row.teamId,
         name: row.name,
-        imageUrl: await resolveMediaUrl(row.crestMediaId),
+        imageUrl: await resolveMediaImageUrl(row.crestMediaId),
         subtitle: null,
         href: `/erasto-league/teams/${row.slug}`,
         color: row.color,
@@ -385,7 +468,14 @@ export async function getVoterFavoriteTeam(voterKey: string | null): Promise<str
 
 // Upsert por aparelho: votar de novo TROCA o voto (pedido: pode trocar enquanto aberta). voidedAt
 // nunca é tocado aqui — voto anulado pelo admin continua anulado mesmo se o aparelho "trocar".
-export async function castFavoriteTeamVote(input: { teamId: string; voter: VoterIdentity; isOpen: boolean }): Promise<CastVoteResult> {
+export async function castFavoriteTeamVote(input: {
+  teamId: string;
+  voter: VoterIdentity;
+  isOpen: boolean;
+  // Mesmo papel de castMatchFanVote.ticketNonce/gate.
+  ticketNonce: string;
+  gate: NetworkVoteGate;
+}): Promise<CastVoteResult> {
   if (!input.isOpen) {
     return { ok: false, code: "closed", message: "A votação do time favorito está fechada." };
   }
@@ -397,19 +487,34 @@ export async function castFavoriteTeamVote(input: { teamId: string; voter: Voter
 
   const previous = await getVoterFavoriteTeam(input.voter.voterKey);
   const now = new Date();
-  await db
-    .insert(favoriteTeamVotesTable)
-    .values({
-      teamId: input.teamId,
-      voterKey: input.voter.voterKey,
-      ipHash: input.voter.ipHash,
-      uaHash: input.voter.uaHash,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: favoriteTeamVotesTable.voterKey,
-      set: { teamId: input.teamId, ipHash: input.voter.ipHash, uaHash: input.voter.uaHash, updatedAt: now },
+  const scope: VoteScope = { kind: "favorite" };
+  try {
+    const blocked = await db.transaction(async (tx) => {
+      await lockNetworkForVote(tx, scope, input.gate.ipHash);
+      const gateBlock = await checkNetworkGate(tx, scope, input.gate, now.getTime());
+      if (gateBlock) return gateBlock;
+      await tx
+        .insert(favoriteTeamVotesTable)
+        .values({
+          teamId: input.teamId,
+          voterKey: input.voter.voterKey,
+          ipHash: input.voter.ipHash,
+          uaHash: input.voter.uaHash,
+          ticketNonce: input.ticketNonce,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: favoriteTeamVotesTable.voterKey,
+          set: { teamId: input.teamId, ipHash: input.voter.ipHash, uaHash: input.voter.uaHash, ticketNonce: input.ticketNonce, updatedAt: now },
+        });
+      return null;
     });
+    if (blocked) return blocked;
+  } catch (error) {
+    // Upsert não tem "do nothing" pro índice do nonce: ticket repetido estoura aqui.
+    if (isUniqueViolation(error)) return TICKET_USED;
+    throw error;
+  }
 
   return { ok: true, choiceId: input.teamId, changed: previous !== null && previous !== input.teamId };
 }
