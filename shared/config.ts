@@ -76,7 +76,7 @@ export async function readVoteCostPolicyFresh(): Promise<VoteCostPolicy> {
 // admin consomem. Uma ida ao contexts/settings por chave, em paralelo.
 export async function resolveErastoLeagueConfig(): Promise<ErastoLeagueConfig> {
   const S = ERASTO_LEAGUE_SETTINGS;
-  const [periodMin, periodCount, accent, logoMedia, youtubeChannelId, goalFlashSeconds, fanVoteWindowHours, favoriteTeamVotingOpen] =
+  const [periodMin, periodCount, accent, logoMedia, youtubeChannelId, goalFlashSeconds, fanVoteWindowHours, favoriteTeamVotingOpen, groupStageClosed] =
     await Promise.all([
       getSetting({ key: S.periodMinutes.key }),
       getSetting({ key: S.periodCount.key }),
@@ -86,6 +86,7 @@ export async function resolveErastoLeagueConfig(): Promise<ErastoLeagueConfig> {
       getSetting({ key: S.goalFlashSeconds.key }),
       getSetting({ key: S.fanVoteWindowHours.key }),
       getSetting({ key: S.favoriteTeamVotingOpen.key }),
+      getSetting({ key: S.groupStageClosed.key }),
     ]);
 
   const read = (r: GetSettingResult): unknown => (r.success && r.data ? r.data.value : undefined);
@@ -101,5 +102,6 @@ export async function resolveErastoLeagueConfig(): Promise<ErastoLeagueConfig> {
     goalFlashMs: clampGoalFlashSeconds(asNumber(read(goalFlashSeconds), S.goalFlashSeconds.defaultValue)) * 1_000,
     fanVoteWindowHours: clampFanVoteWindowHours(asNumber(read(fanVoteWindowHours), S.fanVoteWindowHours.defaultValue)),
     favoriteTeamVotingOpen: asBoolean(read(favoriteTeamVotingOpen), S.favoriteTeamVotingOpen.defaultValue),
+    groupStageClosed: asBoolean(read(groupStageClosed), S.groupStageClosed.defaultValue),
   };
 }

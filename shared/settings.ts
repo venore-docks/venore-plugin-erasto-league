@@ -86,6 +86,14 @@ export const ERASTO_LEAGUE_SETTINGS = {
     defaultValue: 30,
     label: "Máximo de votos por rede em cada votação (0 = sem limite)",
   },
+  // Fase de grupos encerrada: a home (blocks/home-block.tsx) mostra a chave (oitavas → final) em vez
+  // dos grupos. Default true porque a fase de grupos da temporada atual já acabou; reabrir (false)
+  // devolve os grupos à home numa nova temporada.
+  groupStageClosed: {
+    key: "erasto-league.groupStageClosed",
+    defaultValue: true,
+    label: "Fase de grupos encerrada (home mostra a chave)",
+  },
 } as const;
 
 export type ErastoLeagueSettingField = keyof typeof ERASTO_LEAGUE_SETTINGS;
@@ -106,6 +114,8 @@ export type ErastoLeagueConfig = {
   // Votação da torcida — ver fanVoteWindowHours/favoriteTeamVotingOpen acima.
   fanVoteWindowHours: number;
   favoriteTeamVotingOpen: boolean;
+  // Fase de grupos encerrada — ver groupStageClosed acima.
+  groupStageClosed: boolean;
 };
 
 const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;

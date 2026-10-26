@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, type ReactNode } from "react";
-import { Clock3, Palette, Radio, Sparkles, Trophy, type LucideIcon } from "lucide-react";
+import { Clock3, Medal, Palette, Radio, Sparkles, Trophy, type LucideIcon } from "lucide-react";
 import { Button, Input, MediaPickerField, useActionToast, type PickableMedia } from "@venore/plugin-sdk/ui";
 import { saveErastoLeagueSettingsAction, type ErastoLeagueSettingsState } from "./actions";
 import { formatClock } from "../../shared/clock";
@@ -75,6 +75,24 @@ export function SettingsForm({ config, logoMedia }: { config: ErastoLeagueConfig
         <p className="text-xs text-muted-foreground">
           Tempo total configurado agora: <strong className="text-foreground">{formatClock(config.periodMs * config.periodCount)}</strong>
         </p>
+      </div>
+
+      <div className="space-y-3 rounded-panel border border-border/60 bg-background/40 p-4">
+        <SectionHeading icon={Medal} title="Campeonato" />
+        <label className="flex items-start gap-3 text-sm text-foreground">
+          <input
+            name="groupStageClosed"
+            type="checkbox"
+            defaultChecked={config.groupStageClosed}
+            className="mt-0.5 size-4 shrink-0 accent-primary"
+          />
+          <span className="space-y-1">
+            <span className="block font-medium">Fase de grupos encerrada</span>
+            <span className="block text-xs text-muted-foreground">
+              Marcado, a página inicial mostra a chave (oitavas, quartas e final) no lugar dos grupos. Desmarque para voltar aos grupos.
+            </span>
+          </span>
+        </label>
       </div>
 
       <div className="space-y-3 rounded-panel border border-border/60 bg-background/40 p-4">

@@ -42,6 +42,8 @@ export async function saveErastoLeagueSettingsAction(
     setSetting({ key: S.logoMediaId.key, value: str(formData, "logoMediaId") }),
     setSetting({ key: S.youtubeChannelId.key, value: str(formData, "youtubeChannelId") }),
     setSetting({ key: S.goalFlashSeconds.key, value: goalFlashSeconds }),
+    // Checkbox desmarcado não vai no FormData.
+    setSetting({ key: S.groupStageClosed.key, value: formData.get("groupStageClosed") === "on" }),
   ];
 
   const results = await Promise.all(writes);
@@ -51,5 +53,6 @@ export async function saveErastoLeagueSettingsAction(
   }
 
   revalidatePath("/admin/erasto-league");
+  revalidatePath("/erasto-league");
   return { error: null, savedAt: Date.now() };
 }
