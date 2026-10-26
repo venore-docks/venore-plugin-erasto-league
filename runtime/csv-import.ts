@@ -83,6 +83,9 @@ const PHASE_ALIASES: Record<string, FixturePhase> = {
   grupo: "group",
   grupos: "group",
   "fase de grupos": "group",
+  roundof16: "roundof16",
+  oitavas: "roundof16",
+  "oitavas de final": "roundof16",
   quarterfinal: "quarterfinal",
   quartas: "quarterfinal",
   "quartas de final": "quarterfinal",
@@ -180,7 +183,7 @@ export async function importFixturesCsv(csvText: string, options: { replaceAll?:
 
     const phase = normalizePhase(cell(row, "phase") || "group");
     if (!phase) {
-      result.errors.push({ line, message: `Fase inválida: "${cell(row, "phase")}". Use group, quarterfinal, semifinal ou final.` });
+      result.errors.push({ line, message: `Fase inválida: "${cell(row, "phase")}". Use group, roundof16, quarterfinal, semifinal ou final.` });
       continue;
     }
 

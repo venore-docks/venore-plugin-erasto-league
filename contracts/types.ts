@@ -210,7 +210,7 @@ export type PlayerProfile = {
 // `matches` row (Fase 2) quando o jogo já rolou. Times "TBD" (ex: quartas antes das quartas
 // existirem de verdade) usam homeLabel/awayLabel ("Vencedor Grupo A") em vez de homeTeamId/
 // awayTeamId — o widget de chaveamento (erasto-league.bracket) sabe mostrar os dois casos.
-export type FixturePhase = "group" | "quarterfinal" | "semifinal" | "final";
+export type FixturePhase = "group" | "roundof16" | "quarterfinal" | "semifinal" | "final";
 
 export type Fixture = {
   id: string;

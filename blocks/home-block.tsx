@@ -53,8 +53,8 @@ export async function ErastoLeagueHomeBlock({ block }: BlockRendererProps) {
             <HomeLatestMatches />
           </HomeSection>
 
-          <HomeSection title="Classificação" className="order-3 xl:order-none">
-            <ErastoLeagueBracketBlock {...embedBlockProps("erasto-league.bracket", { title: "" })} />
+          <HomeSection title="Chave do campeonato" className="order-3 xl:order-none">
+            <ErastoLeagueBracketBlock {...embedBlockProps("erasto-league.bracket", { title: "", variant: "knockout" })} />
           </HomeSection>
 
           <HomeSection

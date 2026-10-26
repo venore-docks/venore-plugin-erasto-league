@@ -9,6 +9,14 @@ function readString(data: Record<string, unknown>, key: string, fallback = ""): 
   return typeof value === "string" ? value : fallback;
 }
 
+// "YYYY-MM-DD" + "HH:mm" → "26/10 · 10:30" (colunas de texto puro, sem conversão de fuso — ver
+// database/schema/fixtures.ts). Sem data = null, o card cai no "A jogar".
+function formatSchedule(date: string | null, time: string | null): string | null {
+  if (!date) return null;
+  const [, month, day] = date.split("-");
+  return [`${day}/${month}`, time].filter(Boolean).join(" · ");
+}
+
 function TeamRow({ name, crestUrl, slug, score, won }: { name: string; crestUrl: string | null; slug: string | null; score: number | null; won: boolean }) {
   const content = (
     <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -53,7 +61,9 @@ function FixtureCard({ fixture }: { fixture: FixtureView }) {
       <div className="border-t border-border/60" />
       <TeamRow name={fixture.awayName} crestUrl={fixture.awayCrestUrl} slug={fixture.awaySlug} score={fixture.awayScore} won={awayWon} />
       {!fixture.played ? (
-        <p className="mt-2 text-center text-xs text-muted-foreground">A jogar</p>
+        <p className="mt-2 text-center text-xs text-muted-foreground">
+          {formatSchedule(fixture.scheduledDate, fixture.scheduledTime) ?? "A jogar"}
+        </p>
       ) : (
         fixture.matchId && (
           <Link
@@ -72,19 +82,25 @@ function FixtureCard({ fixture }: { fixture: FixtureView }) {
 // sempre recalculado na hora de renderizar (runtime/bracket.ts).
 export async function ErastoLeagueBracketBlock({ block }: BlockRendererProps) {
   const title = readString(block.data, "title", "Fases do campeonato");
+  const knockoutOnly = readString(block.data, "variant", "full") === "knockout";
   const view = await getBracketView();
+  const groups = knockoutOnly ? [] : view.groups;
 
-  if (view.groups.length === 0 && view.knockout.length === 0) {
-    return <p className="text-sm text-muted-foreground">Tabela de jogos ainda não importada.</p>;
+  if (groups.length === 0 && view.knockout.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {knockoutOnly ? "Chave ainda não definida." : "Tabela de jogos ainda não importada."}
+      </p>
+    );
   }
 
   return (
     <div className="space-y-8">
       {title && <h2 className="text-2xl font-semibold text-foreground">{title}</h2>}
 
-      {view.groups.length > 0 && (
+      {groups.length > 0 && (
         <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
-          {view.groups.map((group) => (
+          {groups.map((group) => (
             <div key={group.name} className="space-y-3 rounded-panel border border-border bg-card p-4">
               <h3 className="text-sm font-bold uppercase tracking-wide text-foreground">Grupo {group.name}</h3>
 
