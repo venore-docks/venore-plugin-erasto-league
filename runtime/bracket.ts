@@ -27,6 +27,9 @@ export type FixtureView = {
   // (agenda, fases de grupos) linkarem pra página pública do jogo (routes/match-public) quando
   // `played` é true.
   matchId: string | null;
+  // Ordem de cadastro do confronto (admin/fixtures, campo "Ordem") — o chaveamento circular usa
+  // pra casar quem enfrenta quem na rodada seguinte (confrontos 1+2 → 1º da próxima, 3+4 → 2º…).
+  sortOrder: number;
 };
 
 // Mesmo FixtureView + fase/grupo, pra agenda de jogos precisar mostrar um selo ("Grupo A",
@@ -84,6 +87,7 @@ async function loadFixtureViewData() {
       roundLabel: fixture.roundLabel,
       played: Boolean(match && match.status === "finished"),
       matchId: fixture.matchId,
+      sortOrder: fixture.sortOrder,
     };
   }
 
@@ -196,5 +200,6 @@ export async function getNextFixture(): Promise<NextGameView | null> {
     roundLabel: next.roundLabel,
     played: Boolean(match && match.status === "finished"),
     matchId: next.matchId,
+    sortOrder: next.sortOrder,
   };
 }

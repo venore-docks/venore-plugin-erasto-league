@@ -1,84 +1,13 @@
-import Link from "next/link";
 import type { BlockRendererProps } from "@venore/plugin-sdk";
-import { getBracketView, type FixtureView } from "../runtime/bracket";
-import { FIXTURE_PHASE_LABEL } from "../shared/fixture-phase";
-import { formatScore } from "../shared/score";
+import { getBracketView } from "../runtime/bracket";
+import { BracketCircle } from "./bracket-circle";
 
 function readString(data: Record<string, unknown>, key: string, fallback = ""): string {
   const value = data[key];
   return typeof value === "string" ? value : fallback;
 }
 
-// "YYYY-MM-DD" + "HH:mm" → "26/10 · 10:30" (colunas de texto puro, sem conversão de fuso — ver
-// database/schema/fixtures.ts). Sem data = null, o card cai no "A jogar".
-function formatSchedule(date: string | null, time: string | null): string | null {
-  if (!date) return null;
-  const [, month, day] = date.split("-");
-  return [`${day}/${month}`, time].filter(Boolean).join(" · ");
-}
-
-function TeamRow({ name, crestUrl, slug, score, won }: { name: string; crestUrl: string | null; slug: string | null; score: number | null; won: boolean }) {
-  const content = (
-    <div className="flex min-w-0 flex-1 items-center gap-2">
-      {crestUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={crestUrl} alt="" className="size-5 shrink-0 rounded object-cover" />
-      ) : (
-        <span className="flex size-5 shrink-0 items-center justify-center rounded bg-muted text-[8px] font-bold text-muted-foreground">
-          {name.slice(0, 2).toUpperCase()}
-        </span>
-      )}
-      <span className={`truncate text-sm ${won ? "font-bold text-foreground" : "text-foreground"}`}>{name}</span>
-    </div>
-  );
-
-  return (
-    <div className="flex items-center gap-2 py-1">
-      {slug ? (
-        <Link href={`/erasto-league/teams/${slug}`} className="flex min-w-0 flex-1 hover:underline">
-          {content}
-        </Link>
-      ) : (
-        content
-      )}
-      {score != null && <span className="shrink-0 text-sm font-bold tabular-nums text-foreground">{formatScore(score)}</span>}
-    </div>
-  );
-}
-
-function FixtureCard({ fixture }: { fixture: FixtureView }) {
-  const homeWon = fixture.played && fixture.homeScore != null && fixture.awayScore != null && fixture.homeScore > fixture.awayScore;
-  const awayWon = fixture.played && fixture.homeScore != null && fixture.awayScore != null && fixture.awayScore > fixture.homeScore;
-
-  return (
-    <div className="w-full rounded-panel border border-border bg-card p-3">
-      {fixture.roundLabel && (
-        <span className="mb-2 inline-block rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-primary-foreground">
-          {fixture.roundLabel}
-        </span>
-      )}
-      <TeamRow name={fixture.homeName} crestUrl={fixture.homeCrestUrl} slug={fixture.homeSlug} score={fixture.homeScore} won={homeWon} />
-      <div className="border-t border-border/60" />
-      <TeamRow name={fixture.awayName} crestUrl={fixture.awayCrestUrl} slug={fixture.awaySlug} score={fixture.awayScore} won={awayWon} />
-      {!fixture.played ? (
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          {formatSchedule(fixture.scheduledDate, fixture.scheduledTime) ?? "A jogar"}
-        </p>
-      ) : (
-        fixture.matchId && (
-          <Link
-            href={`/erasto-league/jogos/${fixture.matchId}`}
-            className="mt-2 block text-center text-xs font-semibold text-primary hover:underline"
-          >
-            Ver jogo →
-          </Link>
-        )
-      )}
-    </div>
-  );
-}
-
-// Fases do campeonato — grupos (mini-classificação + jogos) e eliminatórias (quartas/semi/final),
+// Fases do campeonato — grupos (mini-classificação + jogos) e eliminatórias (chave circular, final no centro),
 // sempre recalculado na hora de renderizar (runtime/bracket.ts).
 export async function ErastoLeagueBracketBlock({ block }: BlockRendererProps) {
   const title = readString(block.data, "title", "Fases do campeonato");
@@ -142,22 +71,7 @@ export async function ErastoLeagueBracketBlock({ block }: BlockRendererProps) {
         </div>
       )}
 
-      {view.knockout.length > 0 && (
-        <div className="overflow-x-auto">
-          <div className="flex min-w-max gap-6">
-            {view.knockout.map(({ phase, fixtures }) => (
-              <div key={phase} className="flex w-56 flex-col justify-around gap-4">
-                <h3 className="text-center text-xs font-bold uppercase tracking-wide text-muted-foreground">{FIXTURE_PHASE_LABEL[phase]}</h3>
-                <div className="flex flex-1 flex-col justify-around gap-4">
-                  {fixtures.map((fixture) => (
-                    <FixtureCard key={fixture.id} fixture={fixture} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {view.knockout.length > 0 && <BracketCircle knockout={view.knockout} />}
     </div>
   );
 }
