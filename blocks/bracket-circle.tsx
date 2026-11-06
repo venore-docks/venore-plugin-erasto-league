@@ -1,32 +1,19 @@
 import Link from "next/link";
 import type { FixturePhase } from "../contracts/types";
 import type { FixtureView } from "../runtime/bracket";
+import { computeBracketCircleLayout, FINAL_NODE, pairOffset } from "../shared/bracket-circle-layout";
+import { matchWinner, shortLabel, sideResult, type SideResult } from "../shared/bracket-match-result";
 import { FIXTURE_PHASE_LABEL } from "../shared/fixture-phase";
 import { formatScore } from "../shared/score";
 import { TeamCrest } from "./home/team-crest";
 
 type Round = { phase: FixturePhase; fixtures: FixtureView[] };
 
-// Coordenadas em % do quadrado (0–100), centro em (50, 50). Rodadas iniciais nos anéis de fora,
-// final no centro; cada confronto fica no ângulo do seu slot do anel, e o da rodada seguinte no
-// ângulo médio dos dois que o alimentam — por isso o pareamento é por ordem (1+2 → 1º, 3+4 → 2º…).
-const OUTER_RADIUS = 38;
-const INNER_RADIUS = 22;
-const SOLE_RING_RADIUS = 33;
-
-function ringRadii(count: number): number[] {
-  if (count === 1) return [SOLE_RING_RADIUS];
-  return Array.from({ length: count }, (_, i) => OUTER_RADIUS - (i * (OUTER_RADIUS - INNER_RADIUS)) / (count - 1));
-}
-
-function angleOf(index: number, total: number): number {
-  return -Math.PI / 2 + (2 * Math.PI * (index + 0.5)) / total;
-}
-
-// Sigla de quem ainda não é time ("P1", "T2"); rótulo longo ("Vencedor Grupo A") vira iniciais.
-function shortLabel(name: string): string {
-  const trimmed = name.trim();
-  return trimmed.length <= 3 ? trimmed : trimmed.slice(0, 2);
+// Cor de quem avançou nesse confronto (pro traço até a rodada seguinte e o disco/placar brilharem) —
+// null enquanto não decidido, "var(--primary)" (tema do site) como fallback pro time sem cor cadastrada.
+function winnerColor(fixture: FixtureView): string | null {
+  const winner = matchWinner(fixture);
+  return winner ? (winner.color ?? "var(--primary)") : null;
 }
 
 function Slot({
@@ -37,7 +24,8 @@ function Slot({
   crestUrl,
   slug,
   score,
-  won,
+  color,
+  result,
   known,
 }: {
   x: number;
@@ -47,13 +35,23 @@ function Slot({
   crestUrl: string | null;
   slug: string | null;
   score: number | null;
-  won: boolean;
+  color: string | null;
+  result: SideResult;
   known: boolean;
 }) {
+  const won = result === "won";
+  const lost = result === "lost";
+  const accent = color ?? "var(--primary)";
+
   const disc = (
     <span
       title={name}
-      className={`relative block size-full rounded-full ${won ? "ring-2 ring-primary" : "ring-1 ring-border"} bg-card`}
+      className={`relative block size-full rounded-full bg-card transition-opacity ${lost ? "opacity-55 grayscale-[35%]" : ""}`}
+      style={{
+        boxShadow: won
+          ? `0 0 0 2px var(--card), 0 0 0 4px ${accent}, 0 6px 18px -4px ${accent}`
+          : "0 0 0 1px var(--border)",
+      }}
     >
       {known ? (
         <TeamCrest name={name} crestUrl={crestUrl} className="size-full" />
@@ -63,7 +61,10 @@ function Slot({
         </span>
       )}
       {score != null && (
-        <span className="absolute -bottom-1 -right-1 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] font-extrabold leading-4 tabular-nums text-primary-foreground">
+        <span
+          className="absolute -bottom-1 -right-1 min-w-4 rounded-full px-1 text-center text-[9px] font-extrabold leading-4 tabular-nums text-primary-foreground shadow-sm"
+          style={{ background: won ? accent : "var(--muted-foreground)" }}
+        >
           {formatScore(score)}
         </span>
       )}
@@ -84,12 +85,8 @@ function Slot({
 }
 
 function MatchSlots({ fixture, cx, cy, size, angle }: { fixture: FixtureView; cx: number; cy: number; size: number; angle: number }) {
-  const homeWon = fixture.played && fixture.homeScore != null && fixture.awayScore != null && fixture.homeScore > fixture.awayScore;
-  const awayWon = fixture.played && fixture.homeScore != null && fixture.awayScore != null && fixture.awayScore > fixture.homeScore;
-  // Os dois times lado a lado na tangente do anel.
-  const offset = size / 2 + 0.5;
-  const dx = -Math.sin(angle) * offset;
-  const dy = Math.cos(angle) * offset;
+  const { dx, dy } = pairOffset(angle, size);
+  const color = winnerColor(fixture);
 
   return (
     <>
@@ -101,7 +98,8 @@ function MatchSlots({ fixture, cx, cy, size, angle }: { fixture: FixtureView; cx
         crestUrl={fixture.homeCrestUrl}
         slug={fixture.homeSlug}
         score={fixture.homeScore}
-        won={homeWon}
+        color={color}
+        result={sideResult(fixture, "home")}
         known={fixture.homeSlug != null}
       />
       <Slot
@@ -112,7 +110,8 @@ function MatchSlots({ fixture, cx, cy, size, angle }: { fixture: FixtureView; cx
         crestUrl={fixture.awayCrestUrl}
         slug={fixture.awaySlug}
         score={fixture.awayScore}
-        won={awayWon}
+        color={color}
+        result={sideResult(fixture, "away")}
         known={fixture.awaySlug != null}
       />
     </>
@@ -120,58 +119,135 @@ function MatchSlots({ fixture, cx, cy, size, angle }: { fixture: FixtureView; cx
 }
 
 // Chave circular 1:1 (sem rolagem lateral): as rodadas iniciais nos anéis de fora, a final no
-// centro. O pareamento segue o campo "Ordem" dos confrontos (sortOrder).
+// centro — geometria em shared/bracket-circle-layout.ts (reusada pela tela de TV,
+// routes/tv/bracket-circle-tv.tsx). Aqui só a casca visual: cores de time nos traços/discos de quem
+// avançou, selo de fase no topo de cada anel, e o campeão em destaque quando a final sai decidida.
 export function BracketCircle({ knockout }: { knockout: Round[] }) {
-  const rounds = knockout.map(({ phase, fixtures }) => ({
-    phase,
-    fixtures: [...fixtures].sort((a, b) => a.sortOrder - b.sortOrder),
-  }));
-  const ringRounds = rounds.filter((round) => round.phase !== "final");
-  const finalFixture = rounds.find((round) => round.phase === "final")?.fixtures[0] ?? null;
-  const radii = ringRadii(ringRounds.length);
+  const { rings, links, finalFixture } = computeBracketCircleLayout(knockout);
+  const fixtureById = new Map(rings.flatMap((ring) => ring.nodes).map((node) => [node.fixture.id, node.fixture]));
 
-  const nodes = ringRounds.map((round, ring) => {
-    const total = round.fixtures.length;
-    const radius = radii[ring];
-    const size = Math.min(10, Math.max(5, (2 * Math.PI * radius) / total / 2.5));
-    return round.fixtures.map((fixture, index) => {
-      const angle = angleOf(index, total);
-      return { fixture, angle, size, cx: 50 + radius * Math.cos(angle), cy: 50 + radius * Math.sin(angle) };
-    });
-  });
-
-  // Linha de cada confronto até o da rodada seguinte (ou ao centro, antes da final).
-  const links = nodes.flatMap((ringNodes, ring) =>
-    ringNodes.flatMap((node, index) => {
-      const next = nodes[ring + 1];
-      if (!next) return [];
-      const target = next[Math.min(next.length - 1, Math.floor((index * next.length) / ringNodes.length))];
-      return [{ id: node.fixture.id, x1: node.cx, y1: node.cy, x2: target.cx, y2: target.cy }];
-    }),
-  );
+  const finalWinner = finalFixture ? matchWinner(finalFixture) : null;
+  const champion =
+    finalFixture && finalWinner
+      ? { name: finalWinner.side === "home" ? finalFixture.homeName : finalFixture.awayName, color: finalWinner.color }
+      : null;
+  const finalPair = finalFixture ? pairOffset(FINAL_NODE.angle, FINAL_NODE.size) : null;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 rounded-panel border border-border bg-card p-4 sm:p-6">
       <div className="relative mx-auto aspect-square w-full max-w-2xl">
+        <div
+          className="pointer-events-none absolute inset-0 rounded-full"
+          style={{ background: "radial-gradient(55% 55% at 50% 48%, color-mix(in srgb, var(--primary) 9%, transparent), transparent 72%)" }}
+          aria-hidden="true"
+        />
+
         <svg viewBox="0 0 100 100" className="absolute inset-0 size-full" aria-hidden="true">
-          {radii.map((radius) => (
-            <circle key={radius} cx="50" cy="50" r={radius} fill="none" className="stroke-border" strokeWidth="0.3" strokeDasharray="1 1" />
+          <defs>
+            <radialGradient id="erasto-bracket-core" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor={champion?.color ?? "var(--primary)"} stopOpacity="0.22" />
+              <stop offset="100%" stopColor={champion?.color ?? "var(--primary)"} stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
+          <circle cx="50" cy="50" r={FINAL_NODE.size + 6} fill="url(#erasto-bracket-core)" />
+
+          {rings.map((ring) => (
+            <circle
+              key={ring.phase}
+              cx="50"
+              cy="50"
+              r={ring.radius}
+              fill="none"
+              className="stroke-border"
+              strokeWidth="0.3"
+              strokeDasharray="1 1.4"
+            />
           ))}
-          {links.map((link) => (
-            <line key={link.id} x1={link.x1} y1={link.y1} x2={link.x2} y2={link.y2} className="stroke-border" strokeWidth="0.5" />
-          ))}
+
+          {links.map((link) => {
+            const color = winnerColor(fixtureById.get(link.id)!);
+            return (
+              <line
+                key={link.id}
+                x1={link.x1}
+                y1={link.y1}
+                x2={link.x2}
+                y2={link.y2}
+                stroke={color ?? "var(--border)"}
+                strokeWidth={color ? 0.7 : 0.4}
+                strokeLinecap="round"
+                opacity={color ? 0.85 : 1}
+              />
+            );
+          })}
+
+          {rings.map((ring) =>
+            ring.nodes.map((node) => {
+              const { dx, dy } = pairOffset(node.angle, node.size);
+              return (
+                <line
+                  key={`pair-${node.fixture.id}`}
+                  x1={node.cx - dx}
+                  y1={node.cy - dy}
+                  x2={node.cx + dx}
+                  y2={node.cy + dy}
+                  className="stroke-border"
+                  strokeWidth="0.3"
+                />
+              );
+            }),
+          )}
+
+          {finalFixture && finalPair && (
+            <line
+              x1={FINAL_NODE.cx - finalPair.dx}
+              y1={FINAL_NODE.cy - finalPair.dy}
+              x2={FINAL_NODE.cx + finalPair.dx}
+              y2={FINAL_NODE.cy + finalPair.dy}
+              className="stroke-border"
+              strokeWidth="0.3"
+            />
+          )}
         </svg>
 
-        {nodes.flat().map((node) => (
+        {rings.map((ring) => (
+          <span
+            key={ring.phase}
+            className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-border bg-card px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide text-muted-foreground shadow-sm sm:text-[9px]"
+            style={{ left: "50%", top: `${50 - ring.radius}%` }}
+          >
+            {FIXTURE_PHASE_LABEL[ring.phase]}
+          </span>
+        ))}
+
+        {rings.flatMap((ring) => ring.nodes).map((node) => (
           <MatchSlots key={node.fixture.id} fixture={node.fixture} cx={node.cx} cy={node.cy} size={node.size} angle={node.angle} />
         ))}
 
-        {finalFixture && <MatchSlots fixture={finalFixture} cx={50} cy={50} size={11} angle={-Math.PI / 2} />}
-        <span className="absolute left-1/2 top-[59%] -translate-x-1/2 text-[10px] font-extrabold uppercase tracking-wide text-primary">Final</span>
+        {finalFixture && (
+          <MatchSlots fixture={finalFixture} cx={FINAL_NODE.cx} cy={FINAL_NODE.cy} size={FINAL_NODE.size} angle={FINAL_NODE.angle} />
+        )}
+
+        <span
+          className="absolute left-1/2 -translate-x-1/2 text-[9px] font-extrabold uppercase tracking-wide text-primary"
+          style={{ top: `${FINAL_NODE.cy + FINAL_NODE.size / 2 + 4}%` }}
+        >
+          Final
+        </span>
+
+        {champion && (
+          <div
+            className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wide text-primary-foreground shadow-md sm:text-xs"
+            style={{ top: `${FINAL_NODE.cy + FINAL_NODE.size / 2 + 11}%`, background: champion.color ?? "var(--primary)" }}
+          >
+            🏆 Campeão: {champion.name}
+          </div>
+        )}
       </div>
 
       <p className="text-center text-xs text-balance text-muted-foreground">
-        De fora para o centro: {[...ringRounds.map((round) => FIXTURE_PHASE_LABEL[round.phase]), ...(finalFixture ? ["Final"] : [])].join(" → ")}
+        De fora para o centro: {[...rings.map((ring) => FIXTURE_PHASE_LABEL[ring.phase]), ...(finalFixture ? ["Final"] : [])].join(" → ")}
       </p>
     </div>
   );

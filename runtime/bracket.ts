@@ -11,9 +11,14 @@ export type FixtureView = {
   homeName: string;
   homeCrestUrl: string | null;
   homeSlug: string | null;
+  // Cor do time (shared/bracket-circle-layout.ts + blocks/bracket-circle.tsx usam pra destacar o
+  // caminho de quem avança; routes/tv reusa o mesmo campo). null quando o lado ainda não é um time
+  // de verdade (rótulo "Vencedor Grupo A") ou o time não tem cor cadastrada.
+  homeColor: string | null;
   awayName: string;
   awayCrestUrl: string | null;
   awaySlug: string | null;
+  awayColor: string | null;
   homeScore: number | null;
   awayScore: number | null;
   // Colunas separadas (não um epoch combinado) — ver database/schema/fixtures.ts e
@@ -47,6 +52,17 @@ export type BracketView = {
   knockout: { phase: FixturePhase; fixtures: FixtureView[] }[];
 };
 
+// findUnlinkedFixtureForTeams (runtime/fixtures.ts) liga a partida ao confronto em QUALQUER ordem
+// de mando de campo — o mando cadastrado na fixture é só informativo, não precisa bater com quem o
+// controle ao vivo marcou como "casa" ao iniciar a partida. Quando os lados saem invertidos, o
+// placar da partida (match.homeScore/awayScore) não corresponde a fixture.homeTeamId/awayTeamId, e
+// sem essa checagem o chaveamento/agenda mostrava o placar trocado entre os dois times (a súmula,
+// que sempre usa o par da própria partida, nunca tinha esse problema).
+export function isMatchSideSwapped(fixture: Fixture, match: MatchSummary | null | undefined): boolean {
+  if (!match || !fixture.homeTeamId || !fixture.awayTeamId) return false;
+  return match.homeTeamId === fixture.awayTeamId && match.awayTeamId === fixture.homeTeamId;
+}
+
 function compareBySchedule(a: Fixture, b: Fixture): number {
   const epochA = fixtureDateTimeToEpoch(a.scheduledDate, a.scheduledTime);
   const epochB = fixtureDateTimeToEpoch(b.scheduledDate, b.scheduledTime);
@@ -71,17 +87,20 @@ async function loadFixtureViewData() {
     const home = fixture.homeTeamId ? teamById.get(fixture.homeTeamId) : null;
     const away = fixture.awayTeamId ? teamById.get(fixture.awayTeamId) : null;
     const match = fixture.matchId ? matchById.get(fixture.matchId) : null;
+    const swapped = isMatchSideSwapped(fixture, match);
 
     return {
       id: fixture.id,
       homeName: home?.name ?? fixture.homeLabel ?? "A definir",
       homeCrestUrl: home?.crestUrl ?? null,
       homeSlug: home?.slug ?? null,
+      homeColor: home?.primaryColor ?? null,
       awayName: away?.name ?? fixture.awayLabel ?? "A definir",
       awayCrestUrl: away?.crestUrl ?? null,
       awaySlug: away?.slug ?? null,
-      homeScore: match ? match.homeScore : null,
-      awayScore: match ? match.awayScore : null,
+      awayColor: away?.primaryColor ?? null,
+      homeScore: match ? (swapped ? match.awayScore : match.homeScore) : null,
+      awayScore: match ? (swapped ? match.homeScore : match.awayScore) : null,
       scheduledDate: fixture.scheduledDate,
       scheduledTime: fixture.scheduledTime,
       roundLabel: fixture.roundLabel,
@@ -141,9 +160,10 @@ export async function getScheduleView(limit?: number): Promise<ScheduleEntry[]> 
   return typeof limit === "number" && limit > 0 ? entries.slice(0, limit) : entries;
 }
 
-// FixtureView + cores dos times — só o bloco/TV de "próximo jogo" (ad 16:9) precisa disso, pra
-// pintar um fundo split com a cor de cada lado.
-export type NextGameView = FixtureView & { homeColor: string | null; awayColor: string | null };
+// FixtureView já carrega homeColor/awayColor (usado aqui pelo bloco/TV de "próximo jogo", ad 16:9,
+// pra pintar um fundo split com a cor de cada lado) — alias só pelo nome mais descritivo no ponto de
+// uso.
+export type NextGameView = FixtureView;
 
 // Próximo jogo ainda não realizado, em ordem cronológica (mesma fonte de getScheduleView) — null
 // quando não há nenhum confronto pendente (campeonato encerrado ou tabela ainda não importada).
@@ -182,6 +202,7 @@ export async function getNextFixture(): Promise<NextGameView | null> {
   const home = next.homeTeamId ? teamById.get(next.homeTeamId) : null;
   const away = next.awayTeamId ? teamById.get(next.awayTeamId) : null;
   const match = next.matchId ? matchById.get(next.matchId) : null;
+  const swapped = isMatchSideSwapped(next, match);
 
   return {
     id: next.id,
@@ -193,8 +214,8 @@ export async function getNextFixture(): Promise<NextGameView | null> {
     awayCrestUrl: away?.crestUrl ?? null,
     awaySlug: away?.slug ?? null,
     awayColor: away?.primaryColor ?? null,
-    homeScore: match ? match.homeScore : null,
-    awayScore: match ? match.awayScore : null,
+    homeScore: match ? (swapped ? match.awayScore : match.homeScore) : null,
+    awayScore: match ? (swapped ? match.homeScore : match.awayScore) : null,
     scheduledDate: next.scheduledDate,
     scheduledTime: next.scheduledTime,
     roundLabel: next.roundLabel,

@@ -3,25 +3,32 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { buildTvPages, type TvPage } from "../../shared/tv-pages";
 import { resolveTvStageTransform, type TvStageTransform } from "../../shared/tv-stage";
-import { FIXTURE_PHASE_LABEL } from "../../shared/fixture-phase";
+import { rankPositions } from "../../shared/ranking";
 import { formatScore } from "../../shared/score";
 import { getTvDataAction, getTvDataVersionAction, type TvData } from "./actions";
+import { BracketCircleTv } from "./bracket-circle-tv";
 import type { NextGameView } from "../../runtime/bracket";
+import type { FanVoteResults } from "../../runtime/fan-votes";
 import type { ScorerEntry } from "../../runtime/stats";
 import type { TeamStanding } from "../../contracts/types";
 
 // Requisito explícito: view pra TV/projetor mostrando as tabelas do campeonato, mesmo espírito da
 // tela de TV do venore-plugin-scoreboard — palco de resolução fixa escalado pro viewport real
-// (shared/tv-stage.ts) e rodízio automático entre páginas (uma por grupo, + eliminatórias) quando
-// há mais de uma pra mostrar.
+// (shared/tv-stage.ts) e rodízio automático entre páginas (uma por grupo, + eliminatórias, + time da
+// torcida) quando há mais de uma pra mostrar.
 const PAGE_DURATION_MS = 12_000;
-// A tabela só muda quando uma partida encerra ou o campeonato importa/reordena fixtures (comentário
-// de getTvDataAction) — bem mais raro que os 20s que isto pollava antes. VERSION_POLL_MS pergunta
-// só o fingerprint barato (getTvDataVersionAction, dois MAX() indexados); o refetch caro
-// (getTvDataAction: chaveamento + classificação + artilheiros) só roda quando o fingerprint muda.
-// Com 3 telas ficando ligadas 24h/dia num evento (overlay já é o oposto: só sobe durante o jogo),
-// era isso que gerava invocação de function completa a cada 20s em cada tela sem nada ter mudado.
+// A tabela só muda quando uma partida encerra, o campeonato importa/reordena fixtures, ou chega voto
+// de time favorito (comentário de getTvDataAction) — bem mais raro que os 20s que isto pollava
+// antes. VERSION_POLL_MS pergunta só o fingerprint barato (getTvDataVersionAction, MAX() indexados);
+// o refetch caro (getTvDataAction: chaveamento + classificação + artilheiros + torcida) só roda
+// quando o fingerprint muda. Com 3 telas ficando ligadas 24h/dia num evento (overlay já é o oposto:
+// só sobe durante o jogo), era isso que gerava invocação de function completa a cada 20s em cada
+// tela sem nada ter mudado.
 const VERSION_POLL_MS = 60_000;
+// Reservado pro cabeçalho + rodapé do palco (routes/tv/tv-canvas.tsx) ao redor do tabuleiro circular
+// — BracketCircleTv usa pra nunca estourar verticalmente em proporções de tela fora do 16:9 de
+// referência (shared/tv-stage.ts resolveTvStageTransform).
+const BRACKET_VERTICAL_CHROME_PX = 320;
 
 const CSS = `
   html, body { margin: 0; background: #0a0d12; }
@@ -66,21 +73,49 @@ const CSS = `
   .el-tv-crest-mono { width: 64px; height: 64px; border-radius: 999px; background: rgba(255,255,255,0.08); flex-shrink: 0;
     display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; }
 
-  .el-tv-knockout { flex: 1; display: flex; gap: 32px; min-height: 0; padding-bottom: 24px; }
-  .el-tv-column { flex: 1; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
-  .el-tv-column-title { font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;
-    text-align: center; color: rgba(255,255,255,0.5); }
-  .el-tv-fixtures { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 16px; }
-  .el-tv-fixture { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 18px; }
-  .el-tv-fixture-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: 22px; font-weight: 700; }
-  .el-tv-fixture-row.won { font-weight: 900; color: var(--accent, #22c55e); }
-  .el-tv-fixture-score { margin-left: auto; font-variant-numeric: tabular-nums; }
-  .el-tv-fixture-sep { border-top: 1px solid rgba(255,255,255,0.08); }
-  .el-tv-fixture-status { margin-top: 8px; text-align: center; font-size: 15px; color: rgba(255,255,255,0.4); }
-  .el-tv-fixture-round {
-    display: inline-block; margin-bottom: 10px; padding: 3px 10px; border-radius: 999px;
-    background: var(--accent, #22c55e); color: #04170a; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;
+  .el-tv-bracket-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+  .el-tv-bracket { position: relative; flex: none; }
+  .el-tv-bracket-glow { position: absolute; inset: -6%; border-radius: 999px; pointer-events: none; }
+  .el-tv-bracket-svg { position: absolute; inset: 0; }
+  .el-tv-bracket-ring-label {
+    position: absolute; transform: translate(-50%, -50%); white-space: nowrap; padding: 5px 16px; border-radius: 999px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); backdrop-filter: blur(4px);
+    font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.7);
   }
+  .el-tv-bracket-slot { position: absolute; transform: translate(-50%, -50%); }
+  .el-tv-bracket-disc { position: relative; width: 100%; height: 100%; border-radius: 999px; background: rgba(255,255,255,0.08); transition: opacity 400ms; }
+  .el-tv-bracket-disc-lost { opacity: 0.4; filter: grayscale(55%); }
+  .el-tv-bracket-crest { width: 100%; height: 100%; border-radius: 999px; object-fit: cover; display: block; }
+  .el-tv-bracket-crest-mono { width: 100%; height: 100%; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.12); font-weight: 900; color: #fff; }
+  .el-tv-bracket-score {
+    position: absolute; bottom: -8%; right: -8%; min-width: 34%; padding: 2px 8%; border-radius: 999px; text-align: center;
+    font-weight: 900; font-variant-numeric: tabular-nums; color: #04170a; box-shadow: 0 6px 14px -4px rgba(0,0,0,0.6);
+  }
+  .el-tv-bracket-final-label {
+    position: absolute; transform: translateX(-50%); font-weight: 900; text-transform: uppercase; letter-spacing: 2px;
+    color: var(--accent, #22c55e); font-size: 18px;
+  }
+  .el-tv-bracket-champion {
+    position: absolute; transform: translateX(-50%); white-space: nowrap; padding: 10px 26px; border-radius: 999px;
+    font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #04170a; font-size: 22px;
+    box-shadow: 0 14px 30px -10px rgba(0,0,0,0.7);
+  }
+
+  .el-tv-favorite-total { text-align: center; font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.45); margin: 0 0 18px; }
+  .el-tv-favorite-row { position: relative; display: flex; align-items: center; gap: 24px; padding: 18px 28px; border-radius: 22px; overflow: hidden;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px; }
+  .el-tv-favorite-row:last-child { margin-bottom: 0; }
+  .el-tv-favorite-row.top { border-color: color-mix(in srgb, var(--accent, #22c55e) 60%, transparent); }
+  .el-tv-favorite-fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--row-color, var(--accent, #22c55e)) 26%, transparent); }
+  .el-tv-favorite-rank { position: relative; width: 56px; text-align: center; font-size: 30px; font-weight: 900; color: rgba(255,255,255,0.5); flex: none; }
+  .el-tv-favorite-crest { position: relative; width: 76px; height: 76px; border-radius: 999px; object-fit: cover; flex: none; box-shadow: 0 8px 18px -6px rgba(0,0,0,0.5); }
+  .el-tv-favorite-crest-mono { position: relative; width: 76px; height: 76px; border-radius: 999px; flex: none; display: flex; align-items: center;
+    justify-content: center; font-size: 24px; font-weight: 900; background: rgba(255,255,255,0.1); }
+  .el-tv-favorite-name { position: relative; flex: 1; min-width: 0; font-size: 34px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .el-tv-favorite-pct { position: relative; flex: none; text-align: right; }
+  .el-tv-favorite-pct-value { font-size: 42px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--accent, #22c55e); }
+  .el-tv-favorite-pct-votes { font-size: 17px; font-weight: 700; color: rgba(255,255,255,0.5); font-variant-numeric: tabular-nums; }
 
   .el-tv-next {
     flex: 1; display: flex; flex-direction: column; min-height: 0; border-radius: 28px; overflow: hidden; position: relative;
@@ -123,7 +158,8 @@ function pageTitle(page: TvPage): string {
   if (page.kind === "group") return `Grupo ${page.groupName}`;
   if (page.kind === "standings") return "Classificação";
   if (page.kind === "scorers") return "Artilheiros";
-  return "Eliminatórias";
+  if (page.kind === "favorite-team") return "Time da torcida";
+  return "Chave do campeonato";
 }
 
 // scheduledDate/scheduledTime já chegam como texto puro — só formata pra exibição, nenhuma
@@ -259,32 +295,40 @@ function ScorersTable({ scorers }: { scorers: ScorerEntry[] }) {
   );
 }
 
-function KnockoutPage({ knockout }: { knockout: Extract<TvPage, { kind: "knockout" }>["knockout"] }) {
+// "Time favorito" da temporada (runtime/fan-votes.ts getFavoriteTeamResults) — mesma leitura de
+// ranking (shared/ranking.ts rankPositions, empate dividindo posição) e o mesmo visual de barra de
+// percentual do painel de votação ao vivo (routes/vote-tv/vote-tv-canvas.tsx), só que com classes
+// próprias (el-tv-favorite-*) porque essa tela não importa nada daquela (cada palco de TV é
+// autocontido — ver cabeçalho do arquivo).
+function FavoriteTeamPage({ results }: { results: FanVoteResults }) {
+  if (results.entries.length === 0) {
+    return <p className="el-tv-empty">Nenhum voto ainda — qual é o time favorito da torcida?</p>;
+  }
+  const positions = rankPositions(results.entries.map((entry) => entry.votes));
+
   return (
-    <div className="el-tv-knockout">
-      {knockout.map(({ phase, fixtures }) => (
-        <div key={phase} className="el-tv-column">
-          <p className="el-tv-column-title">{FIXTURE_PHASE_LABEL[phase]}</p>
-          <div className="el-tv-fixtures">
-            {fixtures.map((fixture) => {
-              const homeWon = fixture.played && fixture.homeScore != null && fixture.awayScore != null && fixture.homeScore > fixture.awayScore;
-              const awayWon = fixture.played && fixture.homeScore != null && fixture.awayScore != null && fixture.awayScore > fixture.homeScore;
-              return (
-                <div key={fixture.id} className="el-tv-fixture">
-                  {fixture.roundLabel && <span className="el-tv-fixture-round">{fixture.roundLabel}</span>}
-                  <div className={`el-tv-fixture-row ${homeWon ? "won" : ""}`}>
-                    {fixture.homeName}
-                    {fixture.played && <span className="el-tv-fixture-score">{formatScore(fixture.homeScore ?? 0)}</span>}
-                  </div>
-                  <div className="el-tv-fixture-sep" />
-                  <div className={`el-tv-fixture-row ${awayWon ? "won" : ""}`}>
-                    {fixture.awayName}
-                    {fixture.played && <span className="el-tv-fixture-score">{formatScore(fixture.awayScore ?? 0)}</span>}
-                  </div>
-                  {!fixture.played && <p className="el-tv-fixture-status">a jogar</p>}
-                </div>
-              );
-            })}
+    <div>
+      <p className="el-tv-favorite-total">{results.totalVotes} votos no total</p>
+      {results.entries.map((entry, index) => (
+        <div
+          key={entry.id}
+          className={`el-tv-favorite-row ${positions[index] === 1 ? "top" : ""}`}
+          style={{ "--row-color": entry.color ?? undefined } as CSSProperties}
+        >
+          <span className="el-tv-favorite-fill" style={{ width: `${entry.percent}%` }} />
+          <span className="el-tv-favorite-rank">{RANK_MEDAL[positions[index] - 1] ?? positions[index]}</span>
+          {entry.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="el-tv-favorite-crest" src={entry.imageUrl} alt="" />
+          ) : (
+            <span className="el-tv-favorite-crest-mono">{entry.name.slice(0, 2).toUpperCase()}</span>
+          )}
+          <span className="el-tv-favorite-name">{entry.name}</span>
+          <div className="el-tv-favorite-pct">
+            <div className="el-tv-favorite-pct-value">{entry.percent}%</div>
+            <div className="el-tv-favorite-pct-votes">
+              {entry.votes} voto{entry.votes === 1 ? "" : "s"}
+            </div>
           </div>
         </div>
       ))}
@@ -349,7 +393,7 @@ export function TvCanvas({
   }, []);
 
   const stage = useTvStageTransform();
-  const pages = buildTvPages(data.bracket, data.standings, data.nextGame, data.scorers);
+  const pages = buildTvPages(data.bracket, data.standings, data.nextGame, data.scorers, data.favoriteTeam);
 
   const [pageIndex, setPageIndex] = useState(0);
   const safePageIndex = pages.length === 0 ? 0 : Math.min(pageIndex, pages.length - 1);
@@ -396,12 +440,14 @@ export function TvCanvas({
             ) : currentPage.kind === "next-game" ? (
               <NextGamePage nextGame={currentPage.nextGame} />
             ) : currentPage.kind === "knockout" ? (
-              <KnockoutPage knockout={currentPage.knockout} />
+              <BracketCircleTv knockout={currentPage.knockout} maxBoardPx={stage.stageHeightPx - BRACKET_VERTICAL_CHROME_PX} />
             ) : currentPage.kind === "scorers" ? (
               <ScorersTable scorers={currentPage.scorers} />
-            ) : (
+            ) : currentPage.kind === "favorite-team" ? (
+              <FavoriteTeamPage results={currentPage.results} />
+            ) : currentPage.kind === "standings" || currentPage.kind === "group" ? (
               <StandingsTable standings={currentPage.standings} />
-            )}
+            ) : null}
           </div>
 
           {pages.length > 1 && (
