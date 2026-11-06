@@ -23,7 +23,11 @@ const BOX_ASPECT = 2.65; // largura:altura do card (duas linhas de time empilhad
 const ROW_GAP_FACTOR = 1.38; // altura do "slot" de uma linha (card + respiro) = altura do card × isso
 // Menor largura de card antes de preferir rolagem horizontal a espremer tudo até virar sopa de
 // letrinhas — numa coluna estreita (ex. home com barra lateral), é melhor rolar do que encolher.
-const MIN_BOX_PX = 150;
+// Sem piso de largura/rolagem de propósito (pedido explícito: responsivo na horizontal, sem
+// scroll) — o card encolhe pra caber no contêiner, por mais estreito que seja; o nome do time só
+// trunca (truncate) se não couber mesmo assim. MIN_BOX_PX é só uma rede de segurança absurda (um
+// container praticamente do tamanho zero), não um alvo de design.
+const MIN_BOX_PX = 70;
 const MAX_BOX_PX = 260; // teto pra não virar card gigante num container muito largo (full-bleed)
 const TOP_MARGIN_PX = 34;
 const BOTTOM_MARGIN_PX = 46;
@@ -202,8 +206,8 @@ export function BracketTree({ knockout }: { knockout: Round[] }) {
 
   return (
     <div className="space-y-3 rounded-panel border border-border bg-card p-4 sm:p-6">
-      <div ref={containerRef} className="w-full overflow-x-auto">
-        <div className="relative mx-auto" style={{ width: boardWidthPx, height: boardHeightPx, minWidth: "100%" }}>
+      <div ref={containerRef} className="w-full">
+        <div className="relative mx-auto" style={{ width: boardWidthPx, height: boardHeightPx }}>
           <svg width={boardWidthPx} height={boardHeightPx} className="absolute inset-0" aria-hidden="true">
             {layout.links.map((link) => {
               const fixture = fixtureById.get(link.id);
