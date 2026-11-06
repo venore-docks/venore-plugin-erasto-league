@@ -1,6 +1,16 @@
 import type { FixturePhase } from "../contracts/types";
 
-export type BracketTreeFixture = { id: string; sortOrder: number };
+export type BracketTreeFixture = {
+  id: string;
+  sortOrder: number;
+  // Identidade de quem joga (slug do time) — usada pra achar quais confrontos da rodada anterior
+  // alimentam este de verdade (pelo TIME vencedor), não pela posição no array.
+  homeSlug: string | null;
+  awaySlug: string | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  played: boolean;
+};
 
 // "final" só é usado pelo nó sintético que blocks/bracket-tree.tsx e routes/tv/bracket-tree-tv.tsx
 // montam pra desenhar a final junto dos outros nós (computeBracketTreeLayout nunca produz esse
@@ -33,67 +43,120 @@ export type BracketTreeLayout<F extends BracketTreeFixture> = {
   columnPhases: { col: number; phase: FixturePhase }[];
 };
 
-type SideResult<F extends BracketTreeFixture> = {
-  nodes: BracketTreeNode<F>[];
-  // Só os links ENTRE rodadas do mesmo lado — o último salto (rodada mais interna → final) é
-  // calculado depois, já com a posição vertical da final definida pelos dois lados.
-  links: BracketTreeLink[];
-  outerCount: number;
-  innerFeed: { fixtureId: string; col: number; row: number } | null;
-};
-
-function buildSide<F extends BracketTreeFixture>(
-  rounds: { phase: FixturePhase; fixtures: F[] }[],
-  side: BracketTreeSide,
-  maxCol: number,
-): SideResult<F> {
-  const nodes: BracketTreeNode<F>[] = [];
-  const links: BracketTreeLink[] = [];
-  let prevRows: number[] = [];
-  let prevFixtures: F[] = [];
-  let prevCol = 0;
-  let outerCount = 0;
-
-  // `for` em vez de `.forEach` de propósito: o TS não acompanha reatribuição de `let` feita dentro
-  // de uma closure (forEach) entre uma iteração e a próxima — um loop de verdade evita a ginástica
-  // de non-null assertion em prevRows/prevFixtures só pra contornar isso.
-  for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
-    const round = rounds[roundIndex];
-    const half = Math.ceil(round.fixtures.length / 2);
-    const fixtures = side === "left" ? round.fixtures.slice(0, half) : round.fixtures.slice(half);
-    if (roundIndex === 0) outerCount = fixtures.length;
-
-    const col = side === "left" ? roundIndex : maxCol - roundIndex;
-    const rows = fixtures.map((_, i) => (roundIndex === 0 ? i + 0.5 : (prevRows[2 * i] + prevRows[2 * i + 1]) / 2));
-
-    fixtures.forEach((fixture, i) => nodes.push({ fixture, side, round: roundIndex, col, row: rows[i] }));
-
-    if (roundIndex > 0) {
-      prevFixtures.forEach((prevFixture, i) => {
-        links.push({ id: prevFixture.id, x1: prevCol, y1: prevRows[i], x2: col, y2: rows[Math.floor(i / 2)] });
-      });
-    }
-
-    prevRows = rows;
-    prevFixtures = fixtures;
-    prevCol = col;
-  }
-
-  const innerFeed = prevFixtures.length > 0 ? { fixtureId: prevFixtures[0].id, col: prevCol, row: prevRows[0] } : null;
-
-  return { nodes, links, outerCount, innerFeed };
+// Slug de quem venceu este confronto — null enquanto não dá pra saber (não jogado, empate — não
+// devia existir numa eliminatória, mas súmula malcadastrada acontece — ou algum lado ainda é só um
+// rótulo "Vencedor Grupo A" sem time de verdade).
+function winnerSlug<F extends BracketTreeFixture>(fixture: F): string | null {
+  if (!fixture.played || fixture.homeScore == null || fixture.awayScore == null || fixture.homeScore === fixture.awayScore) return null;
+  return fixture.homeScore > fixture.awayScore ? fixture.homeSlug : fixture.awaySlug;
 }
 
-// Chave "espelhada" (estilo Copa do Mundo): metade dos confrontos da rodada mais externa converge
-// pela esquerda, a outra metade pela direita, com a final sozinha no meio — substitui a chave
-// circular (shared/bracket-circle-layout.ts, removida: times de rodadas vizinhas ficavam visualmente
-// grudados e o layout quadrado desperdiçava tela numa TV 16:9, que é larga). Reusada pelo bloco do
-// site (blocks/bracket-tree.tsx, Tailwind) e pela TV (routes/tv/bracket-tree-tv.tsx, CSS própria).
+// Confrontos da rodada ANTERIOR cujo vencedor é um dos dois lados de `child` — os pais de verdade
+// dele, por TIME, não por posição no array. 0, 1 ou 2 resultados — menos de 2 quando a rodada
+// anterior ainda não decidiu quem avança pra cá.
+function findParents<F extends BracketTreeFixture>(child: F, previousRound: F[]): F[] {
+  return previousRound.filter((parent) => {
+    const winner = winnerSlug(parent);
+    return winner !== null && (child.homeSlug === winner || child.awaySlug === winner);
+  });
+}
+
+// Lado (esquerda/direita) de cada confronto, exceto a final — bug real que isso corrige: repartir
+// CADA rodada em metades por sortOrder só dá a chave certa quando o sortOrder da rodada segue a
+// MESMA convenção "metade esquerda, metade direita" da rodada mais externa. Se o admin cadastrou a
+// semifinal em outra ordem (ex.: pela ordem que os jogos vão acontecer, não pelo lado da chave), um
+// confronto podia sair com um vencedor de cada lado — visualmente "cruzado" com a rodada anterior.
 //
-// Lado de cada confronto: a METADE do array da rodada (por sortOrder), não um cálculo recursivo —
-// o pareamento normal de chave (1,2,3,4 → 1 e 2 de um lado, 3 e 4 do outro) já cai exatamente nessa
-// divisão quando o admin cadastra os confrontos em ordem de chave. A posição vertical de uma rodada
-// mais interna é sempre a média das duas que a alimentam (centralização clássica de bracket).
+// Em vez disso: a penúltima rodada (a que alimenta a final) tem exatamente 2 confrontos — um
+// esquerda, um direita, por sortOrder (único nível sem "filho" de quem herdar o lado, então é
+// convenção mesmo, não tem outra fonte de verdade). Daí pra fora (rumo à rodada mais externa), cada
+// confronto herda o lado do FILHO que ele alimenta de verdade (por time vencedor, findParents) — só
+// cai pra sortOrder/posição quando ainda não dá pra saber (rodada seguinte ainda não decidida).
+function assignSides<F extends BracketTreeFixture>(rounds: { fixtures: F[] }[]): Map<string, "left" | "right"> {
+  const roundCount = rounds.length;
+  const sideById = new Map<string, "left" | "right">();
+  const preFinal = rounds[roundCount - 1].fixtures;
+  preFinal.forEach((fixture, i) => sideById.set(fixture.id, i % 2 === 0 ? "left" : "right"));
+
+  for (let r = roundCount - 1; r >= 1; r--) {
+    const previousRound = rounds[r - 1].fixtures;
+    for (const child of rounds[r].fixtures) {
+      const side = sideById.get(child.id);
+      if (!side) continue;
+      for (const parent of findParents(child, previousRound)) sideById.set(parent.id, side);
+    }
+    // Sobrou alguém sem lado (a rodada anterior ainda não decidiu quem avança pra cá) — completa em
+    // ordem de sortOrder, equilibrando os dois lados (metade pra cada, convenção de topo de sempre).
+    const half = Math.ceil(previousRound.length / 2);
+    let leftCount = previousRound.filter((fixture) => sideById.get(fixture.id) === "left").length;
+    for (const fixture of previousRound) {
+      if (sideById.has(fixture.id)) continue;
+      if (leftCount < half) {
+        sideById.set(fixture.id, "left");
+        leftCount++;
+      } else {
+        sideById.set(fixture.id, "right");
+      }
+    }
+  }
+  return sideById;
+}
+
+type SideRow<F extends BracketTreeFixture> = { fixture: F; row: number; parentIds: string[] };
+
+// Linha vertical de cada confronto DESTE lado, rodada por rodada — rodada mais externa igualmente
+// espaçada; rodada mais interna sempre na média vertical de quem a alimenta de verdade (por time,
+// findParents) — só cai pro "que sobrar" (próximos ainda não reivindicados, na ordem) quando a
+// rodada anterior ainda não decidiu quem avança.
+function buildSideRows<F extends BracketTreeFixture>(fixturesByRound: F[][], allRoundFixtures: F[][]): SideRow<F>[][] {
+  const rowsByRound: SideRow<F>[][] = [];
+  fixturesByRound.forEach((fixtures, r) => {
+    if (r === 0) {
+      rowsByRound.push(fixtures.map((fixture, i) => ({ fixture, row: i + 0.5, parentIds: [] })));
+      return;
+    }
+    const previousRows = rowsByRound[r - 1];
+    const previousRowById = new Map(previousRows.map((node) => [node.fixture.id, node]));
+    const claimed = new Set<string>();
+    const rows = fixtures.map((fixture) => {
+      let parents = findParents(fixture, allRoundFixtures[r - 1]).filter((parent) => previousRowById.has(parent.id) && !claimed.has(parent.id));
+      if (parents.length === 0) {
+        parents = previousRows
+          .filter((node) => !claimed.has(node.fixture.id))
+          .slice(0, 2)
+          .map((node) => node.fixture);
+      }
+      parents.forEach((parent) => claimed.add(parent.id));
+      const parentRows = parents.map((parent) => previousRowById.get(parent.id)!.row);
+      const row = parentRows.length > 0 ? parentRows.reduce((sum, value) => sum + value, 0) / parentRows.length : 0.5;
+      return { fixture, row, parentIds: parents.map((parent) => parent.id) };
+    });
+    rowsByRound.push(rows);
+  });
+  return rowsByRound;
+}
+
+function buildSideLinks<F extends BracketTreeFixture>(rowsByRound: SideRow<F>[][], side: "left" | "right", maxCol: number): BracketTreeLink[] {
+  const links: BracketTreeLink[] = [];
+  for (let r = 1; r < rowsByRound.length; r++) {
+    const col = side === "left" ? r : maxCol - r;
+    const prevCol = side === "left" ? r - 1 : maxCol - (r - 1);
+    const previousById = new Map(rowsByRound[r - 1].map((node) => [node.fixture.id, node.row]));
+    for (const node of rowsByRound[r]) {
+      for (const parentId of node.parentIds) {
+        const parentRow = previousById.get(parentId);
+        if (parentRow !== undefined) links.push({ id: parentId, x1: prevCol, y1: parentRow, x2: col, y2: node.row });
+      }
+    }
+  }
+  return links;
+}
+
+// Chave "espelhada" (estilo Copa do Mundo): metade dos confrontos converge pela esquerda, a outra
+// metade pela direita, com a final sozinha no meio — substitui a chave circular (removida: times de
+// rodadas vizinhas ficavam visualmente grudados, e o layout quadrado desperdiçava tela numa TV 16:9,
+// que é larga). Reusada pelo bloco do site (blocks/bracket-tree.tsx, Tailwind) e pela TV
+// (routes/tv/bracket-tree-tv.tsx, CSS própria).
 export function computeBracketTreeLayout<F extends BracketTreeFixture>(
   knockout: { phase: FixturePhase; fixtures: F[] }[],
 ): BracketTreeLayout<F> {
@@ -101,7 +164,6 @@ export function computeBracketTreeLayout<F extends BracketTreeFixture>(
     .filter((round) => round.phase !== "final")
     .map((round) => ({ phase: round.phase, fixtures: [...round.fixtures].sort((a, b) => a.sortOrder - b.sortOrder) }));
   const finalFixture = knockout.find((round) => round.phase === "final")?.fixtures[0] ?? null;
-
   const roundCount = rounds.length; // rodadas de cada lado, sem contar a final.
 
   if (roundCount === 0) {
@@ -116,36 +178,49 @@ export function computeBracketTreeLayout<F extends BracketTreeFixture>(
   }
 
   const maxCol = roundCount * 2; // a final mora na coluna roundCount, bem no meio.
-  const left = buildSide(rounds, "left", maxCol);
-  const right = buildSide(rounds, "right", maxCol);
-  const totalRows = Math.max(left.outerCount, right.outerCount, 1);
+  const sideById = assignSides(rounds);
+  const allRoundFixtures = rounds.map((round) => round.fixtures);
+
+  const leftFixturesByRound = allRoundFixtures.map((fixtures) => fixtures.filter((fixture) => sideById.get(fixture.id) === "left"));
+  const rightFixturesByRound = allRoundFixtures.map((fixtures) => fixtures.filter((fixture) => sideById.get(fixture.id) === "right"));
+
+  const leftRows = buildSideRows(leftFixturesByRound, allRoundFixtures);
+  const rightRows = buildSideRows(rightFixturesByRound, allRoundFixtures);
+
+  const outerCount = (rows: SideRow<F>[][]) => rows[0]?.length ?? 0;
+  const totalRows = Math.max(outerCount(leftRows), outerCount(rightRows), 1);
 
   // Cada lado foi construído de 0 até seu próprio outerCount — centraliza o lado menor dentro de
   // totalRows (quase sempre os dois são iguais, mas não trava se não forem).
-  function recenter(side: SideResult<F>): SideResult<F> {
-    const offset = (totalRows - side.outerCount) / 2;
-    if (offset === 0) return side;
-    return {
-      ...side,
-      nodes: side.nodes.map((node) => ({ ...node, row: node.row + offset })),
-      links: side.links.map((link) => ({ ...link, y1: link.y1 + offset, y2: link.y2 + offset })),
-      innerFeed: side.innerFeed ? { ...side.innerFeed, row: side.innerFeed.row + offset } : null,
-    };
+  function recenter(rows: SideRow<F>[][]): SideRow<F>[][] {
+    const offset = (totalRows - outerCount(rows)) / 2;
+    if (offset === 0) return rows;
+    return rows.map((round) => round.map((node) => ({ ...node, row: node.row + offset })));
   }
 
-  const leftCentered = recenter(left);
-  const rightCentered = recenter(right);
+  const leftCentered = recenter(leftRows);
+  const rightCentered = recenter(rightRows);
 
-  const finalRow =
-    leftCentered.innerFeed && rightCentered.innerFeed
-      ? (leftCentered.innerFeed.row + rightCentered.innerFeed.row) / 2
-      : (leftCentered.innerFeed?.row ?? rightCentered.innerFeed?.row ?? totalRows / 2);
+  const nodes: BracketTreeNode<F>[] = [];
+  function emitSide(side: "left" | "right", rows: SideRow<F>[][]) {
+    rows.forEach((round, r) => {
+      const col = side === "left" ? r : maxCol - r;
+      for (const node of round) nodes.push({ fixture: node.fixture, side, round: r, col, row: node.row });
+    });
+  }
+  emitSide("left", leftCentered);
+  emitSide("right", rightCentered);
 
-  const finalLinks: BracketTreeLink[] = finalFixture
-    ? [leftCentered.innerFeed, rightCentered.innerFeed]
-        .filter((feed): feed is NonNullable<typeof feed> => feed !== null)
-        .map((feed) => ({ id: feed.fixtureId, x1: feed.col, y1: feed.row, x2: roundCount, y2: finalRow }))
-    : [];
+  const links = [...buildSideLinks(leftCentered, "left", maxCol), ...buildSideLinks(rightCentered, "right", maxCol)];
+
+  const leftInner = leftCentered[roundCount - 1]?.[0] ?? null;
+  const rightInner = rightCentered[roundCount - 1]?.[0] ?? null;
+  const finalRow = leftInner && rightInner ? (leftInner.row + rightInner.row) / 2 : (leftInner?.row ?? rightInner?.row ?? totalRows / 2);
+
+  if (finalFixture) {
+    if (leftInner) links.push({ id: leftInner.fixture.id, x1: roundCount - 1, y1: leftInner.row, x2: roundCount, y2: finalRow });
+    if (rightInner) links.push({ id: rightInner.fixture.id, x1: maxCol - (roundCount - 1), y1: rightInner.row, x2: roundCount, y2: finalRow });
+  }
 
   const columnPhases = [
     ...rounds.map((round, roundIndex) => ({ col: roundIndex, phase: round.phase })),
@@ -155,9 +230,9 @@ export function computeBracketTreeLayout<F extends BracketTreeFixture>(
   return {
     totalCols: maxCol,
     totalRows,
-    nodes: [...leftCentered.nodes, ...rightCentered.nodes],
+    nodes,
     finalNode: finalFixture ? { fixture: finalFixture, col: roundCount, row: finalRow } : null,
-    links: [...leftCentered.links, ...rightCentered.links, ...finalLinks],
+    links,
     columnPhases,
   };
 }

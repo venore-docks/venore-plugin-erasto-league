@@ -163,23 +163,44 @@ export function determineKnockoutLoserId(fixture: Fixture, match: MatchSummary |
   return homeScore > awayScore ? fixture.awayTeamId : fixture.homeTeamId;
 }
 
-// Times eliminados: perderam algum confronto de fase ELIMINATÓRIA já encerrado (fase de grupos não
-// elimina ninguém — FIXTURE_PHASE_ORDER: só "roundof16"/"quarterfinal"/"semifinal"/"final" entram
-// aqui). Pra "Time favorito" (votação de temporada) só oferecer quem ainda está na disputa —
-// routes/vote-public/vote-sections.tsx FavoriteTeamVoteSection e afins.
+// Times eliminados: perderam algum confronto de fase ELIMINATÓRIA já encerrado, OU nem chegaram a
+// se classificar pra eliminatória (fase de grupos não elimina ninguém via confronto — ninguém
+// "perde" um jogo de grupo pra fins de chaveamento —, mas quem não avançou da fase de grupos também
+// não está mais na disputa, uma vez que a chave já foi montada). Pra "Time favorito" (votação de
+// temporada) só oferecer quem ainda está na disputa — routes/vote-public/vote-sections.tsx
+// FavoriteTeamVoteSection e afins.
 export async function getEliminatedTeamIds(): Promise<Set<string>> {
-  const fixtures = await listFixtures();
-  const knockoutFixtures = fixtures.filter((fixture) => fixture.phase !== "group" && fixture.matchId);
+  const [teams, fixtures] = await Promise.all([listTeams(), listFixtures()]);
+  const knockoutFixtures = fixtures.filter((fixture) => fixture.phase !== "group");
+  if (knockoutFixtures.length === 0) return new Set(); // chave ainda não foi montada — ninguém fora.
 
-  const matchIds = [...new Set(knockoutFixtures.map((fixture) => fixture.matchId as string))];
+  const matchIds = [...new Set(knockoutFixtures.map((fixture) => fixture.matchId).filter((id): id is string => Boolean(id)))];
   const matches = await Promise.all(matchIds.map((id) => getMatch(id)));
   const matchById = new Map(matches.filter((match): match is MatchSummary => Boolean(match)).map((match) => [match.id, match]));
 
   const eliminated = new Set<string>();
+  const participantIds = new Set<string>();
   for (const fixture of knockoutFixtures) {
-    const loserTeamId = determineKnockoutLoserId(fixture, matchById.get(fixture.matchId as string));
+    if (fixture.homeTeamId) participantIds.add(fixture.homeTeamId);
+    if (fixture.awayTeamId) participantIds.add(fixture.awayTeamId);
+    const match = fixture.matchId ? matchById.get(fixture.matchId) : null;
+    const loserTeamId = determineKnockoutLoserId(fixture, match);
     if (loserTeamId) eliminated.add(loserTeamId);
   }
+
+  // Só trata "nunca apareceu na eliminatória" como eliminado quando a rodada mais externa (a
+  // primeira depois da fase de grupos) já tem os dois lados de TODOS os confrontos definidos — uma
+  // chave recém-montada pode ter slots ainda como rótulo livre ("Vencedor Grupo A"), e nesse caso
+  // não dá pra saber quem realmente ficou de fora ainda.
+  const outerPhase = FIXTURE_PHASE_ORDER.find((phase) => phase !== "group" && knockoutFixtures.some((fixture) => fixture.phase === phase));
+  const outerFixtures = knockoutFixtures.filter((fixture) => fixture.phase === outerPhase);
+  const outerFullyResolved = outerFixtures.length > 0 && outerFixtures.every((fixture) => fixture.homeTeamId && fixture.awayTeamId);
+  if (outerFullyResolved) {
+    for (const team of teams) {
+      if (!participantIds.has(team.id)) eliminated.add(team.id);
+    }
+  }
+
   return eliminated;
 }
 
