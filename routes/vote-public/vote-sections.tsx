@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@venore/plugin-sdk/ui";
+import { getEliminatedTeamIds } from "../../runtime/bracket";
 import { getTeam, listTeams } from "../../runtime/teams";
 import { listPlayersByTeam } from "../../runtime/players";
 import {
@@ -237,14 +238,20 @@ export async function FavoriteTeamVoteSection({
   turnstileSiteKey: string | null;
   headingLevel?: "h1" | "h2";
 }) {
-  const [teams, results, voterChoice] = await Promise.all([listTeams(), getFavoriteTeamResults(RESULTS_LIMIT), getVoterFavoriteTeam(voterKey)]);
+  const [teams, eliminated, voterChoice] = await Promise.all([listTeams(), getEliminatedTeamIds(), getVoterFavoriteTeam(voterKey)]);
+  // Pedido explícito: só times ainda na disputa entram na cédula e no cálculo do percentual — um
+  // voto já registrado num time eliminado continua contando como "ainda ativo" até sair do mapa de
+  // eliminados (getEliminatedTeamIds só olha confrontos JÁ ENCERRADOS), então não precisa tratar
+  // esse caso aqui.
+  const activeTeams = teams.filter((team) => !eliminated.has(team.id));
+  const results = await getFavoriteTeamResults(RESULTS_LIMIT, eliminated);
   const Heading = headingLevel;
 
   const section: BallotSection = {
     key: "teams",
     title: "Times",
     color: null,
-    options: teams.map((team) => ({ id: team.id, name: team.name, imageUrl: team.crestUrl, caption: null, color: team.primaryColor })),
+    options: activeTeams.map((team) => ({ id: team.id, name: team.name, imageUrl: team.crestUrl, caption: null, color: team.primaryColor })),
   };
 
   return (

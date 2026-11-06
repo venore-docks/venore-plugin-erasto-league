@@ -1,6 +1,6 @@
 "use server";
 
-import { getBracketView, getNextFixture, type BracketView, type NextGameView } from "../../runtime/bracket";
+import { getBracketView, getEliminatedTeamIds, getNextFixture, type BracketView, type NextGameView } from "../../runtime/bracket";
 import { getFavoriteTeamResults, getFinalMatchPoll, getMatchWinnerVoteResults, type FanVoteResults } from "../../runtime/fan-votes";
 import { computeStandings } from "../../runtime/standings";
 import { listTopScorers, type ScorerEntry } from "../../runtime/stats";
@@ -42,12 +42,13 @@ async function getFinalWinnerResultsForTv(windowHours: number): Promise<FanVoteR
 // vivo). Sem PIN/sessão: mesma filosofia do overlay (tela pra TV/projetor, não escreve nada).
 export async function getTvDataAction(): Promise<TvData> {
   const config = await resolveErastoLeagueConfig();
+  const eliminated = await getEliminatedTeamIds();
   const [bracket, standings, nextGame, scorers, favoriteTeam, finalWinner] = await Promise.all([
     getBracketView(),
     computeStandings(),
     getNextFixture(),
     listTopScorers(TV_SCORERS_LIMIT),
-    getFavoriteTeamResults(TV_FAVORITE_TEAM_LIMIT),
+    getFavoriteTeamResults(TV_FAVORITE_TEAM_LIMIT, eliminated),
     getFinalWinnerResultsForTv(config.fanVoteWindowHours),
   ]);
   return {

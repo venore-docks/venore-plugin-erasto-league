@@ -424,7 +424,12 @@ export async function castMatchFanVote(input: {
 // Time favorito (temporada)
 // ---------------------------------------------------------------------------------------------
 
-export async function getFavoriteTeamResults(limit?: number): Promise<FanVoteResults> {
+// excludeTeamIds (times eliminados, runtime/bracket.ts getEliminatedTeamIds) — pedido explícito:
+// "Time favorito" só considera quem ainda está na disputa, tanto nos resultados (percentual
+// recalculado só sobre quem sobrou) quanto nas opções da cédula de voto (routes/vote-public/
+// vote-sections.tsx monta a lista de times já filtrada antes de chamar aqui). Voto já registrado
+// num time eliminado continua contando aqui como "ainda ativo" até ser filtrado fora.
+export async function getFavoriteTeamResults(limit?: number, excludeTeamIds?: Set<string>): Promise<FanVoteResults> {
   const rows = await db
     .select({
       teamId: teamsTable.id,
@@ -436,7 +441,12 @@ export async function getFavoriteTeamResults(limit?: number): Promise<FanVoteRes
     })
     .from(favoriteTeamVotesTable)
     .innerJoin(teamsTable, eq(favoriteTeamVotesTable.teamId, teamsTable.id))
-    .where(isNull(favoriteTeamVotesTable.voidedAt))
+    .where(
+      and(
+        isNull(favoriteTeamVotesTable.voidedAt),
+        excludeTeamIds && excludeTeamIds.size > 0 ? notInArray(teamsTable.id, [...excludeTeamIds]) : undefined,
+      ),
+    )
     .groupBy(teamsTable.id, teamsTable.slug, teamsTable.name, teamsTable.crestMediaId, teamsTable.primaryColor);
 
   if (rows.length === 0) return EMPTY_RESULTS;

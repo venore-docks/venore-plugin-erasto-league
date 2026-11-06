@@ -1,3 +1,4 @@
+import { getEliminatedTeamIds } from "./bracket";
 import { getFavoriteTeamResults, getFeaturedMatchPoll, getMatchFanVoteResults, type FanVoteResults } from "./fan-votes";
 import { getTeam } from "./teams";
 
@@ -28,7 +29,11 @@ const TV_MATCH_LIMIT = 5;
 const TV_FAVORITE_LIMIT = 8;
 
 export async function loadVoteTvData(windowHours: number, favoriteOpen: boolean): Promise<VoteTvData> {
-  const [poll, favoriteResults] = await Promise.all([getFeaturedMatchPoll(windowHours), getFavoriteTeamResults(TV_FAVORITE_LIMIT)]);
+  const eliminated = await getEliminatedTeamIds();
+  const [poll, favoriteResults] = await Promise.all([
+    getFeaturedMatchPoll(windowHours),
+    getFavoriteTeamResults(TV_FAVORITE_LIMIT, eliminated),
+  ]);
 
   let match: VoteTvMatch | null = null;
   if (poll) {

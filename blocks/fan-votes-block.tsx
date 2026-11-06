@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { BlockRendererProps } from "@venore/plugin-sdk";
 import { Badge, Button } from "@venore/plugin-sdk/ui";
+import { getEliminatedTeamIds } from "../runtime/bracket";
 import { getFavoriteTeamResults, getFeaturedMatchPoll, getMatchFanVoteResults } from "../runtime/fan-votes";
 import { getTeam } from "../runtime/teams";
 import { resolveErastoLeagueConfig } from "../shared/config";
@@ -55,7 +56,8 @@ export async function MatchPollPanel({ windowHours, limit }: { windowHours: numb
 }
 
 export async function FavoriteTeamPanel({ isOpen, limit }: { isOpen: boolean; limit: number }) {
-  const results = await getFavoriteTeamResults(limit);
+  const eliminated = await getEliminatedTeamIds();
+  const results = await getFavoriteTeamResults(limit, eliminated);
   return (
     <div className="space-y-3 rounded-panel border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">

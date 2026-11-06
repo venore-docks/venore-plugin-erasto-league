@@ -11,7 +11,7 @@ export type FixtureView = {
   homeName: string;
   homeCrestUrl: string | null;
   homeSlug: string | null;
-  // Cor do time (shared/bracket-circle-layout.ts + blocks/bracket-circle.tsx usam pra destacar o
+  // Cor do time (shared/bracket-tree-layout.ts + blocks/bracket-tree.tsx usam pra destacar o
   // caminho de quem avança; routes/tv reusa o mesmo campo). null quando o lado ainda não é um time
   // de verdade (rótulo "Vencedor Grupo A") ou o time não tem cor cadastrada.
   homeColor: string | null;
@@ -146,6 +146,32 @@ export async function getBracketView(): Promise<BracketView> {
     .filter((entry) => entry.fixtures.length > 0);
 
   return { groups, knockout };
+}
+
+// Times eliminados: perderam algum confronto de fase ELIMINATÓRIA já encerrado (fase de grupos não
+// elimina ninguém). Usa isMatchSideSwapped pra não inverter o resultado quando a partida foi jogada
+// com os lados trocados em relação ao cadastro da fixture (mesmo bug corrigido em toView acima).
+// Pra "Time favorito" (votação de temporada) só oferecer quem ainda está na disputa —
+// routes/vote-public/vote-sections.tsx FavoriteTeamVoteSection e afins.
+export async function getEliminatedTeamIds(): Promise<Set<string>> {
+  const fixtures = await listFixtures();
+  const knockoutFixtures = fixtures.filter((fixture) => fixture.phase !== "group" && fixture.matchId && fixture.homeTeamId && fixture.awayTeamId);
+
+  const matchIds = [...new Set(knockoutFixtures.map((fixture) => fixture.matchId as string))];
+  const matches = await Promise.all(matchIds.map((id) => getMatch(id)));
+  const matchById = new Map(matches.filter((match): match is MatchSummary => Boolean(match)).map((match) => [match.id, match]));
+
+  const eliminated = new Set<string>();
+  for (const fixture of knockoutFixtures) {
+    const match = matchById.get(fixture.matchId as string);
+    if (!match || match.status !== "finished" || match.homeScore === match.awayScore) continue;
+    const swapped = isMatchSideSwapped(fixture, match);
+    const homeScore = swapped ? match.awayScore : match.homeScore;
+    const awayScore = swapped ? match.homeScore : match.awayScore;
+    const loserTeamId = homeScore > awayScore ? fixture.awayTeamId : fixture.homeTeamId;
+    if (loserTeamId) eliminated.add(loserTeamId);
+  }
+  return eliminated;
 }
 
 // Agenda de jogos: TODOS os confrontos (qualquer fase), em ordem cronológica — jogos com data

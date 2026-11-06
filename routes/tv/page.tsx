@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { isPluginActive } from "@venore/plugin-sdk";
 import { getBrandConfig } from "@venore/plugin-sdk/brand";
-import { getBracketView, getNextFixture } from "../../runtime/bracket";
+import { getBracketView, getEliminatedTeamIds, getNextFixture } from "../../runtime/bracket";
 import { getFavoriteTeamResults, getFinalMatchPoll, getMatchWinnerVoteResults, type FanVoteResults } from "../../runtime/fan-votes";
 import { computeStandings } from "../../runtime/standings";
 import { listTopScorers } from "../../runtime/stats";
@@ -36,12 +36,13 @@ export default async function TvPage() {
   }
 
   const config = await resolveErastoLeagueConfig();
+  const eliminated = await getEliminatedTeamIds();
   const [bracket, standings, nextGame, scorers, favoriteTeam, finalWinner, brand, version] = await Promise.all([
     getBracketView(),
     computeStandings(),
     getNextFixture(),
     listTopScorers(TV_SCORERS_LIMIT),
-    getFavoriteTeamResults(TV_FAVORITE_TEAM_LIMIT),
+    getFavoriteTeamResults(TV_FAVORITE_TEAM_LIMIT, eliminated),
     getFinalWinnerResultsForTv(config.fanVoteWindowHours),
     getBrandConfig("png"),
     getTvDataVersion(),

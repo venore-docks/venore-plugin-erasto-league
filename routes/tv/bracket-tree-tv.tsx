@@ -7,15 +7,19 @@ import { formatScore } from "../../shared/score";
 
 type Round = { phase: FixturePhase; fixtures: FixtureView[] };
 
-// Mesmas unidades abstratas de blocks/bracket-tree.tsx (site) — só a conversão final pra px muda
-// (lá é %, aqui é px fixo do palco, ver shared/tv-stage.ts). BOX_W:BOX_H ~2.7:1 é o que faz o card
-// de confronto (duas linhas de time empilhadas) parecer um card de chave de verdade.
+// Mesmas unidades abstratas de blocks/bracket-tree.tsx (site), convertidas pra px do palco em vez
+// de medir um contêiner (ver shared/tv-stage.ts: a TV já sabe o tamanho do palco de antemão).
+// BOX_W:BOX_H ~2.65:1 é o que faz o card de confronto (duas linhas de time empilhadas) parecer um
+// card de chave de verdade.
 const BOX_W = 1;
-const ROW_UNIT_H = 0.5;
-const BOX_H_RATIO = 0.74;
-const GAP_W = 0.55;
-const TOP_MARGIN = 10; // % do espaço vertical reservado pro selo de fase de cada coluna
-const BOTTOM_MARGIN = 6;
+const GAP_W = 0.55; // espaço entre colunas reservado pras linhas de conexão
+const BOX_ASPECT = 2.65;
+// Altura do "slot" de uma linha (card + respiro) = altura do card × isso, no caso MÍNIMO — a altura
+// de verdade cresce pra ocupar o espaço vertical sobrando (pedido explícito: a chave não deve deixar
+// sobra vazia em cima/embaixo numa tela 16:9 quando há poucas rodadas).
+const ROW_GAP_FACTOR = 1.38;
+const TOP_MARGIN_PX = 60;
+const BOTTOM_MARGIN_PX = 70;
 
 function winnerColor(fixture: FixtureView): string | null {
   const winner = matchWinner(fixture);
@@ -126,24 +130,28 @@ export function BracketTreeTv({ knockout, maxWidthPx, maxHeightPx }: { knockout:
 
   const { totalCols, totalRows } = layout;
   const totalWidthUnits = (totalCols + 1) * BOX_W + totalCols * GAP_W;
-  const totalHeightUnits = (totalRows * ROW_UNIT_H * 100) / (100 - TOP_MARGIN - BOTTOM_MARGIN);
-  // "Contain fit": a maior escala que cabe inteira no espaço disponível, com um piso de 90px por
-  // unidade (BOX_W) pra não virar ilegível numa chave com muitas rodadas (oitavas de final) — aí
-  // prefere vazar um pouco da borda a virar sopa de letrinhas.
-  const scale = Math.max(90, Math.min(maxWidthPx / totalWidthUnits, maxHeightPx / totalHeightUnits));
-  const boardWidthPx = totalWidthUnits * scale;
-  const boardHeightPx = totalHeightUnits * scale;
+
+  // Escala só pela LARGURA (contain só no eixo horizontal, não também na altura) — piso/teto só pra
+  // não virar ilegível numa chave com muitas rodadas nem gigante numa com poucas.
+  const scale = Math.max(60, Math.min(260, maxWidthPx / totalWidthUnits));
+  const boxWidthPx = scale * BOX_W;
+  const boxHeightPx = boxWidthPx / BOX_ASPECT;
 
   const xLeftUnits = (col: number) => col * (BOX_W + GAP_W);
   const toXPx = (units: number) => units * scale;
-  const boxWidthPx = toXPx(BOX_W);
   const boxLeftEdge = (col: number) => toXPx(xLeftUnits(col));
   const boxRightEdge = (col: number) => boxLeftEdge(col) + boxWidthPx;
 
-  const boxHeightPx = (BOX_H_RATIO / totalRows) * (boardHeightPx * (1 - (TOP_MARGIN + BOTTOM_MARGIN) / 100));
-  const yTopPx = (boardHeightPx * TOP_MARGIN) / 100;
-  const yUsablePx = boardHeightPx * (1 - (TOP_MARGIN + BOTTOM_MARGIN) / 100);
-  const yCenterPx = (row: number) => yTopPx + (row / totalRows) * yUsablePx;
+  // A altura NÃO entra na escala — em vez de cortar o tamanho do card pra caber também na altura
+  // (deixando sobra vazia em cima/embaixo numa chave com poucas rodadas), o espaço vertical de
+  // sobra espalha mais as linhas (pedido explícito: a chave deve crescer na vertical até preencher
+  // a tela 16:9). Só quando o espaço realmente não dá (muitas rodadas) o slot cai pro tamanho
+  // natural do card e o tabuleiro passa de maxHeightPx — aí prefere vazar um pouco a virar sopa.
+  const usableHeightPx = Math.max(0, maxHeightPx - TOP_MARGIN_PX - BOTTOM_MARGIN_PX);
+  const rowSlotPx = Math.max(boxHeightPx * ROW_GAP_FACTOR, usableHeightPx / totalRows);
+  const boardWidthPx = totalWidthUnits * scale;
+  const boardHeightPx = Math.max(maxHeightPx, totalRows * rowSlotPx + TOP_MARGIN_PX + BOTTOM_MARGIN_PX);
+  const yCenterPx = (row: number) => TOP_MARGIN_PX + row * rowSlotPx;
 
   const fixtureById = new Map(layout.nodes.map((node) => [node.fixture.id, node.fixture]));
   const allNodes = [...layout.nodes, { fixture: layout.finalNode.fixture, side: "final" as const, round: 0, col: layout.finalNode.col, row: layout.finalNode.row }];
@@ -187,7 +195,7 @@ export function BracketTreeTv({ knockout, maxWidthPx, maxHeightPx }: { knockout:
           <span
             key={`${col}-${phase}`}
             className="el-tv-tree-phase"
-            style={{ left: (boxLeftEdge(col) + boxRightEdge(col)) / 2, top: (boardHeightPx * TOP_MARGIN) / 100 / 2 }}
+            style={{ left: (boxLeftEdge(col) + boxRightEdge(col)) / 2, top: TOP_MARGIN_PX / 2 }}
           >
             {FIXTURE_PHASE_LABEL[phase]}
           </span>
@@ -206,7 +214,7 @@ export function BracketTreeTv({ knockout, maxWidthPx, maxHeightPx }: { knockout:
 
         <span
           className="el-tv-tree-final-label"
-          style={{ left: (boxLeftEdge(layout.finalNode.col) + boxRightEdge(layout.finalNode.col)) / 2, top: (boardHeightPx * TOP_MARGIN) / 100 / 2 }}
+          style={{ left: (boxLeftEdge(layout.finalNode.col) + boxRightEdge(layout.finalNode.col)) / 2, top: TOP_MARGIN_PX / 2 }}
         >
           Final
         </span>
