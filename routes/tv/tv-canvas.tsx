@@ -7,7 +7,7 @@ import { rankPositions } from "../../shared/ranking";
 import { FIXTURE_PHASE_LABEL } from "../../shared/fixture-phase";
 import { formatScore } from "../../shared/score";
 import { getTvDataAction, getTvDataVersionAction, type TvData } from "./actions";
-import { BracketCircleTv } from "./bracket-circle-tv";
+import { BracketTreeTv } from "./bracket-tree-tv";
 import type { NextGameView } from "../../runtime/bracket";
 import type { FanVoteResults } from "../../runtime/fan-votes";
 import type { ScorerEntry } from "../../runtime/stats";
@@ -26,10 +26,12 @@ const PAGE_DURATION_MS = 12_000;
 // só sobe durante o jogo), era isso que gerava invocação de function completa a cada 20s em cada
 // tela sem nada ter mudado.
 const VERSION_POLL_MS = 60_000;
-// Reservado pro cabeçalho + rodapé do palco (routes/tv/tv-canvas.tsx) ao redor do tabuleiro circular
-// — BracketCircleTv usa pra nunca estourar verticalmente em proporções de tela fora do 16:9 de
-// referência (shared/tv-stage.ts resolveTvStageTransform).
+// Reservado pro cabeçalho + rodapé (altura) e pro padding lateral do corpo (largura) do palco, ao
+// redor da chave — BracketTreeTv usa pra nunca estourar o palco em proporções de tela fora do 16:9
+// de referência (shared/tv-stage.ts resolveTvStageTransform). A chave espelhada é larga de
+// propósito (ocupa bem mais a tela que a antiga chave circular, quadrada).
 const BRACKET_VERTICAL_CHROME_PX = 320;
+const BRACKET_HORIZONTAL_CHROME_PX = 128;
 
 const CSS = `
   html, body { margin: 0; background: #0a0d12; }
@@ -74,30 +76,29 @@ const CSS = `
   .el-tv-crest-mono { width: 64px; height: 64px; border-radius: 999px; background: rgba(255,255,255,0.08); flex-shrink: 0;
     display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; }
 
-  .el-tv-bracket-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
-  .el-tv-bracket { position: relative; flex: none; }
-  .el-tv-bracket-glow { position: absolute; inset: -6%; border-radius: 999px; pointer-events: none; }
-  .el-tv-bracket-svg { position: absolute; inset: 0; }
-  .el-tv-bracket-ring-label {
+  .el-tv-tree-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+  .el-tv-tree-board { position: relative; flex: none; }
+  .el-tv-tree-svg { position: absolute; inset: 0; }
+  .el-tv-tree-phase, .el-tv-tree-final-label {
     position: absolute; transform: translate(-50%, -50%); white-space: nowrap; padding: 5px 16px; border-radius: 999px;
     background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); backdrop-filter: blur(4px);
     font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.7);
   }
-  .el-tv-bracket-slot { position: absolute; transform: translate(-50%, -50%); }
-  .el-tv-bracket-disc { position: relative; width: 100%; height: 100%; border-radius: 999px; background: rgba(255,255,255,0.08); transition: opacity 400ms; }
-  .el-tv-bracket-disc-lost { opacity: 0.4; filter: grayscale(55%); }
-  .el-tv-bracket-crest { width: 100%; height: 100%; border-radius: 999px; object-fit: cover; display: block; }
-  .el-tv-bracket-crest-mono { width: 100%; height: 100%; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+  .el-tv-tree-final-label { background: var(--accent, #22c55e); color: #04170a; border: none; }
+  .el-tv-tree-box {
+    position: absolute; display: flex; flex-direction: column; border-radius: 10px; overflow: hidden;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 10px 24px -10px rgba(0,0,0,0.6);
+  }
+  .el-tv-tree-row { display: flex; align-items: center; gap: 10px; padding: 0 10px; flex: 1; min-width: 0; }
+  .el-tv-tree-row-lost { opacity: 0.5; filter: grayscale(40%); }
+  .el-tv-tree-sep { height: 1px; background: rgba(255,255,255,0.12); flex: none; }
+  .el-tv-tree-crest { border-radius: 999px; object-fit: cover; flex: none; }
+  .el-tv-tree-crest-mono { border-radius: 999px; flex: none; display: flex; align-items: center; justify-content: center;
     background: rgba(255,255,255,0.12); font-weight: 900; color: #fff; }
-  .el-tv-bracket-score {
-    position: absolute; bottom: -8%; right: -8%; min-width: 34%; padding: 2px 8%; border-radius: 999px; text-align: center;
-    font-weight: 900; font-variant-numeric: tabular-nums; color: #04170a; box-shadow: 0 6px 14px -4px rgba(0,0,0,0.6);
-  }
-  .el-tv-bracket-final-label {
-    position: absolute; transform: translateX(-50%); font-weight: 900; text-transform: uppercase; letter-spacing: 2px;
-    color: var(--accent, #22c55e); font-size: 18px;
-  }
-  .el-tv-bracket-champion {
+  .el-tv-tree-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; color: rgba(255,255,255,0.88); }
+  .el-tv-tree-name-won { font-weight: 900; color: #fff; }
+  .el-tv-tree-score { flex: none; font-weight: 900; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.6); }
+  .el-tv-tree-champion {
     position: absolute; transform: translateX(-50%); white-space: nowrap; padding: 10px 26px; border-radius: 999px;
     font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #04170a; font-size: 22px;
     box-shadow: 0 14px 30px -10px rgba(0,0,0,0.7);
@@ -462,7 +463,11 @@ export function TvCanvas({
             ) : currentPage.kind === "next-game" ? (
               <NextGamePage nextGame={currentPage.nextGame} />
             ) : currentPage.kind === "knockout" ? (
-              <BracketCircleTv knockout={currentPage.knockout} maxBoardPx={stage.stageHeightPx - BRACKET_VERTICAL_CHROME_PX} />
+              <BracketTreeTv
+                knockout={currentPage.knockout}
+                maxWidthPx={stage.stageWidthPx - BRACKET_HORIZONTAL_CHROME_PX}
+                maxHeightPx={stage.stageHeightPx - BRACKET_VERTICAL_CHROME_PX}
+              />
             ) : currentPage.kind === "scorers" ? (
               <ScorersTable scorers={currentPage.scorers} />
             ) : currentPage.kind === "final-winner" || currentPage.kind === "favorite-team" ? (

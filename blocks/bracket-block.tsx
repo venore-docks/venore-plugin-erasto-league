@@ -1,14 +1,14 @@
 import type { BlockRendererProps } from "@venore/plugin-sdk";
 import { getBracketView } from "../runtime/bracket";
-import { BracketCircle } from "./bracket-circle";
+import { BracketTree } from "./bracket-tree";
 
 function readString(data: Record<string, unknown>, key: string, fallback = ""): string {
   const value = data[key];
   return typeof value === "string" ? value : fallback;
 }
 
-// Fases do campeonato — grupos (mini-classificação + jogos) e eliminatórias (chave circular, final no centro),
-// sempre recalculado na hora de renderizar (runtime/bracket.ts).
+// Fases do campeonato — grupos (mini-classificação + jogos) e eliminatórias (chave espelhada,
+// estilo Copa do Mundo, final no meio), sempre recalculado na hora de renderizar (runtime/bracket.ts).
 export async function ErastoLeagueBracketBlock({ block }: BlockRendererProps) {
   const title = readString(block.data, "title", "Fases do campeonato");
   const knockoutOnly = readString(block.data, "variant", "full") === "knockout";
@@ -71,7 +71,7 @@ export async function ErastoLeagueBracketBlock({ block }: BlockRendererProps) {
         </div>
       )}
 
-      {view.knockout.length > 0 && <BracketCircle knockout={view.knockout} />}
+      {view.knockout.length > 0 && <BracketTree knockout={view.knockout} />}
     </div>
   );
 }
