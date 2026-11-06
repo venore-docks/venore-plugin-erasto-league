@@ -76,6 +76,29 @@ describe("computeFunnelLayout", () => {
     expect(result.centers[2]).toEqual([2, 0, 1, 3]); // QF1=2, QF2=0, QF3=1, QF4=3
   });
 
+  it("final com só um lado definido não deixa a outra semifinal órfã (bug real: cards sobrepostos)", () => {
+    // Visto em produção: final mostrava "A definir x Katchau FC" (só um finalista decidido) e as duas
+    // semifinais renderizavam exatamente no mesmo lugar, com o texto de uma por cima da outra. Causa:
+    // a final só achava 1 filho por identidade (a semifinal do Katchau) e não completava o outro lado,
+    // então a OUTRA semifinal (e toda a subárvore dela) nunca era visitada e ficava com centro padrão 0
+    // — igual ao centro real da semifinal do Katchau.
+    const result = computeFunnelLayout([
+      [{ homeSlug: null, awaySlug: "katchau" }],
+      [
+        { homeSlug: "flamingos", awaySlug: "baile" },
+        { homeSlug: "smurfs", awaySlug: "katchau" },
+      ],
+      [
+        { homeSlug: "flamingos", awaySlug: "bananaticos" },
+        { homeSlug: "katchau", awaySlug: "chamas" },
+      ],
+    ]);
+    expect(result.children[0][0]).toEqual([0, 1]); // final enxerga as duas semifinais, não só a do Katchau
+    expect(result.centers[1][0]).not.toBe(result.centers[1][1]); // as duas semifinais NÃO podem cair no mesmo centro
+    expect(result.centers[1]).toEqual([0, 1]);
+    expect(result.centers[2]).toEqual([0, 1]);
+  });
+
   it("casa pelo lado conhecido quando só um dos times do confronto já está definido", () => {
     const result = computeFunnelLayout([
       [{ homeSlug: null, awaySlug: null }],
