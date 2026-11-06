@@ -1,3 +1,5 @@
+import type { TvPageVisibility } from "./tv-pages";
+
 // Chaves/defaults de contexts/settings do plugin — única fonte de verdade, usada tanto pelo
 // manifest.ts (registro do default via registerDefaultSetting, ver register-plugins.ts do core)
 // quanto pela tela admin de configuração. Mesmo padrão de BROADCAST_SETTINGS do venore-plugin-broadcast.
@@ -94,6 +96,39 @@ export const ERASTO_LEAGUE_SETTINGS = {
     defaultValue: true,
     label: "Fase de grupos encerrada (home mostra a chave)",
   },
+  // O que entra na rotação da TV (routes/tv) — cada chave liga/desliga um TIPO de página inteiro
+  // (shared/tv-pages.ts TvPageVisibility). Default true em todo campo: instalação nova ou setting
+  // ainda não salva mostra tudo, como sempre foi antes dessa tela de configuração existir.
+  tvShowNextGame: {
+    key: "erasto-league.tvShowNextGame",
+    defaultValue: true,
+    label: "TV: próximo jogo",
+  },
+  tvShowStandings: {
+    key: "erasto-league.tvShowStandings",
+    defaultValue: true,
+    label: "TV: grupos/classificação",
+  },
+  tvShowScorers: {
+    key: "erasto-league.tvShowScorers",
+    defaultValue: true,
+    label: "TV: artilheiros",
+  },
+  tvShowBracket: {
+    key: "erasto-league.tvShowBracket",
+    defaultValue: true,
+    label: "TV: chave do campeonato",
+  },
+  tvShowFinalWinner: {
+    key: "erasto-league.tvShowFinalWinner",
+    defaultValue: true,
+    label: "TV: favorito da final",
+  },
+  tvShowFavoriteTeam: {
+    key: "erasto-league.tvShowFavoriteTeam",
+    defaultValue: true,
+    label: "TV: time da torcida",
+  },
 } as const;
 
 export type ErastoLeagueSettingField = keyof typeof ERASTO_LEAGUE_SETTINGS;
@@ -116,6 +151,8 @@ export type ErastoLeagueConfig = {
   favoriteTeamVotingOpen: boolean;
   // Fase de grupos encerrada — ver groupStageClosed acima.
   groupStageClosed: boolean;
+  // O que entra na rotação da TV — ver tvShow* acima e shared/tv-pages.ts.
+  tvPageVisibility: TvPageVisibility;
 };
 
 const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;

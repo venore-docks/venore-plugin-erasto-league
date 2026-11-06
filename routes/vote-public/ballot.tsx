@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Button } from "@venore/plugin-sdk/ui";
-import { castFavoriteTeamVoteAction, castMatchVoteAction, requestVoteTicketAction, type VoteActionState } from "./actions";
+import { castFavoriteTeamVoteAction, castMatchVoteAction, castMatchWinnerVoteAction, requestVoteTicketAction, type VoteActionState } from "./actions";
 import { TurnstileWidget } from "./turnstile-widget";
 
 export type BallotOption = {
@@ -83,16 +83,16 @@ export function Ballot({
   allowChange,
   turnstileSiteKey,
 }: {
-  kind: "match" | "favorite";
+  kind: "match" | "favorite" | "winner";
   hiddenFields: Record<string, string>;
   sections: BallotSection[];
   // Escolha já registrada deste aparelho (lida do cookie no servidor).
   currentChoiceId: string | null;
-  // Time favorito: pode trocar o voto; Jogador da Torcida: voto único.
+  // Time favorito: pode trocar o voto; Jogador da Torcida e Favorito da Final: voto único.
   allowChange: boolean;
   turnstileSiteKey: string | null;
 }) {
-  const action = kind === "match" ? castMatchVoteAction : castFavoriteTeamVoteAction;
+  const action = kind === "match" ? castMatchVoteAction : kind === "winner" ? castMatchWinnerVoteAction : castFavoriteTeamVoteAction;
   const [state, setState] = useState<VoteActionState>(INITIAL_STATE);
   const stateRef = useRef<VoteActionState>(INITIAL_STATE);
   const formRef = useRef<HTMLFormElement>(null);
@@ -122,7 +122,7 @@ export function Ballot({
     changeRequestedAt !== null &&
     (state.attempt === changeRequestedAt || state.status === "error" || state.status === "wait" || busy);
   const showBallot = confirmedChoiceId === null || changing;
-  const fieldName = kind === "match" ? "playerId" : "teamId";
+  const fieldName = kind === "match" ? "playerId" : "teamId"; // favorite e winner escolhem time
   const selectedName = nameOf(selectedId);
   const needsToken = Boolean(turnstileSiteKey);
 
@@ -189,10 +189,12 @@ export function Ballot({
           {state.status === "success" && state.message && <p className="text-sm font-bold text-foreground">✅ {state.message}</p>}
           {state.status === "error" && state.message && <p className="text-sm font-semibold text-muted-foreground">{state.message}</p>}
           <p className="text-sm text-foreground">
-            {kind === "match" ? "Seu voto neste jogo: " : "Seu time favorito: "}
+            {kind === "match" ? "Seu voto neste jogo: " : kind === "winner" ? "Seu voto no favorito da final: " : "Seu time favorito: "}
             <span className="font-bold">{nameOf(confirmedChoiceId) ?? "—"}</span>
           </p>
-          {kind === "match" && <p className="mt-1 text-xs text-muted-foreground">Cada aparelho vota uma vez por jogo.</p>}
+          {(kind === "match" || kind === "winner") && (
+            <p className="mt-1 text-xs text-muted-foreground">Cada aparelho vota uma vez por jogo.</p>
+          )}
         </div>
         {allowChange && (
           <Button

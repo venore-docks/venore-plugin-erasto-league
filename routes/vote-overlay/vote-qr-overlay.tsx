@@ -35,6 +35,10 @@ const CSS = `
   .elv-card.top-right { top: 48px; right: 48px; }
   .elv-card.bottom-left { bottom: 48px; left: 48px; }
   .elv-card.bottom-right { bottom: 48px; right: 48px; }
+  /* Favorito da Final chama mais atenção que o Jogador da Torcida de um jogo qualquer. */
+  .elv-card.final { border-color: #f2c53d; box-shadow: 0 30px 70px rgba(0,0,0,0.55), 0 8px 30px rgba(242,197,61,0.45); }
+  .elv-card.final .elv-eyebrow { color: #f2c53d; }
+  .elv-card.final::after { background: linear-gradient(90deg, transparent, #f2c53d, transparent); }
 
   .elv-qr { flex: none; width: 196px; height: 196px; padding: 12px; border-radius: 18px; background: #ffffff;
     box-shadow: 0 10px 26px rgba(0,0,0,0.35); }
@@ -91,14 +95,19 @@ export function VoteQrOverlay({
       <style>{CSS}</style>
       <div className="elv-wrap" style={{ "--accent": accentColor } as CSSProperties}>
         {callout && (
-          <div key={callout.kind === "match" ? callout.matchId : "favorite"} className={`elv-card ${position}`}>
+          <div
+            key={callout.kind === "match" ? callout.matchId : "favorite"}
+            className={`elv-card ${position} ${callout.kind === "match" && callout.isFinal ? "final" : ""}`}
+          >
             <div className="elv-qr">
               <svg viewBox={`0 0 ${qr.size} ${qr.size}`} shapeRendering="crispEdges" aria-label="QR code da votação">
                 <path d={qr.path} fill="#000000" />
               </svg>
             </div>
             <div className="elv-text">
-              <span className="elv-eyebrow">{callout.kind === "match" ? "⭐ Jogador da Torcida" : "💚 Time favorito"}</span>
+              <span className="elv-eyebrow">
+                {callout.kind === "match" ? (callout.isFinal ? "🏆 Favorito da Final" : "⭐ Jogador da Torcida") : "💚 Time favorito"}
+              </span>
               <span className="elv-title">{callout.kind === "match" ? callout.title : "Vote no seu time"}</span>
               <span className="elv-hint">Aponte a câmera do celular e vote</span>
               <span className="elv-url">{displayUrl}</span>

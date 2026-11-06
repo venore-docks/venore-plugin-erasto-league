@@ -49,7 +49,7 @@ function Slot({
       className={`relative block size-full rounded-full bg-card transition-opacity ${lost ? "opacity-55 grayscale-[35%]" : ""}`}
       style={{
         boxShadow: won
-          ? `0 0 0 2px var(--card), 0 0 0 4px ${accent}, 0 6px 18px -4px ${accent}`
+          ? `0 0 0 2px var(--card), 0 0 0 4px ${accent}, 0 3px 8px -3px ${accent}`
           : "0 0 0 1px var(--border)",
       }}
     >

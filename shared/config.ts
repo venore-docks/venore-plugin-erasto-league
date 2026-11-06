@@ -12,6 +12,7 @@ import {
 } from "./settings";
 import { resolveMediaImageUrl } from "./media-url";
 import type { VoteCostPolicy } from "./fan-votes";
+import type { TvPageVisibility } from "./tv-pages";
 
 function asString(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim().length > 0 ? value : fallback;
@@ -76,21 +77,51 @@ export async function readVoteCostPolicyFresh(): Promise<VoteCostPolicy> {
 // admin consomem. Uma ida ao contexts/settings por chave, em paralelo.
 export async function resolveErastoLeagueConfig(): Promise<ErastoLeagueConfig> {
   const S = ERASTO_LEAGUE_SETTINGS;
-  const [periodMin, periodCount, accent, logoMedia, youtubeChannelId, goalFlashSeconds, fanVoteWindowHours, favoriteTeamVotingOpen, groupStageClosed] =
-    await Promise.all([
-      getSetting({ key: S.periodMinutes.key }),
-      getSetting({ key: S.periodCount.key }),
-      getSetting({ key: S.accentColor.key }),
-      getSetting({ key: S.logoMediaId.key }),
-      getSetting({ key: S.youtubeChannelId.key }),
-      getSetting({ key: S.goalFlashSeconds.key }),
-      getSetting({ key: S.fanVoteWindowHours.key }),
-      getSetting({ key: S.favoriteTeamVotingOpen.key }),
-      getSetting({ key: S.groupStageClosed.key }),
-    ]);
+  const [
+    periodMin,
+    periodCount,
+    accent,
+    logoMedia,
+    youtubeChannelId,
+    goalFlashSeconds,
+    fanVoteWindowHours,
+    favoriteTeamVotingOpen,
+    groupStageClosed,
+    tvShowNextGame,
+    tvShowStandings,
+    tvShowScorers,
+    tvShowBracket,
+    tvShowFinalWinner,
+    tvShowFavoriteTeam,
+  ] = await Promise.all([
+    getSetting({ key: S.periodMinutes.key }),
+    getSetting({ key: S.periodCount.key }),
+    getSetting({ key: S.accentColor.key }),
+    getSetting({ key: S.logoMediaId.key }),
+    getSetting({ key: S.youtubeChannelId.key }),
+    getSetting({ key: S.goalFlashSeconds.key }),
+    getSetting({ key: S.fanVoteWindowHours.key }),
+    getSetting({ key: S.favoriteTeamVotingOpen.key }),
+    getSetting({ key: S.groupStageClosed.key }),
+    getSetting({ key: S.tvShowNextGame.key }),
+    getSetting({ key: S.tvShowStandings.key }),
+    getSetting({ key: S.tvShowScorers.key }),
+    getSetting({ key: S.tvShowBracket.key }),
+    getSetting({ key: S.tvShowFinalWinner.key }),
+    getSetting({ key: S.tvShowFavoriteTeam.key }),
+  ]);
 
   const read = (r: GetSettingResult): unknown => (r.success && r.data ? r.data.value : undefined);
   const logoMediaId = asString(read(logoMedia), S.logoMediaId.defaultValue).trim();
+
+  const tvPageVisibility: TvPageVisibility = {
+    nextGame: asBoolean(read(tvShowNextGame), S.tvShowNextGame.defaultValue),
+    standings: asBoolean(read(tvShowStandings), S.tvShowStandings.defaultValue),
+    scorers: asBoolean(read(tvShowScorers), S.tvShowScorers.defaultValue),
+    bracket: asBoolean(read(tvShowBracket), S.tvShowBracket.defaultValue),
+    finalWinner: asBoolean(read(tvShowFinalWinner), S.tvShowFinalWinner.defaultValue),
+    favoriteTeam: asBoolean(read(tvShowFavoriteTeam), S.tvShowFavoriteTeam.defaultValue),
+  };
 
   return {
     periodMs: clampPeriodMinutes(asNumber(read(periodMin), S.periodMinutes.defaultValue)) * 60_000,
@@ -103,5 +134,6 @@ export async function resolveErastoLeagueConfig(): Promise<ErastoLeagueConfig> {
     fanVoteWindowHours: clampFanVoteWindowHours(asNumber(read(fanVoteWindowHours), S.fanVoteWindowHours.defaultValue)),
     favoriteTeamVotingOpen: asBoolean(read(favoriteTeamVotingOpen), S.favoriteTeamVotingOpen.defaultValue),
     groupStageClosed: asBoolean(read(groupStageClosed), S.groupStageClosed.defaultValue),
+    tvPageVisibility,
   };
 }

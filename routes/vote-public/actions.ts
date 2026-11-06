@@ -7,7 +7,9 @@ import {
   WAIT_MORE_MESSAGE,
   castFavoriteTeamVote,
   castMatchFanVote,
+  castMatchWinnerVote,
   countPollVotesFromNetwork,
+  getFinalMatchPoll,
   toMatchVotePoll,
   type CastVoteResult,
   type NetworkVoteGate,
@@ -69,7 +71,7 @@ function toState(prev: VoteActionState, result: CastVoteResult, successMessage: 
 // Pedido do ticket, no toque em "Votar". Recusa cedo o que o voto recusaria de qualquer jeito
 // (votação fechada, teto da rede) pra ninguém esperar à toa; a espera devolvida é só a estimativa
 // pra barra de progresso — quem manda é a checagem na hora do voto (checkTicket).
-export async function requestVoteTicketAction(input: { kind: "match" | "favorite"; matchId?: string }): Promise<VoteTicketResult> {
+export async function requestVoteTicketAction(input: { kind: "match" | "favorite" | "winner"; matchId?: string }): Promise<VoteTicketResult> {
   if (!(await isPluginActive("erasto-league"))) return { ok: false, message: UNAVAILABLE };
 
   let scope: VoteTicketScope;
@@ -80,6 +82,14 @@ export async function requestVoteTicketAction(input: { kind: "match" | "favorite
       return { ok: false, message: "A votação deste jogo já foi encerrada." };
     }
     scope = { kind: "match", matchId };
+  } else if (input?.kind === "winner") {
+    const matchId = typeof input.matchId === "string" ? input.matchId : "";
+    const windowHours = await readFanVoteWindowHours();
+    const poll = await getFinalMatchPoll(windowHours);
+    if (!poll || poll.match.id !== matchId || !poll.isOpen) {
+      return { ok: false, message: "A votação do favorito da final já foi encerrada." };
+    }
+    scope = { kind: "winner", matchId };
   } else {
     if (!(await readFavoriteTeamVotingOpenFresh())) return { ok: false, message: "A votação do time favorito está fechada." };
     scope = { kind: "favorite" };
@@ -153,6 +163,34 @@ export async function castMatchVoteAction(prev: VoteActionState, formData: FormD
   });
 
   // Re-renderiza a página (parcial atualizado + "seu voto") com o cookie que acabou de ser gravado.
+  refresh();
+  return toState(prev, result, "Voto registrado! Obrigado por participar.");
+}
+
+export async function castMatchWinnerVoteAction(prev: VoteActionState, formData: FormData): Promise<VoteActionState> {
+  if (!(await isPluginActive("erasto-league"))) return state(prev, { status: "error", message: UNAVAILABLE });
+
+  const matchId = String(formData.get("matchId") ?? "");
+  const teamId = String(formData.get("teamId") ?? "");
+  if (!matchId || !teamId) {
+    return state(prev, { status: "error", message: "Escolha um time antes de votar." });
+  }
+
+  const ticket = await checkTicket(prev, formData, { kind: "winner", matchId });
+  if (!ticket.ok) return ticket.state;
+  const blocked = await checkTurnstile(prev, formData);
+  if (blocked) return blocked;
+
+  const [voter, windowHours] = await Promise.all([ensureVoterIdentity(), readFanVoteWindowHours()]);
+  const result = await castMatchWinnerVote({
+    matchId,
+    teamId,
+    voter,
+    windowHours,
+    ticketNonce: ticket.nonce,
+    gate: { ...ticket.gate, ipHash: voter.ipHash },
+  });
+
   refresh();
   return toState(prev, result, "Voto registrado! Obrigado por participar.");
 }

@@ -39,6 +39,35 @@ export const matchFanVotes = erastoLeagueSchema.table(
   ],
 );
 
+// "Favorito da Final" — mesmo molde de matchFanVotes (um voto por aparelho por partida, sem troca,
+// janela do início até N horas depois do jogo), só que escolhendo o TIME vencedor em vez do jogador,
+// e só fica disponível quando a partida é a final (runtime/fan-votes.ts getFinalMatchPoll checa
+// fixture.phase antes de abrir). Tabela separada de matchFanVotes porque o "escolhido" é um time, não
+// um jogador — reaproveitar a mesma tabela exigiria playerId nullable só pra essa votação.
+export const matchWinnerVotes = erastoLeagueSchema.table(
+  "match_winner_votes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => matches.id),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id),
+    voterKey: text("voter_key").notNull(),
+    ipHash: text("ip_hash"),
+    uaHash: text("ua_hash"),
+    ticketNonce: text("ticket_nonce"),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("match_winner_votes_match_voter_unique").on(table.matchId, table.voterKey),
+    index("match_winner_votes_match_ip_idx").on(table.matchId, table.ipHash),
+    uniqueIndex("match_winner_votes_ticket_nonce_unique").on(table.ticketNonce),
+  ],
+);
+
 // "Time favorito" da temporada — um voto por aparelho no campeonato inteiro, que PODE ser trocado
 // enquanto a votação estiver aberta (a troca tira o incentivo de abrir aba anônima só pra "mudar de
 // ideia"). Aberta/fechada pela setting erasto-league.favoriteTeamVotingOpen; nova temporada = o

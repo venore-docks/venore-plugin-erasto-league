@@ -44,6 +44,12 @@ export async function saveErastoLeagueSettingsAction(
     setSetting({ key: S.goalFlashSeconds.key, value: goalFlashSeconds }),
     // Checkbox desmarcado não vai no FormData.
     setSetting({ key: S.groupStageClosed.key, value: formData.get("groupStageClosed") === "on" }),
+    setSetting({ key: S.tvShowNextGame.key, value: formData.get("tvShowNextGame") === "on" }),
+    setSetting({ key: S.tvShowStandings.key, value: formData.get("tvShowStandings") === "on" }),
+    setSetting({ key: S.tvShowScorers.key, value: formData.get("tvShowScorers") === "on" }),
+    setSetting({ key: S.tvShowBracket.key, value: formData.get("tvShowBracket") === "on" }),
+    setSetting({ key: S.tvShowFinalWinner.key, value: formData.get("tvShowFinalWinner") === "on" }),
+    setSetting({ key: S.tvShowFavoriteTeam.key, value: formData.get("tvShowFavoriteTeam") === "on" }),
   ];
 
   const results = await Promise.all(writes);

@@ -13,10 +13,12 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 const TICKET_TTL_MS = 15 * 60 * 1000;
 const PREFIX = "v1";
 
-export type VoteTicketScope = { kind: "match"; matchId: string } | { kind: "favorite" };
+export type VoteTicketScope = { kind: "match"; matchId: string } | { kind: "favorite" } | { kind: "winner"; matchId: string };
 
 function scopeKey(scope: VoteTicketScope): string {
-  return scope.kind === "match" ? `m-${scope.matchId}` : "f";
+  if (scope.kind === "match") return `m-${scope.matchId}`;
+  if (scope.kind === "winner") return `w-${scope.matchId}`;
+  return "f";
 }
 
 function secret(): string {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { buildTvPages, type TvPage } from "../../shared/tv-pages";
 import { resolveTvStageTransform, type TvStageTransform } from "../../shared/tv-stage";
 import { rankPositions } from "../../shared/ranking";
+import { FIXTURE_PHASE_LABEL } from "../../shared/fixture-phase";
 import { formatScore } from "../../shared/score";
 import { getTvDataAction, getTvDataVersionAction, type TvData } from "./actions";
 import { BracketCircleTv } from "./bracket-circle-tv";
@@ -102,30 +103,37 @@ const CSS = `
     box-shadow: 0 14px 30px -10px rgba(0,0,0,0.7);
   }
 
-  .el-tv-favorite-total { text-align: center; font-size: 20px; font-weight: 700; color: rgba(255,255,255,0.45); margin: 0 0 18px; }
-  .el-tv-favorite-row { position: relative; display: flex; align-items: center; gap: 24px; padding: 18px 28px; border-radius: 22px; overflow: hidden;
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px; }
+  .el-tv-favorite-total { text-align: center; font-size: 18px; font-weight: 700; color: rgba(255,255,255,0.45); margin: 0 0 14px; }
+  .el-tv-favorite-row { position: relative; display: flex; align-items: center; gap: 20px; padding: 14px 24px; border-radius: 20px; overflow: hidden;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); margin-bottom: 12px; }
   .el-tv-favorite-row:last-child { margin-bottom: 0; }
   .el-tv-favorite-row.top { border-color: color-mix(in srgb, var(--accent, #22c55e) 60%, transparent); }
   .el-tv-favorite-fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--row-color, var(--accent, #22c55e)) 26%, transparent); }
-  .el-tv-favorite-rank { position: relative; width: 56px; text-align: center; font-size: 30px; font-weight: 900; color: rgba(255,255,255,0.5); flex: none; }
-  .el-tv-favorite-crest { position: relative; width: 76px; height: 76px; border-radius: 999px; object-fit: cover; flex: none; box-shadow: 0 8px 18px -6px rgba(0,0,0,0.5); }
-  .el-tv-favorite-crest-mono { position: relative; width: 76px; height: 76px; border-radius: 999px; flex: none; display: flex; align-items: center;
-    justify-content: center; font-size: 24px; font-weight: 900; background: rgba(255,255,255,0.1); }
-  .el-tv-favorite-name { position: relative; flex: 1; min-width: 0; font-size: 34px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .el-tv-favorite-rank { position: relative; width: 48px; text-align: center; font-size: 26px; font-weight: 900; color: rgba(255,255,255,0.5); flex: none; }
+  .el-tv-favorite-crest { position: relative; width: 60px; height: 60px; border-radius: 999px; object-fit: cover; flex: none; box-shadow: 0 8px 18px -6px rgba(0,0,0,0.5); }
+  .el-tv-favorite-crest-mono { position: relative; width: 60px; height: 60px; border-radius: 999px; flex: none; display: flex; align-items: center;
+    justify-content: center; font-size: 20px; font-weight: 900; background: rgba(255,255,255,0.1); }
+  .el-tv-favorite-name { position: relative; flex: 1; min-width: 0; font-size: 28px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .el-tv-favorite-pct { position: relative; flex: none; text-align: right; }
-  .el-tv-favorite-pct-value { font-size: 42px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--accent, #22c55e); }
-  .el-tv-favorite-pct-votes { font-size: 17px; font-weight: 700; color: rgba(255,255,255,0.5); font-variant-numeric: tabular-nums; }
+  .el-tv-favorite-pct-value { font-size: 36px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--accent, #22c55e); }
+  .el-tv-favorite-pct-votes { font-size: 15px; font-weight: 700; color: rgba(255,255,255,0.5); font-variant-numeric: tabular-nums; }
 
   .el-tv-next {
     flex: 1; display: flex; flex-direction: column; min-height: 0; border-radius: 28px; overflow: hidden; position: relative;
     background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
     border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 40px 80px -30px rgba(0,0,0,0.65);
   }
+  /* Semifinal/final chamam mais atenção que um jogo de grupo/quartas qualquer (pedido explícito) —
+     borda mais grossa + glow na cor do destaque (semifinal) ou num dourado próprio (final, único
+     jeito de ter essa temperatura de cor aqui — esta tela não usa tokens shadcn, ver cabeçalho). */
+  .el-tv-next-tier-semifinal { border: 3px solid var(--accent, #22c55e); box-shadow: 0 0 90px -20px color-mix(in srgb, var(--accent, #22c55e) 70%, transparent), 0 40px 80px -30px rgba(0,0,0,0.65); }
+  .el-tv-next-tier-final { border: 3px solid #f2c53d; box-shadow: 0 0 110px -20px rgba(242,197,61,0.55), 0 40px 80px -30px rgba(0,0,0,0.65); }
   .el-tv-next-badges { position: relative; display: flex; justify-content: center; gap: 10px; padding-top: 28px; }
   .el-tv-next-badge { padding: 5px 16px; border-radius: 999px; background: rgba(255,255,255,0.1); backdrop-filter: blur(4px);
     font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: #fff; }
   .el-tv-next-badge.round { background: var(--accent, #22c55e); color: #04170a; }
+  .el-tv-next-phase.semifinal { background: var(--accent, #22c55e); color: #04170a; }
+  .el-tv-next-phase.final { background: #f2c53d; color: #2b1d00; font-size: 15px; padding: 7px 20px; }
   .el-tv-next-row { position: relative; flex: 1; display: flex; align-items: center; }
   .el-tv-next-side { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 0 24px; min-width: 0; }
   .el-tv-next-crest {
@@ -158,6 +166,7 @@ function pageTitle(page: TvPage): string {
   if (page.kind === "group") return `Grupo ${page.groupName}`;
   if (page.kind === "standings") return "Classificação";
   if (page.kind === "scorers") return "Artilheiros";
+  if (page.kind === "final-winner") return "🏆 Favorito da final";
   if (page.kind === "favorite-team") return "Time da torcida";
   return "Chave do campeonato";
 }
@@ -171,16 +180,29 @@ function formatNextGameWhen(date: string | null, time: string | null): string {
   return time ? `${dateLabel} · ${time}` : dateLabel;
 }
 
+// Fase em destaque — mesmo critério de blocks/next-game-ad-block.tsx featuredTier: semifinal e final
+// chamam mais atenção que um jogo de grupo/quartas qualquer.
+type FeaturedTier = "none" | "semifinal" | "final";
+
+function featuredTier(phase: NextGameView["phase"]): FeaturedTier {
+  if (phase === "final") return "final";
+  if (phase === "semifinal") return "semifinal";
+  return "none";
+}
+
 // Mesmo espírito do bloco erasto-league.next-game-ad (página inicial) — fundo split com a cor de
 // cada time, crista grande, "VS" no meio — só que em CSS própria (sem Tailwind/shadcn, ver motivo
 // no topo do arquivo) e ocupando o palco inteiro (já é 16:9).
 function NextGamePage({ nextGame }: { nextGame: NextGameView }) {
   const homeColor = nextGame.homeColor ?? "#6b7280";
   const awayColor = nextGame.awayColor ?? "#6b7280";
+  const tier = featuredTier(nextGame.phase);
+  const phaseLabel = FIXTURE_PHASE_LABEL[nextGame.phase];
 
   return (
-    <div className="el-tv-next">
+    <div className={`el-tv-next ${tier !== "none" ? `el-tv-next-tier-${tier}` : ""}`}>
       <div className="el-tv-next-badges">
+        <span className={`el-tv-next-badge el-tv-next-phase ${tier}`}>{tier === "final" ? `🏆 ${phaseLabel}` : phaseLabel}</span>
         {nextGame.roundLabel && <span className="el-tv-next-badge round">{nextGame.roundLabel}</span>}
       </div>
       <div className="el-tv-next-row">
@@ -393,7 +415,7 @@ export function TvCanvas({
   }, []);
 
   const stage = useTvStageTransform();
-  const pages = buildTvPages(data.bracket, data.standings, data.nextGame, data.scorers, data.favoriteTeam);
+  const pages = buildTvPages(data.bracket, data.standings, data.nextGame, data.scorers, data.favoriteTeam, data.finalWinner, data.options);
 
   const [pageIndex, setPageIndex] = useState(0);
   const safePageIndex = pages.length === 0 ? 0 : Math.min(pageIndex, pages.length - 1);
@@ -443,7 +465,7 @@ export function TvCanvas({
               <BracketCircleTv knockout={currentPage.knockout} maxBoardPx={stage.stageHeightPx - BRACKET_VERTICAL_CHROME_PX} />
             ) : currentPage.kind === "scorers" ? (
               <ScorersTable scorers={currentPage.scorers} />
-            ) : currentPage.kind === "favorite-team" ? (
+            ) : currentPage.kind === "final-winner" || currentPage.kind === "favorite-team" ? (
               <FavoriteTeamPage results={currentPage.results} />
             ) : currentPage.kind === "standings" || currentPage.kind === "group" ? (
               <StandingsTable standings={currentPage.standings} />

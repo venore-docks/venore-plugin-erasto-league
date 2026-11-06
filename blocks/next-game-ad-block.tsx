@@ -1,5 +1,6 @@
 import type { BlockRendererProps } from "@venore/plugin-sdk";
 import { getNextFixture, type NextGameView } from "../runtime/bracket";
+import { FIXTURE_PHASE_LABEL } from "../shared/fixture-phase";
 
 function readString(data: Record<string, unknown>, key: string, fallback = ""): string {
   const value = data[key];
@@ -68,13 +69,43 @@ export async function ErastoLeagueNextGameAdBlock({ block }: BlockRendererProps)
   return <NextGameAdCard next={next} title={title} />;
 }
 
+// Fase em destaque "chama mais atenção" — pedido explícito: semifinal e final precisam se
+// diferenciar visualmente de um jogo de grupo/quartas qualquer. Final usa o token "warning"
+// (dourado no tema, mesma cor de cartão amarelo) só porque é o único token semântico com essa
+// temperatura de cor — nada a ver com "aviso" aqui. Semifinal usa o "primary" de sempre, só mais
+// intenso (borda mais grossa, glow).
+type FeaturedTier = "none" | "semifinal" | "final";
+
+function featuredTier(phase: NextGameView["phase"]): FeaturedTier {
+  if (phase === "final") return "final";
+  if (phase === "semifinal") return "semifinal";
+  return "none";
+}
+
 // O card em si, sem buscar dado — reusado pela página inicial completa (blocks/home), que já tem o
 // próximo jogo em mãos (e põe o "Adicionar à agenda" embaixo).
 export function NextGameAdCard({ next, title }: { next: NextGameView; title: string }) {
   const dateLabel = next.scheduledDate ? formatDateLabel(next.scheduledDate) : null;
+  const tier = featuredTier(next.phase);
+  const phaseLabel = FIXTURE_PHASE_LABEL[next.phase];
 
   return (
-    <div className="@container relative aspect-video w-full overflow-hidden rounded-panel border-t-4 border-primary bg-gradient-to-br from-card via-card to-muted shadow-xl">
+    <div
+      className={`@container relative aspect-video w-full overflow-hidden rounded-panel shadow-xl ${
+        tier === "final"
+          ? "border-t-4 border-warning bg-gradient-to-br from-warning/15 via-card to-card shadow-warning/20"
+          : tier === "semifinal"
+            ? "border-t-4 border-primary bg-gradient-to-br from-primary/12 via-card to-card shadow-primary/15"
+            : "border-t-4 border-primary bg-gradient-to-br from-card via-card to-muted"
+      }`}
+    >
+      {tier !== "none" && (
+        <div
+          className={`pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b ${tier === "final" ? "from-warning/15" : "from-primary/12"} to-transparent`}
+          aria-hidden="true"
+        />
+      )}
+
       <div className="relative flex h-full flex-col">
         <div className="flex items-center justify-center gap-1.5 pt-1.5 @sm:gap-2 @sm:pt-3 @lg:pt-6">
           {title && (
@@ -82,8 +113,15 @@ export function NextGameAdCard({ next, title }: { next: NextGameView; title: str
               {title}
             </span>
           )}
+          <span
+            className={`rounded-full px-1.5 py-0.5 text-[7px] font-extrabold uppercase tracking-wide @sm:px-2.5 @sm:py-1 @sm:text-[9px] @lg:px-3 @lg:text-xs ${
+              tier === "final" ? "bg-warning text-warning-foreground" : "bg-primary text-primary-foreground"
+            }`}
+          >
+            {tier === "final" ? `🏆 ${phaseLabel}` : phaseLabel}
+          </span>
           {next.roundLabel && (
-            <span className="rounded-full bg-primary px-1.5 py-0.5 text-[7px] font-extrabold uppercase tracking-wide text-primary-foreground @sm:px-2.5 @sm:py-1 @sm:text-[9px] @lg:px-3 @lg:text-xs">
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[7px] font-extrabold uppercase tracking-wide text-muted-foreground @sm:px-2.5 @sm:py-1 @sm:text-[9px] @lg:px-3 @lg:text-xs">
               {next.roundLabel}
             </span>
           )}
@@ -91,7 +129,11 @@ export function NextGameAdCard({ next, title }: { next: NextGameView; title: str
 
         <div className="flex flex-1 items-center">
           <TeamSide name={next.homeName} crestUrl={next.homeCrestUrl} color={next.homeColor} align="left" />
-          <span className="shrink-0 px-0.5 text-sm font-black italic text-muted-foreground @sm:px-1 @sm:text-xl @md:text-2xl @lg:text-4xl">
+          <span
+            className={`shrink-0 px-0.5 text-sm font-black italic @sm:px-1 @sm:text-xl @md:text-2xl @lg:text-4xl ${
+              tier === "final" ? "text-warning" : tier === "semifinal" ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
             VS
           </span>
           <TeamSide name={next.awayName} crestUrl={next.awayCrestUrl} color={next.awayColor} align="right" />

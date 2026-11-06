@@ -51,7 +51,7 @@ function Slot({
         className={`el-tv-bracket-disc ${lost ? "el-tv-bracket-disc-lost" : ""}`}
         style={{
           boxShadow: won
-            ? `0 0 0 ${Math.max(2, sizePx * 0.035)}px #0a0d12, 0 0 0 ${Math.max(4, sizePx * 0.07)}px ${accent}, 0 ${sizePx * 0.12}px ${sizePx * 0.3}px -${sizePx * 0.08}px ${accent}`
+            ? `0 0 0 ${Math.max(2, sizePx * 0.035)}px #0a0d12, 0 0 0 ${Math.max(4, sizePx * 0.07)}px ${accent}, 0 ${sizePx * 0.06}px ${sizePx * 0.16}px -${sizePx * 0.07}px ${accent}`
             : "0 0 0 1px rgba(255,255,255,0.18)",
         }}
       >

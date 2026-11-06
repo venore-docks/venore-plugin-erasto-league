@@ -5,8 +5,11 @@ import { listPlayersByTeam } from "../../runtime/players";
 import {
   getFavoriteTeamResults,
   getMatchFanVoteResults,
+  getMatchWinnerVoteResults,
   getVoterFavoriteTeam,
   getVoterMatchChoice,
+  getVoterMatchWinnerChoice,
+  type FinalMatchPoll,
   type MatchVotePoll,
 } from "../../runtime/fan-votes";
 import { PLAYER_POSITION_LABEL } from "../../shared/player-position";
@@ -72,7 +75,7 @@ function rosterSection(team: TeamProfile | null, roster: PlayerProfile[], key: s
   };
 }
 
-function windowLabel(poll: MatchVotePoll, windowHours: number): string {
+function windowLabel(poll: { window: MatchVotePoll["window"]; isOpen: boolean }, windowHours: number): string {
   if (!poll.window) return "Votação indisponível para este jogo.";
   if (poll.window.closesAt === null) return `Votação aberta — fica aberta até ${windowHours}h depois do fim do jogo.`;
   if (poll.isOpen) return `Votação aberta até ${formatSaoPauloDateTime(poll.window.closesAt)}.`;
@@ -137,6 +140,80 @@ export async function MatchVoteSection({
             <span className="font-semibold text-foreground">
               {[...homeRoster, ...awayRoster].find((player) => player.id === voterChoice)?.name ?? "—"}
             </span>
+          </p>
+        )
+      )}
+
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">{poll.isOpen ? "Parcial" : "Resultado final"}</h3>
+        <VoteResultsList results={results} highlightId={voterChoice} />
+      </div>
+    </section>
+  );
+}
+
+// "Favorito da Final" — mesmo molde de MatchVoteSection (voto único, janela automática), só que
+// escolhendo o TIME vencedor em vez do jogador, e só existe quando a final já tem os dois finalistas
+// definidos (getFinalMatchPoll, runtime/fan-votes.ts).
+export async function WinnerVoteSection({
+  poll,
+  voterKey,
+  windowHours,
+  turnstileSiteKey,
+  headingLevel = "h1",
+}: {
+  poll: FinalMatchPoll;
+  voterKey: string | null;
+  windowHours: number;
+  turnstileSiteKey: string | null;
+  headingLevel?: "h1" | "h2";
+}) {
+  const { match } = poll;
+  const [homeTeam, awayTeam, results, voterChoice] = await Promise.all([
+    getTeam(match.homeTeamId),
+    getTeam(match.awayTeamId),
+    getMatchWinnerVoteResults(match.id, RESULTS_LIMIT),
+    getVoterMatchWinnerChoice(match.id, voterKey),
+  ]);
+  const Heading = headingLevel;
+  const title = `${homeTeam?.name ?? "—"} × ${awayTeam?.name ?? "—"}`;
+  const teams = [homeTeam, awayTeam].filter((team): team is TeamProfile => team !== null);
+
+  const section: BallotSection = {
+    key: "final-teams",
+    title: "Quem vai ganhar?",
+    color: null,
+    options: teams.map((team) => ({ id: team.id, name: team.name, imageUrl: team.crestUrl, caption: null, color: team.primaryColor })),
+  };
+
+  return (
+    <section className="space-y-5">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <TeamCrest team={homeTeam} className="size-10 shrink-0" />
+          <TeamCrest team={awayTeam} className="-ml-4 size-10 shrink-0 ring-2 ring-background" />
+          <Heading className="min-w-0 text-xl font-extrabold tracking-tight text-foreground sm:text-3xl">🏆 Favorito da Final</Heading>
+        </div>
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={poll.isOpen ? "default" : "secondary"}>{poll.isOpen ? "Votação aberta" : "Votação encerrada"}</Badge>
+          <span className="text-xs text-muted-foreground">{windowLabel(poll, windowHours)}</span>
+        </div>
+      </div>
+
+      {poll.isOpen ? (
+        <Ballot
+          kind="winner"
+          hiddenFields={{ matchId: match.id }}
+          sections={[section]}
+          currentChoiceId={voterChoice}
+          allowChange={false}
+          turnstileSiteKey={turnstileSiteKey}
+        />
+      ) : (
+        voterChoice && (
+          <p className="text-sm text-muted-foreground">
+            Seu voto: <span className="font-semibold text-foreground">{teams.find((team) => team.id === voterChoice)?.name ?? "—"}</span>
           </p>
         )
       )}

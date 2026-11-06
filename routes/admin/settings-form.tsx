@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, type ReactNode } from "react";
-import { Clock3, Medal, Palette, Radio, Sparkles, Trophy, type LucideIcon } from "lucide-react";
+import { Clock3, Medal, Palette, Radio, Sparkles, Trophy, Tv, type LucideIcon } from "lucide-react";
 import { Button, Input, MediaPickerField, useActionToast, type PickableMedia } from "@venore/plugin-sdk/ui";
 import { saveErastoLeagueSettingsAction, type ErastoLeagueSettingsState } from "./actions";
 import { formatClock } from "../../shared/clock";
@@ -32,6 +32,15 @@ function SectionHeading({ icon: Icon, title }: { icon: LucideIcon; title: string
     <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
       <Icon className="size-3.5" /> {title}
     </h3>
+  );
+}
+
+function CheckboxField({ name, label, defaultChecked }: { name: string; label: string; defaultChecked: boolean }) {
+  return (
+    <label className="flex items-center gap-2.5 text-sm text-foreground">
+      <input name={name} type="checkbox" defaultChecked={defaultChecked} className="size-4 shrink-0 accent-primary" />
+      {label}
+    </label>
   );
 }
 
@@ -93,6 +102,19 @@ export function SettingsForm({ config, logoMedia }: { config: ErastoLeagueConfig
             </span>
           </span>
         </label>
+      </div>
+
+      <div className="space-y-3 rounded-panel border border-border/60 bg-background/40 p-4">
+        <SectionHeading icon={Tv} title="TV" />
+        <p className="text-xs text-muted-foreground">O que entra no rodízio da tela de TV (/erasto-league/tv). Desmarcada, a página some da rotação inteira.</p>
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <CheckboxField name="tvShowNextGame" label="Próximo jogo" defaultChecked={config.tvPageVisibility.nextGame} />
+          <CheckboxField name="tvShowStandings" label="Grupos/classificação" defaultChecked={config.tvPageVisibility.standings} />
+          <CheckboxField name="tvShowScorers" label="Artilheiros" defaultChecked={config.tvPageVisibility.scorers} />
+          <CheckboxField name="tvShowBracket" label="Chave do campeonato" defaultChecked={config.tvPageVisibility.bracket} />
+          <CheckboxField name="tvShowFinalWinner" label="Favorito da final" defaultChecked={config.tvPageVisibility.finalWinner} />
+          <CheckboxField name="tvShowFavoriteTeam" label="Time da torcida" defaultChecked={config.tvPageVisibility.favoriteTeam} />
+        </div>
       </div>
 
       <div className="space-y-3 rounded-panel border border-border/60 bg-background/40 p-4">

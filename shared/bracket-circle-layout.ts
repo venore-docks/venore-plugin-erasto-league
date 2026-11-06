@@ -27,12 +27,18 @@ export type BracketCircleLayout<F extends BracketCircleFixture> = {
 // Coordenadas em % de um quadrado 0–100, centro em (50, 50) — mesma unidade de um SVG
 // `viewBox="0 0 100 100"`, então tanto um <svg> quanto posicionamento CSS absoluto em % funcionam
 // direto em cima do retorno desta função.
-const OUTER_RADIUS = 38;
-const INNER_RADIUS = 22;
-const SOLE_RING_RADIUS = 33;
+// Vão BEM maior entre anéis do que a primeira tentativa (38/22) — com só 16 unidades de folga, o
+// disco de uma rodada e o da rodada vizinha quase se tocavam, e o brilho do vencedor fazia os dois
+// parecerem uma coisa só ("tabela zoada", times de fases diferentes grudados). Com esses valores, a
+// pior folga (2 anéis, caso mais comum: quartas+semifinal) fica em ~17 unidades de raio livre entre
+// os discos de uma rodada e da outra.
+const OUTER_RADIUS = 40;
+const INNER_RADIUS = 16;
+const SOLE_RING_RADIUS = 28;
 
-// Nó da final: sempre fixo no centro, não faz parte de nenhum anel.
-export const FINAL_NODE = { cx: 50, cy: 50, size: 11, angle: -Math.PI / 2 };
+// Nó da final: sempre fixo no centro, não faz parte de nenhum anel. Menor que antes (8, não 11) pra
+// sobrar folga até o anel mais interno mesmo em campeonato com só uma rodada antes da final.
+export const FINAL_NODE = { cx: 50, cy: 50, size: 7, angle: -Math.PI / 2 };
 
 function ringRadii(count: number): number[] {
   if (count === 1) return [SOLE_RING_RADIUS];
@@ -72,7 +78,7 @@ export function computeBracketCircleLayout<F extends BracketCircleFixture>(
   const rings: BracketCircleRing<F>[] = ringRounds.map((round, ringIndex) => {
     const total = round.fixtures.length;
     const radius = radii[ringIndex];
-    const size = Math.min(10, Math.max(5, (2 * Math.PI * radius) / total / 2.5));
+    const size = Math.min(7, Math.max(4, (2 * Math.PI * radius) / total / 2.5));
     return {
       phase: round.phase,
       radius,

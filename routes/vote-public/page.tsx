@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isPluginActive } from "@venore/plugin-sdk";
-import { getFeaturedMatchPoll, listOpenMatchPolls } from "../../runtime/fan-votes";
+import { getFeaturedMatchPoll, getFinalMatchPoll, listOpenMatchPolls } from "../../runtime/fan-votes";
 import { listTeams } from "../../runtime/teams";
 import { readVoterKey } from "../../runtime/voter";
 import { getTurnstileSiteKey } from "../../runtime/turnstile";
 import { readFanVoteWindowHours, readFavoriteTeamVotingOpenFresh } from "../../shared/config";
-import { FavoriteTeamVoteSection, MatchVoteSection } from "./vote-sections";
+import { FavoriteTeamVoteSection, MatchVoteSection, WinnerVoteSection } from "./vote-sections";
 import { resolveRequestOrigin, VOTE_HUB_PATH } from "../../runtime/request-origin";
 import { storyPath } from "../../shared/story-request";
 import { ShareBar } from "../../blocks/share-bar";
@@ -22,12 +22,13 @@ export default async function VoteHubPage() {
   }
 
   const windowHours = await readFanVoteWindowHours();
-  const [openPolls, voterKey, favoriteOpen, teams, { origin }] = await Promise.all([
+  const [openPolls, voterKey, favoriteOpen, teams, { origin }, finalPoll] = await Promise.all([
     listOpenMatchPolls(windowHours),
     readVoterKey(),
     readFavoriteTeamVotingOpenFresh(),
     listTeams(),
     resolveRequestOrigin(),
+    getFinalMatchPoll(windowHours),
   ]);
   const featuredClosed = openPolls.length === 0 ? await getFeaturedMatchPoll(windowHours) : null;
   const turnstileSiteKey = getTurnstileSiteKey();
@@ -94,6 +95,12 @@ export default async function VoteHubPage() {
           </div>
         )}
       </section>
+
+      {finalPoll && (
+        <section className="space-y-4 rounded-panel border-2 border-warning bg-gradient-to-br from-warning/10 via-card to-card p-4 sm:p-6">
+          <WinnerVoteSection poll={finalPoll} voterKey={voterKey} windowHours={windowHours} turnstileSiteKey={turnstileSiteKey} headingLevel="h2" />
+        </section>
+      )}
 
       <section className="rounded-panel border border-border bg-card p-4 sm:p-6">
         <FavoriteTeamVoteSection voterKey={voterKey} isOpen={favoriteOpen} turnstileSiteKey={turnstileSiteKey} headingLevel="h2" />

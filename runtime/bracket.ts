@@ -161,9 +161,10 @@ export async function getScheduleView(limit?: number): Promise<ScheduleEntry[]> 
 }
 
 // FixtureView já carrega homeColor/awayColor (usado aqui pelo bloco/TV de "próximo jogo", ad 16:9,
-// pra pintar um fundo split com a cor de cada lado) — alias só pelo nome mais descritivo no ponto de
-// uso.
-export type NextGameView = FixtureView;
+// pra pintar um fundo split com a cor de cada lado) — + phase, pro ad poder anunciar "Semifinal"/
+// "Final" (fixture.roundLabel é só o rótulo livre da fase de GRUPOS, ex. "1ª Rodada" — não serve pra
+// isso, ver contracts/types.ts).
+export type NextGameView = FixtureView & { phase: FixturePhase };
 
 // Próximo jogo ainda não realizado, em ordem cronológica (mesma fonte de getScheduleView) — null
 // quando não há nenhum confronto pendente (campeonato encerrado ou tabela ainda não importada).
@@ -222,5 +223,6 @@ export async function getNextFixture(): Promise<NextGameView | null> {
     played: Boolean(match && match.status === "finished"),
     matchId: next.matchId,
     sortOrder: next.sortOrder,
+    phase: next.phase,
   };
 }

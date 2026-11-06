@@ -3,12 +3,14 @@ import { alias } from "drizzle-orm/pg-core";
 import { db } from "@venore/plugin-sdk";
 import {
   favoriteTeamVotes as favoriteTeamVotesTable,
+  fixtures as fixturesTable,
   matchFanVotes as matchFanVotesTable,
   matches as matchesTable,
+  matchWinnerVotes as matchWinnerVotesTable,
   players as playersTable,
   teams as teamsTable,
 } from "../database/schema";
-import { rowToSummary } from "./matches";
+import { getMatch, rowToSummary } from "./matches";
 import {
   buildAuditGroups,
   computeVoteShares,
@@ -26,10 +28,12 @@ import type { VoterIdentity } from "./voter";
 import { resolveMediaImageUrl } from "../shared/media-url";
 
 // Votação da torcida — "Jogador da Torcida" (um voto por aparelho por partida, janela até N horas
-// depois do jogo) e "Time favorito" (um voto por aparelho na temporada, pode trocar). Regras puras
-// (janela, percentuais, heurística de auditoria) em shared/fan-votes.ts; identidade do aparelho em
-// runtime/voter.ts. Sem autorização aqui: voto é público de propósito, e as portas de admin
-// (anular/restaurar/zerar) checam getPluginAdminPageData antes de chamar.
+// depois do jogo), "Time favorito" (um voto por aparelho na temporada, pode trocar) e "Favorito da
+// Final" (mesma janela de Jogador da Torcida, só que escolhendo o TIME vencedor, e só quando a
+// partida é a final — ver getFinalMatchPoll). Regras puras (janela, percentuais, heurística de
+// auditoria) em shared/fan-votes.ts; identidade do aparelho em runtime/voter.ts. Sem autorização
+// aqui: voto é público de propósito, e as portas de admin (anular/restaurar/zerar) checam
+// getPluginAdminPageData antes de chamar.
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -71,7 +75,7 @@ export type CastVoteResult =
       retryAfterSeconds?: number;
     };
 
-export type VoteScope = { kind: "match"; matchId: string } | { kind: "favorite" };
+export type VoteScope = { kind: "match"; matchId: string } | { kind: "favorite" } | { kind: "winner"; matchId: string };
 
 // O "custo" do voto checado DENTRO da transação do insert, com a rede travada
 // (lockNetworkForVote): sem isso, N abas da mesma rede votando no mesmo instante contavam a mesma
@@ -89,7 +93,8 @@ type DbExecutor = Pick<typeof db, "select" | "execute">;
 type VoteTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 function scopeLockKey(scope: VoteScope, ipHash: string): string {
-  return `erasto-league:vote:${scope.kind === "match" ? scope.matchId : "favorite"}:${ipHash}`;
+  const scopeKey = scope.kind === "favorite" ? "favorite" : `${scope.kind}:${scope.matchId}`;
+  return `erasto-league:vote:${scopeKey}:${ipHash}`;
 }
 
 // Lock de transação por (votação, rede) — solto sozinho no commit/rollback. Votos de redes
@@ -130,6 +135,13 @@ export async function countPollVotesFromNetwork(scope: VoteScope, ipHash: string
       .select({ total: count() })
       .from(matchFanVotesTable)
       .where(and(eq(matchFanVotesTable.matchId, scope.matchId), eq(matchFanVotesTable.ipHash, ipHash)));
+    return row?.total ?? 0;
+  }
+  if (scope.kind === "winner") {
+    const [row] = await executor
+      .select({ total: count() })
+      .from(matchWinnerVotesTable)
+      .where(and(eq(matchWinnerVotesTable.matchId, scope.matchId), eq(matchWinnerVotesTable.ipHash, ipHash)));
     return row?.total ?? 0;
   }
   const [row] = await executor.select({ total: count() }).from(favoriteTeamVotesTable).where(eq(favoriteTeamVotesTable.ipHash, ipHash));
@@ -526,6 +538,156 @@ export async function resetFavoriteTeamVotes(): Promise<number> {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Favorito da Final (por partida, só quando a partida é a final)
+// ---------------------------------------------------------------------------------------------
+
+export type FinalMatchPoll = { match: MatchSummary; window: VoteWindow | null; isOpen: boolean };
+
+// A fixture de fase "final" (runtime/bracket.ts FIXTURE_PHASE_ORDER) já linkada a uma partida — só
+// existe uma por campeonato, então não precisa de lista como listOpenMatchPolls.
+async function findFinalMatchId(): Promise<string | null> {
+  const [row] = await db
+    .select({ matchId: fixturesTable.matchId })
+    .from(fixturesTable)
+    .where(and(eq(fixturesTable.phase, "final"), isNotNull(fixturesTable.matchId)))
+    .limit(1);
+  return row?.matchId ?? null;
+}
+
+// null enquanto a final não foi definida/linkada a uma partida (chaveamento ainda não chegou lá).
+export async function getFinalMatchPoll(windowHours: number, now = Date.now()): Promise<FinalMatchPoll | null> {
+  const matchId = await findFinalMatchId();
+  if (!matchId) return null;
+  const match = await getMatch(matchId);
+  if (!match) return null;
+  const window = resolveMatchVoteWindow(match, windowHours);
+  return { match, window, isOpen: isVoteWindowOpen(window, now) };
+}
+
+export async function getMatchWinnerVoteResults(matchId: string, limit?: number): Promise<FanVoteResults> {
+  const rows = await db
+    .select({
+      teamId: teamsTable.id,
+      slug: teamsTable.slug,
+      name: teamsTable.name,
+      crestMediaId: teamsTable.crestMediaId,
+      color: teamsTable.primaryColor,
+      votes: count(matchWinnerVotesTable.id),
+    })
+    .from(matchWinnerVotesTable)
+    .innerJoin(teamsTable, eq(matchWinnerVotesTable.teamId, teamsTable.id))
+    .where(and(eq(matchWinnerVotesTable.matchId, matchId), isNull(matchWinnerVotesTable.voidedAt)))
+    .groupBy(teamsTable.id, teamsTable.slug, teamsTable.name, teamsTable.crestMediaId, teamsTable.primaryColor);
+
+  if (rows.length === 0) return EMPTY_RESULTS;
+
+  const byName = [...rows].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  const shares = computeVoteShares(byName.map((row) => ({ id: row.teamId, votes: row.votes })));
+  const rowById = new Map(rows.map((row) => [row.teamId, row]));
+  const visible = typeof limit === "number" ? shares.slice(0, limit) : shares;
+
+  const entries = await Promise.all(
+    visible.map(async (share) => {
+      const row = rowById.get(share.id)!;
+      return {
+        id: row.teamId,
+        name: row.name,
+        imageUrl: await resolveMediaImageUrl(row.crestMediaId),
+        subtitle: null,
+        href: `/erasto-league/teams/${row.slug}`,
+        color: row.color,
+        votes: share.votes,
+        percent: share.percent,
+      };
+    }),
+  );
+
+  return {
+    totalVotes: shares.reduce((sum, share) => sum + share.votes, 0),
+    entries,
+    leaders: pickLeaders(shares, new Map(rows.map((row) => [row.teamId, row.name]))),
+  };
+}
+
+export async function getVoterMatchWinnerChoice(matchId: string, voterKey: string | null): Promise<string | null> {
+  if (!voterKey) return null;
+  const [row] = await db
+    .select({ teamId: matchWinnerVotesTable.teamId })
+    .from(matchWinnerVotesTable)
+    .where(and(eq(matchWinnerVotesTable.matchId, matchId), eq(matchWinnerVotesTable.voterKey, voterKey)));
+  return row?.teamId ?? null;
+}
+
+export async function castMatchWinnerVote(input: {
+  matchId: string;
+  teamId: string;
+  voter: VoterIdentity;
+  windowHours: number;
+  ticketNonce: string;
+  gate: NetworkVoteGate;
+  now?: number;
+}): Promise<CastVoteResult> {
+  const now = input.now ?? Date.now();
+  const [matchRow] = await db.select().from(matchesTable).where(eq(matchesTable.id, input.matchId));
+  if (!matchRow) {
+    return { ok: false, code: "not_found", message: "Partida não encontrada." };
+  }
+
+  // Só vale pra partida que É a final — mesmo sem isso o insert não quebraria nada, mas uma votação
+  // "do favorito da final" aceitando voto numa semifinal qualquer não faz sentido nenhum.
+  const [finalFixture] = await db
+    .select({ id: fixturesTable.id })
+    .from(fixturesTable)
+    .where(and(eq(fixturesTable.matchId, input.matchId), eq(fixturesTable.phase, "final")));
+  if (!finalFixture) {
+    return { ok: false, code: "invalid_choice", message: "Essa votação só vale pra partida da final." };
+  }
+
+  const window = resolveMatchVoteWindow(rowToSummary(matchRow), input.windowHours);
+  if (!isVoteWindowOpen(window, now)) {
+    return { ok: false, code: "closed", message: "A votação do favorito da final já foi encerrada." };
+  }
+
+  if (input.teamId !== matchRow.homeTeamId && input.teamId !== matchRow.awayTeamId) {
+    return { ok: false, code: "invalid_choice", message: "Esse time não está nesta final." };
+  }
+
+  const scope: VoteScope = { kind: "winner", matchId: input.matchId };
+  const outcome = await db.transaction(async (tx) => {
+    await lockNetworkForVote(tx, scope, input.gate.ipHash);
+    const blocked = await checkNetworkGate(tx, scope, input.gate, Date.now());
+    if (blocked) return { blocked, inserted: 0 };
+    const rows = await tx
+      .insert(matchWinnerVotesTable)
+      .values({
+        matchId: input.matchId,
+        teamId: input.teamId,
+        voterKey: input.voter.voterKey,
+        ipHash: input.voter.ipHash,
+        uaHash: input.voter.uaHash,
+        ticketNonce: input.ticketNonce,
+      })
+      .onConflictDoNothing()
+      .returning({ id: matchWinnerVotesTable.id });
+    return { blocked: null, inserted: rows.length };
+  });
+  if (outcome.blocked) return outcome.blocked;
+
+  if (outcome.inserted === 0) {
+    const existing = await getVoterMatchWinnerChoice(input.matchId, input.voter.voterKey);
+    if (!existing) return TICKET_USED;
+    return {
+      ok: false,
+      code: "already_voted",
+      message: "Este aparelho já votou no favorito da final.",
+      choiceId: existing,
+    };
+  }
+
+  return { ok: true, choiceId: input.teamId, changed: false };
+}
+
+// ---------------------------------------------------------------------------------------------
 // Auditoria (admin) — agrupa por IP, anula/restaura em lote. Nada é anulado automaticamente.
 // ---------------------------------------------------------------------------------------------
 
@@ -666,7 +828,7 @@ async function earliestActiveIdPerBrowser(
 // ---------------------------------------------------------------------------------------------
 
 export async function getFanVotesVersion(): Promise<string> {
-  const [[matchVotes], [favoriteVotes], [matchTimes]] = await Promise.all([
+  const [[matchVotes], [favoriteVotes], [winnerVotes], [matchTimes]] = await Promise.all([
     db
       .select({
         total: count(),
@@ -685,6 +847,14 @@ export async function getFanVotesVersion(): Promise<string> {
       .from(favoriteTeamVotesTable),
     db
       .select({
+        total: count(),
+        voided: count(matchWinnerVotesTable.voidedAt),
+        lastAt: sql<string | null>`max(${matchWinnerVotesTable.createdAt})`,
+        lastVoidAt: sql<string | null>`max(${matchWinnerVotesTable.voidedAt})`,
+      })
+      .from(matchWinnerVotesTable),
+    db
+      .select({
         lastStart: sql<string | null>`max(${matchesTable.startedAt})`,
         lastFinish: sql<string | null>`max(${matchesTable.finishedAt})`,
       })
@@ -700,32 +870,38 @@ export async function getFanVotesVersion(): Promise<string> {
     favoriteVotes?.voided,
     favoriteVotes?.lastAt,
     favoriteVotes?.lastVoidAt,
+    winnerVotes?.total,
+    winnerVotes?.voided,
+    winnerVotes?.lastAt,
+    winnerVotes?.lastVoidAt,
     matchTimes?.lastStart,
     matchTimes?.lastFinish,
   ].join("|");
 }
 
 // O que o overlay do QR (routes/vote-overlay) deve chamar agora: a votação de jogo aberta mais
-// recente (com o confronto no texto); sem nenhuma, o Time favorito se estiver aberto; senão nada
+// recente (com o confronto no texto, e isFinal pra anunciar o Favorito da Final em vez do Jogador
+// da Torcida quando a partida é a final); sem nenhuma, o Time favorito se estiver aberto; senão nada
 // (overlay fica transparente). Uma query só, com os nomes dos times por join — roda no poll do OBS.
-export type VoteCallout = { kind: "match"; matchId: string; title: string } | { kind: "favorite" } | null;
+export type VoteCallout = { kind: "match"; matchId: string; title: string; isFinal: boolean } | { kind: "favorite" } | null;
 
 export async function resolveVoteCallout(windowHours: number, favoriteOpen: boolean, now = Date.now()): Promise<VoteCallout> {
   const homeTeams = alias(teamsTable, "home_team");
   const awayTeams = alias(teamsTable, "away_team");
   const closedBefore = new Date(now - windowHours * HOUR_MS);
   const [row] = await db
-    .select({ id: matchesTable.id, homeName: homeTeams.name, awayName: awayTeams.name })
+    .select({ id: matchesTable.id, homeName: homeTeams.name, awayName: awayTeams.name, isFinal: sql<boolean>`${fixturesTable.phase} = 'final'` })
     .from(matchesTable)
     .innerJoin(homeTeams, eq(matchesTable.homeTeamId, homeTeams.id))
     .innerJoin(awayTeams, eq(matchesTable.awayTeamId, awayTeams.id))
+    .leftJoin(fixturesTable, eq(fixturesTable.matchId, matchesTable.id))
     .where(
       or(eq(matchesTable.status, "in_progress"), and(eq(matchesTable.status, "finished"), gt(matchesTable.finishedAt, closedBefore))),
     )
     .orderBy(desc(matchesTable.startedAt))
     .limit(1);
 
-  if (row) return { kind: "match", matchId: row.id, title: `${row.homeName} × ${row.awayName}` };
+  if (row) return { kind: "match", matchId: row.id, title: `${row.homeName} × ${row.awayName}`, isFinal: row.isFinal ?? false };
   return favoriteOpen ? { kind: "favorite" } : null;
 }
 
