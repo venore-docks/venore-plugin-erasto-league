@@ -1,12 +1,25 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { FixturePhase } from "../contracts/types";
 import type { FixtureView } from "../runtime/bracket";
+import { computeFunnelLayout } from "../shared/bracket-funnel-layout";
 import { matchWinner, shortLabel, sideResult } from "../shared/bracket-match-result";
 import { FIXTURE_PHASE_LABEL } from "../shared/fixture-phase";
 import { formatScore } from "../shared/score";
 import { TeamCrest } from "./home/team-crest";
 
 type Round = { phase: FixturePhase; fixtures: FixtureView[] };
+
+const CARD_HEIGHT_PX = 120;
+const FINAL_HEIGHT_PX = 150;
+const CONNECTOR_HEIGHT_PX = 64;
+const RIBBON_HEIGHT_PX = 40;
+const RIBBON_GAP_PX = 18;
+const TOP_PAD_PX = 22;
+const BOTTOM_PAD_PX = 20;
+const LABEL_OFFSET_PX = 26;
+const SIDE_MARGIN_PCT = 2;
+const GAP_PCT = 2;
 
 function TeamRow({
   name,
@@ -31,7 +44,7 @@ function TeamRow({
 }) {
   const row = (
     <div
-      className={`flex items-center gap-3 px-4 ${big ? "py-4" : "py-3"} ${lost ? "opacity-55" : ""}`}
+      className={`flex h-full items-center gap-3 px-4 ${lost ? "opacity-55" : ""}`}
       style={{ background: won ? `color-mix(in srgb, ${color ?? "var(--primary)"} 14%, transparent)` : undefined }}
     >
       {known ? (
@@ -58,20 +71,23 @@ function TeamRow({
   );
 
   return slug ? (
-    <Link href={`/erasto-league/teams/${slug}`} className="block hover:bg-muted/40">
+    <Link href={`/erasto-league/teams/${slug}`} className="block min-h-0 flex-1 hover:bg-muted/40">
       {row}
     </Link>
   ) : (
-    row
+    <div className="min-h-0 flex-1">{row}</div>
   );
 }
 
-function MatchCard({ fixture, big = false }: { fixture: FixtureView; big?: boolean }) {
+function MatchCard({ fixture, big = false, style }: { fixture: FixtureView; big?: boolean; style: CSSProperties }) {
   const winner = matchWinner(fixture);
   const color = winner?.color ?? "var(--primary)";
 
   return (
-    <div className={`overflow-hidden rounded-panel border border-border bg-card shadow-sm ${big ? "border-2 shadow-md" : ""}`}>
+    <div
+      className={`absolute flex flex-col overflow-hidden rounded-panel border border-border bg-card shadow-sm ${big ? "border-2 shadow-md" : ""}`}
+      style={style}
+    >
       <TeamRow
         name={fixture.homeName}
         crestUrl={fixture.homeCrestUrl}
@@ -99,44 +115,128 @@ function MatchCard({ fixture, big = false }: { fixture: FixtureView; big?: boole
   );
 }
 
-// Chave em lista por rodada — cada fase (quartas, semifinal, final) vira uma seção com os cards de
-// confronto num grid responsivo, final em destaque sozinha no fim. Substitui a chave "espelhada" em
-// árvore (linhas conectando os confrontos): com 5 colunas lado a lado, a largura real disponível
-// (coluna da home, ~1100px no máximo — ver blocks/home-block.tsx) não dava pra manter brasão e texto
-// grandes sem encolher tudo ou precisar de rolagem horizontal, as duas coisas pedidas pra evitar.
-// Em lista, cada card usa a largura que o grid reflui naturalmente (1 coluna no celular, mais
-// colunas conforme cabe) — sem rolagem, sem encolher abaixo do confortável.
+// Chave em funil invertido (final no topo, descendo até a fase mais cedo embaixo), com linhas
+// conectando quem alimenta quem — pedido explícito do usuário depois de ver o esboço (Artifact) e
+// aprovar esse formato no lugar da lista solta de cards sem linha (ilegível demais) e da árvore
+// espelhada horizontal (não cabia brasão grande em 5 colunas lado a lado sem apertar ou dar scroll).
+//
+// Posicionamento em %, não em px medido por JS: todo o eixo X é resolvido em porcentagem da largura
+// real do container (shared/bracket-funnel-layout.ts faz só a conta abstrata de QUAL coluna cada
+// confronto ocupa — a conversão pra % de tela é feita aqui). Isso dá responsividade total sem
+// ResizeObserver nem risco de scroll horizontal: a % nunca estoura o container, só os cards encolhem
+// junto com a tela. O eixo Y fica em px fixos (altura de card/conector não depende da largura).
 export function BracketTree({ knockout }: { knockout: Round[] }) {
-  const rounds = knockout
-    .filter((round) => round.phase !== "final")
-    .map((round) => ({ phase: round.phase, fixtures: [...round.fixtures].sort((a, b) => a.sortOrder - b.sortOrder) }));
-  const finalFixture = knockout.find((round) => round.phase === "final")?.fixtures[0] ?? null;
+  const rounds = knockout.filter((round) => round.fixtures.length > 0);
 
-  if (rounds.length === 0 && !finalFixture) {
+  if (rounds.length === 0) {
     return <p className="text-sm text-muted-foreground">Chave ainda não definida.</p>;
   }
 
-  return (
-    <div className="space-y-8">
-      {rounds.map((round) => (
-        <section key={round.phase} className="space-y-3">
-          <h3 className="text-xs font-extrabold uppercase tracking-wide text-muted-foreground">{FIXTURE_PHASE_LABEL[round.phase]}</h3>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {round.fixtures.map((fixture) => (
-              <MatchCard key={fixture.id} fixture={fixture} />
-            ))}
-          </div>
-        </section>
-      ))}
+  const topToBottom = [...rounds].reverse().map((round) => ({
+    phase: round.phase,
+    fixtures: [...round.fixtures].sort((a, b) => a.sortOrder - b.sortOrder),
+  }));
 
-      {finalFixture && (
-        <section className="space-y-3">
-          <h3 className="text-xs font-extrabold uppercase tracking-wide text-primary">🏆 Final</h3>
-          <div className="mx-auto max-w-xl">
-            <MatchCard fixture={finalFixture} big />
-          </div>
-        </section>
+  const { centers, children } = computeFunnelLayout(
+    topToBottom.map((round) => round.fixtures.map((fixture) => ({ homeSlug: fixture.homeSlug, awaySlug: fixture.awaySlug }))),
+  );
+
+  const bottomCount = topToBottom[topToBottom.length - 1].fixtures.length;
+  const cardWidthPct = (100 - 2 * SIDE_MARGIN_PCT - GAP_PCT * (bottomCount - 1)) / bottomCount;
+  const finalWidthPct = Math.min(cardWidthPct * 1.5, 42);
+  const xPercent = (column: number) => SIDE_MARGIN_PCT + cardWidthPct / 2 + column * (cardWidthPct + GAP_PCT);
+  const widthOf = (roundIndex: number) => (roundIndex === 0 ? finalWidthPct : cardWidthPct);
+
+  const finalFixture = topToBottom[0].fixtures[0] ?? null;
+  const championWinner = finalFixture ? matchWinner(finalFixture) : null;
+  const championName =
+    championWinner && finalFixture ? (championWinner.side === "home" ? finalFixture.homeName : finalFixture.awayName) : null;
+
+  const roundTopPx: number[] = [];
+  const roundHeightPx: number[] = [];
+  let cursorY = TOP_PAD_PX + (championName ? RIBBON_HEIGHT_PX + RIBBON_GAP_PX : 0);
+  topToBottom.forEach((_, roundIndex) => {
+    const height = roundIndex === 0 ? FINAL_HEIGHT_PX : CARD_HEIGHT_PX;
+    roundTopPx.push(cursorY);
+    roundHeightPx.push(height);
+    cursorY += height;
+    if (roundIndex < topToBottom.length - 1) cursorY += CONNECTOR_HEIGHT_PX;
+  });
+  const totalHeightPx = cursorY + BOTTOM_PAD_PX;
+
+  return (
+    <div className="relative w-full" style={{ height: totalHeightPx }}>
+      {championName && (
+        <div
+          className="absolute flex items-center justify-center whitespace-nowrap rounded-full px-6 text-sm font-extrabold text-primary-foreground"
+          style={{
+            left: "50%",
+            transform: "translateX(-50%)",
+            top: TOP_PAD_PX,
+            height: RIBBON_HEIGHT_PX,
+            background: championWinner?.color ?? "var(--primary)",
+          }}
+        >
+          🏆 Campeão: {championName}
+        </div>
       )}
+
+      {topToBottom.slice(0, -1).map((round, roundIndex) => {
+        const connectorTop = roundTopPx[roundIndex] + roundHeightPx[roundIndex];
+        const connectorMidY = connectorTop + CONNECTOR_HEIGHT_PX / 2;
+        return round.fixtures.map((fixture, matchIndex) => {
+          const kids = children[roundIndex][matchIndex] ?? [];
+          if (kids.length === 0) return null;
+          const parentX = xPercent(centers[roundIndex][matchIndex]);
+          const kidXs = kids.map((kidIndex) => xPercent(centers[roundIndex + 1][kidIndex]));
+          const left = Math.min(...kidXs);
+          const right = Math.max(...kidXs);
+          return (
+            <div key={`connector-${round.phase}-${fixture.id}`}>
+              <div
+                className="absolute w-0.5 -translate-x-1/2 bg-border"
+                style={{ left: `${parentX}%`, top: connectorTop, height: CONNECTOR_HEIGHT_PX / 2 }}
+              />
+              {right > left && (
+                <div className="absolute h-0.5 bg-border" style={{ left: `${left}%`, width: `${right - left}%`, top: connectorMidY }} />
+              )}
+              {kidXs.map((kidX, i) => (
+                <div
+                  key={i}
+                  className="absolute w-0.5 -translate-x-1/2 bg-border"
+                  style={{ left: `${kidX}%`, top: connectorMidY, height: CONNECTOR_HEIGHT_PX / 2 }}
+                />
+              ))}
+            </div>
+          );
+        });
+      })}
+
+      {topToBottom.map((round, roundIndex) => {
+        const width = widthOf(roundIndex);
+        const leftmostColumn = Math.min(...round.fixtures.map((_, matchIndex) => centers[roundIndex][matchIndex]));
+        return (
+          <div key={round.phase}>
+            <span
+              className={`absolute whitespace-nowrap text-xs font-extrabold uppercase tracking-wide ${roundIndex === 0 ? "text-primary" : "text-muted-foreground"}`}
+              style={{ left: `${xPercent(leftmostColumn) - width / 2}%`, top: roundTopPx[roundIndex] - LABEL_OFFSET_PX }}
+            >
+              {roundIndex === 0 ? `🏆 ${FIXTURE_PHASE_LABEL[round.phase]}` : FIXTURE_PHASE_LABEL[round.phase]}
+            </span>
+            {round.fixtures.map((fixture, matchIndex) => {
+              const x = xPercent(centers[roundIndex][matchIndex]);
+              return (
+                <MatchCard
+                  key={fixture.id}
+                  fixture={fixture}
+                  big={roundIndex === 0}
+                  style={{ left: `${x - width / 2}%`, width: `${width}%`, top: roundTopPx[roundIndex], height: roundHeightPx[roundIndex] }}
+                />
+              );
+            })}
+          </div>
+        );
+      })}
     </div>
   );
 }

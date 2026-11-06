@@ -70,11 +70,9 @@ const CSS = `
     display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; }
 
   .el-tv-tree-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-  .el-tv-tree-list { display: flex; flex-direction: column; align-items: center; gap: 24px; }
-  .el-tv-tree-section { display: flex; flex-direction: column; align-items: center; gap: 10px; }
   .el-tv-tree-round-title { margin: 0; font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.5); }
   .el-tv-tree-round-title-final { color: var(--accent, #22c55e); }
-  .el-tv-tree-grid { display: grid; gap: 20px; }
+  .el-tv-tree-wire { position: absolute; background: rgba(255,255,255,0.25); }
   .el-tv-tree-card {
     display: flex; flex-direction: column; border-radius: 16px; overflow: hidden;
     background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 10px 24px -10px rgba(0,0,0,0.6);

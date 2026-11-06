@@ -1,20 +1,29 @@
+import type { CSSProperties } from "react";
 import type { FixturePhase } from "../../contracts/types";
 import type { FixtureView } from "../../runtime/bracket";
+import { computeFunnelLayout } from "../../shared/bracket-funnel-layout";
 import { matchWinner, shortLabel, sideResult } from "../../shared/bracket-match-result";
 import { FIXTURE_PHASE_LABEL } from "../../shared/fixture-phase";
 import { formatScore } from "../../shared/score";
 
 type Round = { phase: FixturePhase; fixtures: FixtureView[] };
 
-// Mesmo espírito do site (blocks/bracket-tree.tsx): lista por rodada em vez de árvore com linhas —
-// 5 colunas lado a lado (quartas-semi-final-semi-quartas) não cabiam com brasão/texto grandes nem no
-// palco de 1920px sem apertar, e a TV não pode ter rolagem nenhuma. Em lista, cada rodada vira uma
-// seção com os cards num grid de até 2 colunas, tamanhos fixos generosos (não calculados pra
-// encolher) — cabe no palco porque cada seção tem no máximo 2 confrontos por linha, não 4-8 lado a
-// lado como a árvore precisava.
-const CARD_WIDTH_PX = 560;
-const CARD_ROW_HEIGHT_PX = 66;
-const FINAL_ROW_HEIGHT_PX = 80;
+// Mesma chave em funil do site (blocks/bracket-tree.tsx), em px fixos do palco (CSS própria, sem
+// Tailwind — ver cabeçalho de routes/tv/tv-canvas.tsx) em vez de %: a TV tem largura de referência
+// fixa (1920px, shared/tv-stage.ts), então não precisa responsividade — só precisa caber sem
+// rolagem, com espaçamento generoso entre rodadas pra dar pra ver as linhas (pedido explícito do
+// usuário no esboço aprovado). O container nasce com largura/altura explícitas e o `.el-tv-tree-wrap`
+// (flex center) cuida de centralizar tudo no espaço disponível do palco.
+const CONTENT_WIDTH_PX = 1760;
+const CARD_HEIGHT_PX = 170;
+const FINAL_HEIGHT_PX = 190;
+const CONNECTOR_HEIGHT_PX = 60;
+const RIBBON_HEIGHT_PX = 50;
+const RIBBON_GAP_PX = 20;
+const TOP_PAD_PX = 10;
+const BOTTOM_PAD_PX = 10;
+const LABEL_OFFSET_PX = 32;
+const GAP_PX = 32;
 
 function winnerColor(fixture: FixtureView): string | null {
   const winner = matchWinner(fixture);
@@ -68,10 +77,10 @@ function TeamRow({
   );
 }
 
-function MatchCard({ fixture, rowHeightPx, width }: { fixture: FixtureView; rowHeightPx: number; width: number }) {
+function MatchCard({ fixture, rowHeightPx, style }: { fixture: FixtureView; rowHeightPx: number; style: CSSProperties }) {
   const color = winnerColor(fixture);
   return (
-    <div className="el-tv-tree-card" style={{ width }}>
+    <div className="el-tv-tree-card" style={style}>
       <TeamRow
         name={fixture.homeName}
         crestUrl={fixture.homeCrestUrl}
@@ -97,58 +106,127 @@ function MatchCard({ fixture, rowHeightPx, width }: { fixture: FixtureView; rowH
   );
 }
 
-// Versão pra TV/projetor da mesma chave em lista do site — em px fixos do palco (CSS própria, sem
-// Tailwind — ver cabeçalho de routes/tv/tv-canvas.tsx). Tamanhos de card fixos (não calculados a
-// partir do espaço disponível) de propósito — nada de encolher; o palco de 1920px cabe folgado
-// porque cada seção tem no máximo 2 confrontos lado a lado.
 export function BracketTreeTv({ knockout }: { knockout: Round[] }) {
-  const rounds = knockout
-    .filter((round) => round.phase !== "final")
-    .map((round) => ({ phase: round.phase, fixtures: [...round.fixtures].sort((a, b) => a.sortOrder - b.sortOrder) }));
-  const finalFixture = knockout.find((round) => round.phase === "final")?.fixtures[0] ?? null;
+  const rounds = knockout.filter((round) => round.fixtures.length > 0);
 
-  if (rounds.length === 0 && !finalFixture) {
+  if (rounds.length === 0) {
     return <p className="el-tv-empty">Chave ainda não definida.</p>;
   }
 
-  const champion =
-    finalFixture && sideResult(finalFixture, "home") === "won"
-      ? finalFixture.homeName
-      : finalFixture && sideResult(finalFixture, "away") === "won"
-        ? finalFixture.awayName
-        : null;
-  const championColor = finalFixture ? (winnerColor(finalFixture) ?? "var(--accent, #22c55e)") : "var(--accent, #22c55e)";
+  const topToBottom = rounds
+    .slice()
+    .reverse()
+    .map((round) => ({
+      phase: round.phase,
+      fixtures: [...round.fixtures].sort((a, b) => a.sortOrder - b.sortOrder),
+    }));
+
+  const { centers, children } = computeFunnelLayout(
+    topToBottom.map((round) => round.fixtures.map((fixture) => ({ homeSlug: fixture.homeSlug, awaySlug: fixture.awaySlug }))),
+  );
+
+  const bottomCount = topToBottom[topToBottom.length - 1].fixtures.length;
+  const cardWidthPx = (CONTENT_WIDTH_PX - GAP_PX * (bottomCount - 1)) / bottomCount;
+  const finalWidthPx = Math.min(cardWidthPx * 1.5, 700);
+  const xPixel = (column: number) => cardWidthPx / 2 + column * (cardWidthPx + GAP_PX);
+  const widthOf = (roundIndex: number) => (roundIndex === 0 ? finalWidthPx : cardWidthPx);
+
+  const finalFixture = topToBottom[0].fixtures[0] ?? null;
+  const championWinner = finalFixture ? matchWinner(finalFixture) : null;
+  const championName =
+    championWinner && finalFixture ? (championWinner.side === "home" ? finalFixture.homeName : finalFixture.awayName) : null;
+  const championColor = championWinner?.color ?? "var(--accent, #22c55e)";
+
+  const roundTopPx: number[] = [];
+  const roundHeightPx: number[] = [];
+  let cursorY = TOP_PAD_PX + (championName ? RIBBON_HEIGHT_PX + RIBBON_GAP_PX : 0);
+  topToBottom.forEach((_, roundIndex) => {
+    const height = roundIndex === 0 ? FINAL_HEIGHT_PX : CARD_HEIGHT_PX;
+    roundTopPx.push(cursorY);
+    roundHeightPx.push(height);
+    cursorY += height;
+    if (roundIndex < topToBottom.length - 1) cursorY += CONNECTOR_HEIGHT_PX;
+  });
+  const totalHeightPx = cursorY + BOTTOM_PAD_PX;
 
   return (
     <div className="el-tv-tree-wrap">
-      <div className="el-tv-tree-list">
-        {rounds.map((round) => {
-          const cols = Math.min(2, round.fixtures.length);
-          return (
-            <section key={round.phase} className="el-tv-tree-section">
-              <p className="el-tv-tree-round-title">{FIXTURE_PHASE_LABEL[round.phase]}</p>
-              <div className="el-tv-tree-grid" style={{ gridTemplateColumns: `repeat(${cols}, ${CARD_WIDTH_PX}px)` }}>
-                {round.fixtures.map((fixture) => (
-                  <MatchCard key={fixture.id} fixture={fixture} rowHeightPx={CARD_ROW_HEIGHT_PX} width={CARD_WIDTH_PX} />
+      <div style={{ position: "relative", width: CONTENT_WIDTH_PX, height: totalHeightPx, flex: "none" }}>
+        {championName && (
+          <div
+            className="el-tv-tree-champion"
+            style={{
+              position: "absolute",
+              left: CONTENT_WIDTH_PX / 2,
+              transform: "translateX(-50%)",
+              top: TOP_PAD_PX,
+              height: RIBBON_HEIGHT_PX,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              whiteSpace: "nowrap",
+              background: championColor,
+            }}
+          >
+            🏆 Campeão: {championName}
+          </div>
+        )}
+
+        {topToBottom.slice(0, -1).map((round, roundIndex) => {
+          const connectorTop = roundTopPx[roundIndex] + roundHeightPx[roundIndex];
+          const connectorMidY = connectorTop + CONNECTOR_HEIGHT_PX / 2;
+          return round.fixtures.map((fixture, matchIndex) => {
+            const kids = children[roundIndex][matchIndex] ?? [];
+            if (kids.length === 0) return null;
+            const parentX = xPixel(centers[roundIndex][matchIndex]);
+            const kidXs = kids.map((kidIndex) => xPixel(centers[roundIndex + 1][kidIndex]));
+            const left = Math.min(...kidXs);
+            const right = Math.max(...kidXs);
+            return (
+              <div key={`connector-${round.phase}-${fixture.id}`}>
+                <div className="el-tv-tree-wire" style={{ left: parentX - 1, top: connectorTop, width: 2, height: CONNECTOR_HEIGHT_PX / 2 }} />
+                {right > left && (
+                  <div className="el-tv-tree-wire" style={{ left, top: connectorMidY - 1, width: right - left, height: 2 }} />
+                )}
+                {kidXs.map((kidX, i) => (
+                  <div key={i} className="el-tv-tree-wire" style={{ left: kidX - 1, top: connectorMidY, width: 2, height: CONNECTOR_HEIGHT_PX / 2 }} />
                 ))}
               </div>
-            </section>
-          );
+            );
+          });
         })}
 
-        {finalFixture && (
-          <section className="el-tv-tree-section">
-            <p className="el-tv-tree-round-title el-tv-tree-round-title-final">🏆 Final</p>
-            <div className="el-tv-tree-grid" style={{ gridTemplateColumns: `${CARD_WIDTH_PX + 60}px` }}>
-              <MatchCard fixture={finalFixture} rowHeightPx={FINAL_ROW_HEIGHT_PX} width={CARD_WIDTH_PX + 60} />
-            </div>
-            {champion && (
-              <p className="el-tv-tree-champion" style={{ background: championColor }}>
-                🏆 Campeão: {champion}
+        {topToBottom.map((round, roundIndex) => {
+          const width = widthOf(roundIndex);
+          const leftmostColumn = Math.min(...round.fixtures.map((_, matchIndex) => centers[roundIndex][matchIndex]));
+          return (
+            <div key={round.phase}>
+              <p
+                className={`el-tv-tree-round-title ${roundIndex === 0 ? "el-tv-tree-round-title-final" : ""}`}
+                style={{ position: "absolute", left: xPixel(leftmostColumn) - width / 2, top: roundTopPx[roundIndex] - LABEL_OFFSET_PX, margin: 0 }}
+              >
+                {roundIndex === 0 ? `🏆 ${FIXTURE_PHASE_LABEL[round.phase]}` : FIXTURE_PHASE_LABEL[round.phase]}
               </p>
-            )}
-          </section>
-        )}
+              {round.fixtures.map((fixture, matchIndex) => {
+                const x = xPixel(centers[roundIndex][matchIndex]);
+                return (
+                  <MatchCard
+                    key={fixture.id}
+                    fixture={fixture}
+                    rowHeightPx={(roundHeightPx[roundIndex] - 1) / 2}
+                    style={{
+                      position: "absolute",
+                      left: x - width / 2,
+                      top: roundTopPx[roundIndex],
+                      width,
+                      height: roundHeightPx[roundIndex],
+                    }}
+                  />
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
