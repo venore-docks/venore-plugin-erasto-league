@@ -11,9 +11,9 @@ export type FixtureView = {
   homeName: string;
   homeCrestUrl: string | null;
   homeSlug: string | null;
-  // Cor do time (shared/bracket-tree-layout.ts + blocks/bracket-tree.tsx usam pra destacar o
-  // caminho de quem avança; routes/tv reusa o mesmo campo). null quando o lado ainda não é um time
-  // de verdade (rótulo "Vencedor Grupo A") ou o time não tem cor cadastrada.
+  // Cor do time (blocks/bracket-tree.tsx + routes/tv/bracket-tree-tv.tsx usam pra destacar quem
+  // venceu). null quando o lado ainda não é um time de verdade (rótulo "Vencedor Grupo A") ou o
+  // time não tem cor cadastrada.
   homeColor: string | null;
   awayName: string;
   awayCrestUrl: string | null;

@@ -1,54 +1,12 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useRef, useState, type RefObject } from "react";
 import type { FixturePhase } from "../contracts/types";
 import type { FixtureView } from "../runtime/bracket";
-import { computeBracketTreeLayout, type BracketTreeNode } from "../shared/bracket-tree-layout";
 import { matchWinner, shortLabel, sideResult } from "../shared/bracket-match-result";
 import { FIXTURE_PHASE_LABEL } from "../shared/fixture-phase";
 import { formatScore } from "../shared/score";
 import { TeamCrest } from "./home/team-crest";
 
 type Round = { phase: FixturePhase; fixtures: FixtureView[] };
-
-// Unidades abstratas de largura (não px) — só a RELAÇÃO entre elas importa, convertidas pra px reais
-// na hora de desenhar, a partir da largura MEDIDA do contêiner (useContainerWidth abaixo). Evita
-// depender de `aspect-ratio` CSS + altura em % (o jeito antigo): numa coluna estreita, o cálculo de
-// altura em % não dava pro card de confronto espaço suficiente pras duas linhas de time, e tudo
-// ficava espremido/cortado.
-const BOX_W = 1;
-const GAP_W = 0.55; // espaço entre colunas reservado pras linhas de conexão
-const BOX_ASPECT = 2.65; // largura:altura do card (duas linhas de time empilhadas)
-const ROW_GAP_FACTOR = 1.38; // altura do "slot" de uma linha (card + respiro) = altura do card × isso
-// Menor largura de card antes de preferir rolagem horizontal a espremer tudo até virar sopa de
-// letrinhas — numa coluna estreita (ex. home com barra lateral), é melhor rolar do que encolher.
-// Sem piso de largura/rolagem de propósito (pedido explícito: responsivo na horizontal, sem
-// scroll) — o card encolhe pra caber no contêiner, por mais estreito que seja; o nome do time só
-// trunca (truncate) se não couber mesmo assim. MIN_BOX_PX é só uma rede de segurança absurda (um
-// container praticamente do tamanho zero), não um alvo de design.
-const MIN_BOX_PX = 70;
-const MAX_BOX_PX = 260; // teto pra não virar card gigante num container muito largo (full-bleed)
-const TOP_MARGIN_PX = 34;
-const BOTTOM_MARGIN_PX = 46;
-
-function useContainerWidth(): [RefObject<HTMLDivElement | null>, number] {
-  const ref = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(0);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) setWidth(entry.contentRect.width);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return [ref, width];
-}
 
 function TeamRow({
   name,
@@ -59,7 +17,7 @@ function TeamRow({
   won,
   lost,
   known,
-  heightPx,
+  big,
 }: {
   name: string;
   crestUrl: string | null;
@@ -69,35 +27,29 @@ function TeamRow({
   won: boolean;
   lost: boolean;
   known: boolean;
-  heightPx: number;
+  big: boolean;
 }) {
   const row = (
     <div
-      className={`flex min-w-0 items-center gap-1.5 px-2 ${lost ? "opacity-55" : ""}`}
-      style={{ height: heightPx, background: won ? `color-mix(in srgb, ${color ?? "var(--primary)"} 14%, transparent)` : undefined }}
+      className={`flex items-center gap-3 px-4 ${big ? "py-4" : "py-3"} ${lost ? "opacity-55" : ""}`}
+      style={{ background: won ? `color-mix(in srgb, ${color ?? "var(--primary)"} 14%, transparent)` : undefined }}
     >
       {known ? (
-        <span className="block shrink-0" style={{ width: heightPx * 0.62, height: heightPx * 0.62 }}>
-          <TeamCrest name={name} crestUrl={crestUrl} className="size-full" />
-        </span>
+        <TeamCrest name={name} crestUrl={crestUrl} className={`shrink-0 ${big ? "size-16" : "size-12"}`} />
       ) : (
         <span
-          className="flex shrink-0 items-center justify-center rounded-full bg-muted font-bold uppercase text-muted-foreground"
-          style={{ width: heightPx * 0.62, height: heightPx * 0.62, fontSize: heightPx * 0.3 }}
+          className={`flex shrink-0 items-center justify-center rounded-full bg-muted font-bold uppercase text-muted-foreground ${big ? "size-16 text-base" : "size-12 text-sm"}`}
         >
           {shortLabel(name)}
         </span>
       )}
-      <span
-        className={`min-w-0 flex-1 truncate ${won ? "font-extrabold text-foreground" : "font-medium text-foreground/90"}`}
-        style={{ fontSize: Math.max(10, heightPx * 0.4) }}
-      >
+      <span className={`min-w-0 flex-1 truncate font-bold ${big ? "text-lg" : "text-base"} ${won ? "text-foreground" : "text-foreground/80"}`}>
         {name}
       </span>
       {score != null && (
         <span
-          className={`shrink-0 tabular-nums ${won ? "font-extrabold" : "font-semibold text-muted-foreground"}`}
-          style={{ fontSize: Math.max(10, heightPx * 0.42), color: won ? (color ?? "var(--primary)") : undefined }}
+          className={`shrink-0 font-extrabold tabular-nums ${big ? "text-2xl" : "text-xl"}`}
+          style={{ color: won ? (color ?? "var(--primary)") : "var(--muted-foreground)" }}
         >
           {formatScore(score)}
         </span>
@@ -106,7 +58,7 @@ function TeamRow({
   );
 
   return slug ? (
-    <Link href={`/erasto-league/teams/${slug}`} className="block hover:bg-muted/40" style={{ height: heightPx }}>
+    <Link href={`/erasto-league/teams/${slug}`} className="block hover:bg-muted/40">
       {row}
     </Link>
   ) : (
@@ -114,28 +66,12 @@ function TeamRow({
   );
 }
 
-function MatchBox({
-  node,
-  left,
-  top,
-  width,
-  rowHeight,
-}: {
-  node: BracketTreeNode<FixtureView>;
-  left: number;
-  top: number;
-  width: number;
-  rowHeight: number;
-}) {
-  const { fixture } = node;
+function MatchCard({ fixture, big = false }: { fixture: FixtureView; big?: boolean }) {
   const winner = matchWinner(fixture);
   const color = winner?.color ?? "var(--primary)";
 
   return (
-    <div
-      className="absolute overflow-hidden rounded-md border border-border bg-card shadow-sm"
-      style={{ left, top, width, height: rowHeight * 2 }}
-    >
+    <div className={`overflow-hidden rounded-panel border border-border bg-card shadow-sm ${big ? "border-2 shadow-md" : ""}`}>
       <TeamRow
         name={fixture.homeName}
         crestUrl={fixture.homeCrestUrl}
@@ -145,7 +81,7 @@ function MatchBox({
         won={winner?.side === "home"}
         lost={sideResult(fixture, "home") === "lost"}
         known={fixture.homeSlug != null}
-        heightPx={rowHeight}
+        big={big}
       />
       <div className="border-t border-border" />
       <TeamRow
@@ -157,114 +93,50 @@ function MatchBox({
         won={winner?.side === "away"}
         lost={sideResult(fixture, "away") === "lost"}
         known={fixture.awaySlug != null}
-        heightPx={rowHeight}
+        big={big}
       />
     </div>
   );
 }
 
-// Chave "espelhada" (estilo Copa do Mundo): metade dos confrontos converge pela esquerda, a outra
-// metade pela direita, final sozinha no meio — geometria em shared/bracket-tree-layout.ts (reusada
-// pela TV, routes/tv/bracket-tree-tv.tsx). Medido em px reais a partir da largura do próprio
-// contêiner (useContainerWidth), não % + aspect-ratio — dá pra garantir um tamanho mínimo legível
-// de card e preferir rolagem horizontal a espremer tudo numa coluna estreita (ex. home, que divide
-// espaço com a barra lateral).
+// Chave em lista por rodada — cada fase (quartas, semifinal, final) vira uma seção com os cards de
+// confronto num grid responsivo, final em destaque sozinha no fim. Substitui a chave "espelhada" em
+// árvore (linhas conectando os confrontos): com 5 colunas lado a lado, a largura real disponível
+// (coluna da home, ~1100px no máximo — ver blocks/home-block.tsx) não dava pra manter brasão e texto
+// grandes sem encolher tudo ou precisar de rolagem horizontal, as duas coisas pedidas pra evitar.
+// Em lista, cada card usa a largura que o grid reflui naturalmente (1 coluna no celular, mais
+// colunas conforme cabe) — sem rolagem, sem encolher abaixo do confortável.
 export function BracketTree({ knockout }: { knockout: Round[] }) {
-  const [containerRef, containerWidth] = useContainerWidth();
-  const layout = computeBracketTreeLayout(knockout);
+  const rounds = knockout
+    .filter((round) => round.phase !== "final")
+    .map((round) => ({ phase: round.phase, fixtures: [...round.fixtures].sort((a, b) => a.sortOrder - b.sortOrder) }));
+  const finalFixture = knockout.find((round) => round.phase === "final")?.fixtures[0] ?? null;
 
-  if (!layout.finalNode) {
+  if (rounds.length === 0 && !finalFixture) {
     return <p className="text-sm text-muted-foreground">Chave ainda não definida.</p>;
   }
 
-  const { totalCols, totalRows, finalNode } = layout;
-  const totalWidthUnits = (totalCols + 1) * BOX_W + totalCols * GAP_W;
-  const naturalScale = containerWidth > 0 ? containerWidth / totalWidthUnits : 0;
-  const scale = Math.min(MAX_BOX_PX, Math.max(MIN_BOX_PX, naturalScale || MIN_BOX_PX));
-
-  const xLeftUnits = (col: number) => col * (BOX_W + GAP_W);
-  const toXPx = (units: number) => units * scale;
-  const boxWidthPx = toXPx(BOX_W);
-  const boxLeftEdge = (col: number) => toXPx(xLeftUnits(col));
-  const boxRightEdge = (col: number) => boxLeftEdge(col) + boxWidthPx;
-
-  const boxHeightPx = boxWidthPx / BOX_ASPECT;
-  const rowHeightPx = boxHeightPx / 2;
-  const rowSlotPx = boxHeightPx * ROW_GAP_FACTOR;
-  const boardWidthPx = totalWidthUnits * scale;
-  const boardHeightPx = totalRows * rowSlotPx + TOP_MARGIN_PX + BOTTOM_MARGIN_PX;
-  const yCenterPx = (row: number) => TOP_MARGIN_PX + row * rowSlotPx;
-
-  const fixtureById = new Map(layout.nodes.map((node) => [node.fixture.id, node.fixture]));
-  const champion =
-    sideResult(finalNode.fixture, "home") === "won"
-      ? finalNode.fixture.homeName
-      : sideResult(finalNode.fixture, "away") === "won"
-        ? finalNode.fixture.awayName
-        : null;
-  const championColor = matchWinner(finalNode.fixture)?.color ?? "var(--primary)";
-
   return (
-    <div className="space-y-3 rounded-panel border border-border bg-card p-4 sm:p-6">
-      <div ref={containerRef} className="w-full">
-        <div className="relative mx-auto" style={{ width: boardWidthPx, height: boardHeightPx }}>
-          <svg width={boardWidthPx} height={boardHeightPx} className="absolute inset-0" aria-hidden="true">
-            {layout.links.map((link) => {
-              const fixture = fixtureById.get(link.id);
-              const winner = fixture ? matchWinner(fixture) : null;
-              const color = winner ? (winner.color ?? "var(--primary)") : null;
-              const forward = link.x2 > link.x1;
-              const startX = forward ? boxRightEdge(link.x1) : boxLeftEdge(link.x1);
-              const endX = forward ? boxLeftEdge(link.x2) : boxRightEdge(link.x2);
-              const startY = yCenterPx(link.y1);
-              const endY = yCenterPx(link.y2);
-              const midX = (startX + endX) / 2;
-              return (
-                <path
-                  key={link.id}
-                  d={`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`}
-                  fill="none"
-                  stroke={color ?? "var(--border)"}
-                  strokeWidth={color ? 2.2 : 1.4}
-                  strokeLinecap="round"
-                  opacity={color ? 0.9 : 1}
-                />
-              );
-            })}
-          </svg>
+    <div className="space-y-8">
+      {rounds.map((round) => (
+        <section key={round.phase} className="space-y-3">
+          <h3 className="text-xs font-extrabold uppercase tracking-wide text-muted-foreground">{FIXTURE_PHASE_LABEL[round.phase]}</h3>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {round.fixtures.map((fixture) => (
+              <MatchCard key={fixture.id} fixture={fixture} />
+            ))}
+          </div>
+        </section>
+      ))}
 
-          {layout.columnPhases.map(({ col, phase }) => (
-            <span
-              key={`${col}-${phase}`}
-              className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-border bg-card px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground shadow-sm"
-              style={{ left: (boxLeftEdge(col) + boxRightEdge(col)) / 2, top: TOP_MARGIN_PX / 2 }}
-            >
-              {FIXTURE_PHASE_LABEL[phase]}
-            </span>
-          ))}
-
-          {layout.nodes.map((node) => (
-            <MatchBox key={node.fixture.id} node={node} left={boxLeftEdge(node.col)} top={yCenterPx(node.row) - boxHeightPx / 2} width={boxWidthPx} rowHeight={rowHeightPx} />
-          ))}
-          <MatchBox node={{ fixture: finalNode.fixture, side: "final", round: 0, col: finalNode.col, row: finalNode.row }} left={boxLeftEdge(finalNode.col)} top={yCenterPx(finalNode.row) - boxHeightPx / 2} width={boxWidthPx} rowHeight={rowHeightPx} />
-
-          <span
-            className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-primary-foreground shadow-sm"
-            style={{ left: (boxLeftEdge(finalNode.col) + boxRightEdge(finalNode.col)) / 2, top: TOP_MARGIN_PX / 2 }}
-          >
-            Final
-          </span>
-
-          {champion && (
-            <div
-              className="absolute -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-primary-foreground shadow-md"
-              style={{ left: (boxLeftEdge(finalNode.col) + boxRightEdge(finalNode.col)) / 2, top: yCenterPx(finalNode.row) + boxHeightPx / 2 + 10, background: championColor }}
-            >
-              🏆 {champion}
-            </div>
-          )}
-        </div>
-      </div>
+      {finalFixture && (
+        <section className="space-y-3">
+          <h3 className="text-xs font-extrabold uppercase tracking-wide text-primary">🏆 Final</h3>
+          <div className="mx-auto max-w-xl">
+            <MatchCard fixture={finalFixture} big />
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -22,8 +22,10 @@ function readString(data: Record<string, unknown>, key: string, fallback = ""): 
 // Página inicial completa (erasto-league.home). A barra contextual do site (@sidebarContextual do
 // core) só mostra conteúdo declarado por rota de plugin ou um Menu Contextual de links — não
 // blocos, e nunca na raiz "/" — então a coluna lateral mora aqui dentro:
-// - desktop largo (xl): capa em cima; embaixo, coluna principal (últimos jogos, classificação,
-//   próximos jogos) + coluna lateral de 21rem (votação, destaques, times). Só a partir de xl porque
+// - desktop largo (xl): capa em cima; chave do campeonato em LARGURA CHEIA logo depois (pedido
+//   explícito: a chave espelhada precisa de espaço pra não ficar apertada/ilegível — dividir com a
+//   coluna lateral de 21rem deixava pouca largura pros cards); embaixo, coluna principal (últimos
+//   jogos, próximos jogos) + coluna lateral (votação, destaques, times). Só a partir de xl porque
 //   com a sidebar de navegação do tema aberta, em lg a lateral ficaria estreita demais.
 // - abaixo disso: uma coluna só, na ordem de prioridade — as duas colunas viram `display: contents`
 //   e cada seção ganha um `order`. A votação sobe pro topo quando tem jogo com votação aberta
@@ -47,16 +49,16 @@ export async function ErastoLeagueHomeBlock({ block }: BlockRendererProps) {
         origin={origin}
       />
 
+      <HomeSection title={config.groupStageClosed ? "Chave do campeonato" : "Fases do campeonato"}>
+        <ErastoLeagueBracketBlock
+          {...embedBlockProps("erasto-league.bracket", { title: "", variant: config.groupStageClosed ? "knockout" : "full" })}
+        />
+      </HomeSection>
+
       <div className="flex flex-col gap-10 xl:grid xl:grid-cols-[minmax(0,1fr)_21rem] xl:items-start xl:gap-8">
         <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-10">
           <HomeSection title="Últimos jogos" href="/erasto-league/jogos" hrefLabel="Todos os jogos" className="order-2 xl:order-none">
             <HomeLatestMatches />
-          </HomeSection>
-
-          <HomeSection title={config.groupStageClosed ? "Chave do campeonato" : "Fases do campeonato"} className="order-3 xl:order-none">
-            <ErastoLeagueBracketBlock
-              {...embedBlockProps("erasto-league.bracket", { title: "", variant: config.groupStageClosed ? "knockout" : "full" })}
-            />
           </HomeSection>
 
           <HomeSection

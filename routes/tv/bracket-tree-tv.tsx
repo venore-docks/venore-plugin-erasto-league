@@ -1,25 +1,20 @@
 import type { FixturePhase } from "../../contracts/types";
 import type { FixtureView } from "../../runtime/bracket";
-import { computeBracketTreeLayout, type BracketTreeNode } from "../../shared/bracket-tree-layout";
 import { matchWinner, shortLabel, sideResult } from "../../shared/bracket-match-result";
 import { FIXTURE_PHASE_LABEL } from "../../shared/fixture-phase";
 import { formatScore } from "../../shared/score";
 
 type Round = { phase: FixturePhase; fixtures: FixtureView[] };
 
-// Mesmas unidades abstratas de blocks/bracket-tree.tsx (site), convertidas pra px do palco em vez
-// de medir um contêiner (ver shared/tv-stage.ts: a TV já sabe o tamanho do palco de antemão).
-// BOX_W:BOX_H ~2.65:1 é o que faz o card de confronto (duas linhas de time empilhadas) parecer um
-// card de chave de verdade.
-const BOX_W = 1;
-const GAP_W = 0.55; // espaço entre colunas reservado pras linhas de conexão
-const BOX_ASPECT = 2.65;
-// Altura do "slot" de uma linha (card + respiro) = altura do card × isso, no caso MÍNIMO — a altura
-// de verdade cresce pra ocupar o espaço vertical sobrando (pedido explícito: a chave não deve deixar
-// sobra vazia em cima/embaixo numa tela 16:9 quando há poucas rodadas).
-const ROW_GAP_FACTOR = 1.38;
-const TOP_MARGIN_PX = 60;
-const BOTTOM_MARGIN_PX = 70;
+// Mesmo espírito do site (blocks/bracket-tree.tsx): lista por rodada em vez de árvore com linhas —
+// 5 colunas lado a lado (quartas-semi-final-semi-quartas) não cabiam com brasão/texto grandes nem no
+// palco de 1920px sem apertar, e a TV não pode ter rolagem nenhuma. Em lista, cada rodada vira uma
+// seção com os cards num grid de até 2 colunas, tamanhos fixos generosos (não calculados pra
+// encolher) — cabe no palco porque cada seção tem no máximo 2 confrontos por linha, não 4-8 lado a
+// lado como a árvore precisava.
+const CARD_WIDTH_PX = 560;
+const CARD_ROW_HEIGHT_PX = 66;
+const FINAL_ROW_HEIGHT_PX = 80;
 
 function winnerColor(fixture: FixtureView): string | null {
   const winner = matchWinner(fixture);
@@ -52,19 +47,19 @@ function TeamRow({
     >
       {known && crestUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img className="el-tv-tree-crest" src={crestUrl} alt="" style={{ width: rowHeightPx * 0.72, height: rowHeightPx * 0.72 }} />
+        <img className="el-tv-tree-crest" src={crestUrl} alt="" style={{ width: rowHeightPx * 0.74, height: rowHeightPx * 0.74 }} />
       ) : (
-        <span className="el-tv-tree-crest-mono" style={{ width: rowHeightPx * 0.72, height: rowHeightPx * 0.72, fontSize: rowHeightPx * 0.3 }}>
+        <span className="el-tv-tree-crest-mono" style={{ width: rowHeightPx * 0.74, height: rowHeightPx * 0.74, fontSize: rowHeightPx * 0.3 }}>
           {known ? name.slice(0, 2).toUpperCase() : shortLabel(name)}
         </span>
       )}
-      <span className={`el-tv-tree-name ${won ? "el-tv-tree-name-won" : ""}`} style={{ fontSize: rowHeightPx * 0.38 }}>
+      <span className={`el-tv-tree-name ${won ? "el-tv-tree-name-won" : ""}`} style={{ fontSize: rowHeightPx * 0.34 }}>
         {name}
       </span>
       {score != null && (
         <span
           className="el-tv-tree-score"
-          style={{ fontSize: rowHeightPx * 0.4, color: won ? (color ?? "var(--accent, #22c55e)") : undefined }}
+          style={{ fontSize: rowHeightPx * 0.38, color: won ? (color ?? "var(--accent, #22c55e)") : undefined }}
         >
           {formatScore(score)}
         </span>
@@ -73,25 +68,10 @@ function TeamRow({
   );
 }
 
-function MatchBox({
-  node,
-  left,
-  top,
-  width,
-  height,
-}: {
-  node: BracketTreeNode<FixtureView>;
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-}) {
-  const { fixture } = node;
+function MatchCard({ fixture, rowHeightPx, width }: { fixture: FixtureView; rowHeightPx: number; width: number }) {
   const color = winnerColor(fixture);
-  const rowHeight = height / 2;
-
   return (
-    <div className="el-tv-tree-box" style={{ left, top, width, height }}>
+    <div className="el-tv-tree-card" style={{ width }}>
       <TeamRow
         name={fixture.homeName}
         crestUrl={fixture.homeCrestUrl}
@@ -100,7 +80,7 @@ function MatchBox({
         won={sideResult(fixture, "home") === "won"}
         lost={sideResult(fixture, "home") === "lost"}
         known={fixture.homeSlug != null}
-        rowHeightPx={rowHeight}
+        rowHeightPx={rowHeightPx}
       />
       <div className="el-tv-tree-sep" />
       <TeamRow
@@ -111,125 +91,63 @@ function MatchBox({
         won={sideResult(fixture, "away") === "won"}
         lost={sideResult(fixture, "away") === "lost"}
         known={fixture.awaySlug != null}
-        rowHeightPx={rowHeight}
+        rowHeightPx={rowHeightPx}
       />
     </div>
   );
 }
 
-// Versão pra TV/projetor da mesma chave espelhada do site (blocks/bracket-tree.tsx) — mesma
-// geometria (shared/bracket-tree-layout.ts), só que em px fixos do palco (CSS própria, sem
-// Tailwind — ver cabeçalho de routes/tv/tv-canvas.tsx) em vez de % + classes do tema. Ocupa a
-// largura inteira disponível (16:9 já é larga, diferente do quadrado forçado da chave circular
-// anterior).
-export function BracketTreeTv({ knockout, maxWidthPx, maxHeightPx }: { knockout: Round[]; maxWidthPx: number; maxHeightPx: number }) {
-  const layout = computeBracketTreeLayout(knockout);
-  if (!layout.finalNode) {
+// Versão pra TV/projetor da mesma chave em lista do site — em px fixos do palco (CSS própria, sem
+// Tailwind — ver cabeçalho de routes/tv/tv-canvas.tsx). Tamanhos de card fixos (não calculados a
+// partir do espaço disponível) de propósito — nada de encolher; o palco de 1920px cabe folgado
+// porque cada seção tem no máximo 2 confrontos lado a lado.
+export function BracketTreeTv({ knockout }: { knockout: Round[] }) {
+  const rounds = knockout
+    .filter((round) => round.phase !== "final")
+    .map((round) => ({ phase: round.phase, fixtures: [...round.fixtures].sort((a, b) => a.sortOrder - b.sortOrder) }));
+  const finalFixture = knockout.find((round) => round.phase === "final")?.fixtures[0] ?? null;
+
+  if (rounds.length === 0 && !finalFixture) {
     return <p className="el-tv-empty">Chave ainda não definida.</p>;
   }
 
-  const { totalCols, totalRows } = layout;
-  const totalWidthUnits = (totalCols + 1) * BOX_W + totalCols * GAP_W;
-
-  // Escala só pela LARGURA (contain só no eixo horizontal, não também na altura) — piso/teto só pra
-  // não virar ilegível numa chave com muitas rodadas nem gigante numa com poucas.
-  const scale = Math.max(60, Math.min(260, maxWidthPx / totalWidthUnits));
-  const boxWidthPx = scale * BOX_W;
-  const boxHeightPx = boxWidthPx / BOX_ASPECT;
-
-  const xLeftUnits = (col: number) => col * (BOX_W + GAP_W);
-  const toXPx = (units: number) => units * scale;
-  const boxLeftEdge = (col: number) => toXPx(xLeftUnits(col));
-  const boxRightEdge = (col: number) => boxLeftEdge(col) + boxWidthPx;
-
-  // A altura NÃO entra na escala — em vez de cortar o tamanho do card pra caber também na altura
-  // (deixando sobra vazia em cima/embaixo numa chave com poucas rodadas), o espaço vertical de
-  // sobra espalha mais as linhas (pedido explícito: a chave deve crescer na vertical até preencher
-  // a tela 16:9). Só quando o espaço realmente não dá (muitas rodadas) o slot cai pro tamanho
-  // natural do card e o tabuleiro passa de maxHeightPx — aí prefere vazar um pouco a virar sopa.
-  const usableHeightPx = Math.max(0, maxHeightPx - TOP_MARGIN_PX - BOTTOM_MARGIN_PX);
-  const rowSlotPx = Math.max(boxHeightPx * ROW_GAP_FACTOR, usableHeightPx / totalRows);
-  const boardWidthPx = totalWidthUnits * scale;
-  const boardHeightPx = Math.max(maxHeightPx, totalRows * rowSlotPx + TOP_MARGIN_PX + BOTTOM_MARGIN_PX);
-  const yCenterPx = (row: number) => TOP_MARGIN_PX + row * rowSlotPx;
-
-  const fixtureById = new Map(layout.nodes.map((node) => [node.fixture.id, node.fixture]));
-  const allNodes = [...layout.nodes, { fixture: layout.finalNode.fixture, side: "final" as const, round: 0, col: layout.finalNode.col, row: layout.finalNode.row }];
-
   const champion =
-    sideResult(layout.finalNode.fixture, "home") === "won"
-      ? layout.finalNode.fixture.homeName
-      : sideResult(layout.finalNode.fixture, "away") === "won"
-        ? layout.finalNode.fixture.awayName
+    finalFixture && sideResult(finalFixture, "home") === "won"
+      ? finalFixture.homeName
+      : finalFixture && sideResult(finalFixture, "away") === "won"
+        ? finalFixture.awayName
         : null;
-  const championColor = winnerColor(layout.finalNode.fixture) ?? "var(--accent, #22c55e)";
+  const championColor = finalFixture ? (winnerColor(finalFixture) ?? "var(--accent, #22c55e)") : "var(--accent, #22c55e)";
 
   return (
     <div className="el-tv-tree-wrap">
-      <div className="el-tv-tree-board" style={{ width: boardWidthPx, height: boardHeightPx }}>
-        <svg width={boardWidthPx} height={boardHeightPx} className="el-tv-tree-svg" aria-hidden="true">
-          {layout.links.map((link) => {
-            const fixture = fixtureById.get(link.id);
-            const color = fixture ? winnerColor(fixture) : null;
-            const forward = link.x2 > link.x1;
-            const startX = forward ? boxRightEdge(link.x1) : boxLeftEdge(link.x1);
-            const endX = forward ? boxLeftEdge(link.x2) : boxRightEdge(link.x2);
-            const startY = yCenterPx(link.y1);
-            const endY = yCenterPx(link.y2);
-            const midX = (startX + endX) / 2;
-            return (
-              <path
-                key={link.id}
-                d={`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`}
-                fill="none"
-                stroke={color ?? "rgba(255,255,255,0.18)"}
-                strokeWidth={color ? 3 : 2}
-                strokeLinecap="round"
-                opacity={color ? 0.9 : 1}
-              />
-            );
-          })}
-        </svg>
+      <div className="el-tv-tree-list">
+        {rounds.map((round) => {
+          const cols = Math.min(2, round.fixtures.length);
+          return (
+            <section key={round.phase} className="el-tv-tree-section">
+              <p className="el-tv-tree-round-title">{FIXTURE_PHASE_LABEL[round.phase]}</p>
+              <div className="el-tv-tree-grid" style={{ gridTemplateColumns: `repeat(${cols}, ${CARD_WIDTH_PX}px)` }}>
+                {round.fixtures.map((fixture) => (
+                  <MatchCard key={fixture.id} fixture={fixture} rowHeightPx={CARD_ROW_HEIGHT_PX} width={CARD_WIDTH_PX} />
+                ))}
+              </div>
+            </section>
+          );
+        })}
 
-        {layout.columnPhases.map(({ col, phase }) => (
-          <span
-            key={`${col}-${phase}`}
-            className="el-tv-tree-phase"
-            style={{ left: (boxLeftEdge(col) + boxRightEdge(col)) / 2, top: TOP_MARGIN_PX / 2 }}
-          >
-            {FIXTURE_PHASE_LABEL[phase]}
-          </span>
-        ))}
-
-        {allNodes.map((node) => (
-          <MatchBox
-            key={node.fixture.id}
-            node={node}
-            left={boxLeftEdge(node.col)}
-            top={yCenterPx(node.row) - boxHeightPx / 2}
-            width={boxWidthPx}
-            height={boxHeightPx}
-          />
-        ))}
-
-        <span
-          className="el-tv-tree-final-label"
-          style={{ left: (boxLeftEdge(layout.finalNode.col) + boxRightEdge(layout.finalNode.col)) / 2, top: TOP_MARGIN_PX / 2 }}
-        >
-          Final
-        </span>
-
-        {champion && (
-          <div
-            className="el-tv-tree-champion"
-            style={{
-              left: (boxLeftEdge(layout.finalNode.col) + boxRightEdge(layout.finalNode.col)) / 2,
-              top: yCenterPx(layout.finalNode.row) + boxHeightPx / 2 + 14,
-              background: championColor,
-            }}
-          >
-            🏆 {champion}
-          </div>
+        {finalFixture && (
+          <section className="el-tv-tree-section">
+            <p className="el-tv-tree-round-title el-tv-tree-round-title-final">🏆 Final</p>
+            <div className="el-tv-tree-grid" style={{ gridTemplateColumns: `${CARD_WIDTH_PX + 60}px` }}>
+              <MatchCard fixture={finalFixture} rowHeightPx={FINAL_ROW_HEIGHT_PX} width={CARD_WIDTH_PX + 60} />
+            </div>
+            {champion && (
+              <p className="el-tv-tree-champion" style={{ background: championColor }}>
+                🏆 Campeão: {champion}
+              </p>
+            )}
+          </section>
         )}
       </div>
     </div>

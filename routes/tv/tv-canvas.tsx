@@ -26,13 +26,6 @@ const PAGE_DURATION_MS = 12_000;
 // só sobe durante o jogo), era isso que gerava invocação de function completa a cada 20s em cada
 // tela sem nada ter mudado.
 const VERSION_POLL_MS = 60_000;
-// Reservado pro cabeçalho + rodapé (altura) e pro padding lateral do corpo (largura) do palco, ao
-// redor da chave — BracketTreeTv usa pra nunca estourar o palco em proporções de tela fora do 16:9
-// de referência (shared/tv-stage.ts resolveTvStageTransform). A chave espelhada é larga de
-// propósito (ocupa bem mais a tela que a antiga chave circular, quadrada).
-const BRACKET_VERTICAL_CHROME_PX = 320;
-const BRACKET_HORIZONTAL_CHROME_PX = 128;
-
 const CSS = `
   html, body { margin: 0; background: #0a0d12; }
   * { box-sizing: border-box; }
@@ -76,20 +69,17 @@ const CSS = `
   .el-tv-crest-mono { width: 64px; height: 64px; border-radius: 999px; background: rgba(255,255,255,0.08); flex-shrink: 0;
     display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; }
 
-  .el-tv-tree-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
-  .el-tv-tree-board { position: relative; flex: none; }
-  .el-tv-tree-svg { position: absolute; inset: 0; }
-  .el-tv-tree-phase, .el-tv-tree-final-label {
-    position: absolute; transform: translate(-50%, -50%); white-space: nowrap; padding: 5px 16px; border-radius: 999px;
-    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); backdrop-filter: blur(4px);
-    font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.7);
-  }
-  .el-tv-tree-final-label { background: var(--accent, #22c55e); color: #04170a; border: none; }
-  .el-tv-tree-box {
-    position: absolute; display: flex; flex-direction: column; border-radius: 10px; overflow: hidden;
+  .el-tv-tree-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .el-tv-tree-list { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+  .el-tv-tree-section { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .el-tv-tree-round-title { margin: 0; font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.5); }
+  .el-tv-tree-round-title-final { color: var(--accent, #22c55e); }
+  .el-tv-tree-grid { display: grid; gap: 20px; }
+  .el-tv-tree-card {
+    display: flex; flex-direction: column; border-radius: 16px; overflow: hidden;
     background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 10px 24px -10px rgba(0,0,0,0.6);
   }
-  .el-tv-tree-row { display: flex; align-items: center; gap: 10px; padding: 0 10px; flex: 1; min-width: 0; }
+  .el-tv-tree-row { display: flex; align-items: center; gap: 18px; padding: 0 24px; flex: 1; min-width: 0; }
   .el-tv-tree-row-lost { opacity: 0.5; filter: grayscale(40%); }
   .el-tv-tree-sep { height: 1px; background: rgba(255,255,255,0.12); flex: none; }
   .el-tv-tree-crest { border-radius: 999px; object-fit: cover; flex: none; }
@@ -99,9 +89,8 @@ const CSS = `
   .el-tv-tree-name-won { font-weight: 900; color: #fff; }
   .el-tv-tree-score { flex: none; font-weight: 900; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.6); }
   .el-tv-tree-champion {
-    position: absolute; transform: translateX(-50%); white-space: nowrap; padding: 10px 26px; border-radius: 999px;
-    font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #04170a; font-size: 22px;
-    box-shadow: 0 14px 30px -10px rgba(0,0,0,0.7);
+    margin: 0; padding: 10px 26px; border-radius: 999px; font-weight: 900; text-transform: uppercase;
+    letter-spacing: 0.5px; color: #04170a; font-size: 22px; box-shadow: 0 14px 30px -10px rgba(0,0,0,0.7);
   }
 
   .el-tv-favorite-total { text-align: center; font-size: 18px; font-weight: 700; color: rgba(255,255,255,0.45); margin: 0 0 14px; }
@@ -463,11 +452,7 @@ export function TvCanvas({
             ) : currentPage.kind === "next-game" ? (
               <NextGamePage nextGame={currentPage.nextGame} />
             ) : currentPage.kind === "knockout" ? (
-              <BracketTreeTv
-                knockout={currentPage.knockout}
-                maxWidthPx={stage.stageWidthPx - BRACKET_HORIZONTAL_CHROME_PX}
-                maxHeightPx={stage.stageHeightPx - BRACKET_VERTICAL_CHROME_PX}
-              />
+              <BracketTreeTv knockout={currentPage.knockout} />
             ) : currentPage.kind === "scorers" ? (
               <ScorersTable scorers={currentPage.scorers} />
             ) : currentPage.kind === "final-winner" || currentPage.kind === "favorite-team" ? (
