@@ -148,14 +148,28 @@ export async function getBracketView(): Promise<BracketView> {
   return { groups, knockout };
 }
 
+// Quem perdeu ESTE confronto eliminatório — null enquanto não dá pra saber (fixture sem os dois
+// times definidos ainda, partida não linkada/não encerrada, ou empate, que não devia existir numa
+// eliminatória mas pode acontecer com súmula malcadastrada). Função pura (sem DB) só pra poder
+// testar a parte que importa — a mesma correção de lados trocados (isMatchSideSwapped) de toView
+// acima — sem precisar montar fixtures/matches de verdade.
+export function determineKnockoutLoserId(fixture: Fixture, match: MatchSummary | null | undefined): string | null {
+  if (!match || !fixture.homeTeamId || !fixture.awayTeamId || match.status !== "finished" || match.homeScore === match.awayScore) {
+    return null;
+  }
+  const swapped = isMatchSideSwapped(fixture, match);
+  const homeScore = swapped ? match.awayScore : match.homeScore;
+  const awayScore = swapped ? match.homeScore : match.awayScore;
+  return homeScore > awayScore ? fixture.awayTeamId : fixture.homeTeamId;
+}
+
 // Times eliminados: perderam algum confronto de fase ELIMINATÓRIA já encerrado (fase de grupos não
-// elimina ninguém). Usa isMatchSideSwapped pra não inverter o resultado quando a partida foi jogada
-// com os lados trocados em relação ao cadastro da fixture (mesmo bug corrigido em toView acima).
-// Pra "Time favorito" (votação de temporada) só oferecer quem ainda está na disputa —
+// elimina ninguém — FIXTURE_PHASE_ORDER: só "roundof16"/"quarterfinal"/"semifinal"/"final" entram
+// aqui). Pra "Time favorito" (votação de temporada) só oferecer quem ainda está na disputa —
 // routes/vote-public/vote-sections.tsx FavoriteTeamVoteSection e afins.
 export async function getEliminatedTeamIds(): Promise<Set<string>> {
   const fixtures = await listFixtures();
-  const knockoutFixtures = fixtures.filter((fixture) => fixture.phase !== "group" && fixture.matchId && fixture.homeTeamId && fixture.awayTeamId);
+  const knockoutFixtures = fixtures.filter((fixture) => fixture.phase !== "group" && fixture.matchId);
 
   const matchIds = [...new Set(knockoutFixtures.map((fixture) => fixture.matchId as string))];
   const matches = await Promise.all(matchIds.map((id) => getMatch(id)));
@@ -163,12 +177,7 @@ export async function getEliminatedTeamIds(): Promise<Set<string>> {
 
   const eliminated = new Set<string>();
   for (const fixture of knockoutFixtures) {
-    const match = matchById.get(fixture.matchId as string);
-    if (!match || match.status !== "finished" || match.homeScore === match.awayScore) continue;
-    const swapped = isMatchSideSwapped(fixture, match);
-    const homeScore = swapped ? match.awayScore : match.homeScore;
-    const awayScore = swapped ? match.homeScore : match.awayScore;
-    const loserTeamId = homeScore > awayScore ? fixture.awayTeamId : fixture.homeTeamId;
+    const loserTeamId = determineKnockoutLoserId(fixture, matchById.get(fixture.matchId as string));
     if (loserTeamId) eliminated.add(loserTeamId);
   }
   return eliminated;

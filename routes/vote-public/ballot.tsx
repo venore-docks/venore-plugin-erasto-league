@@ -12,6 +12,10 @@ export type BallotOption = {
   // Linha menor abaixo do nome ("#10 · Capitão", "Bananáticos FC"…).
   caption: string | null;
   color: string | null;
+  // Só faz sentido pra "favorite" (Time favorito): time eliminado continua na cédula (pedido
+  // explícito — precisa aparecer pra "Seu voto: X" conseguir mostrar o nome mesmo depois de
+  // eliminado), só não dá pra escolher. Ausente/false em "match"/"winner".
+  eliminated?: boolean;
 };
 
 export type BallotSection = { key: string; title: string; color: string | null; options: BallotOption[] };
@@ -116,12 +120,16 @@ export function Ballot({
   // A escolha "oficial" deste aparelho: a que o servidor acabou de devolver (voto novo, ou "já votou
   // em X") tem prioridade sobre a lida no render da página.
   const confirmedChoiceId = state.choiceId ?? currentChoiceId;
+  const confirmedOption = allOptions.find((option) => option.id === confirmedChoiceId) ?? null;
+  // Pedido explícito: quem já votou num time que foi eliminado depois pode votar em outro (ainda na
+  // disputa) na hora, sem precisar tocar em "Trocar voto" — a cédula reabre sozinha.
+  const mustRevote = confirmedOption?.eliminated === true;
   // "wait" e o voto em andamento (busy) mantêm a cédula aberta — senão ela sumiria no meio da espera.
   const changing =
     allowChange &&
     changeRequestedAt !== null &&
     (state.attempt === changeRequestedAt || state.status === "error" || state.status === "wait" || busy);
-  const showBallot = confirmedChoiceId === null || changing;
+  const showBallot = confirmedChoiceId === null || changing || mustRevote;
   const fieldName = kind === "match" ? "playerId" : "teamId"; // favorite e winner escolhem time
   const selectedName = nameOf(selectedId);
   const needsToken = Boolean(turnstileSiteKey);
@@ -226,6 +234,12 @@ export function Ballot({
       ))}
       <input type="hidden" name={fieldName} value={selectedId ?? ""} />
 
+      {mustRevote && (
+        <p className="rounded-panel border border-warning bg-warning/10 p-3 text-sm text-foreground">
+          Seu time favorito (<strong>{confirmedOption?.name}</strong>) foi eliminado — escolha outro time ainda na disputa.
+        </p>
+      )}
+
       {sections.map((section) => (
         <fieldset key={section.key} className="space-y-2">
           <legend className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-muted-foreground">
@@ -243,13 +257,22 @@ export function Ballot({
                     key={option.id}
                     type="button"
                     aria-pressed={selected}
-                    disabled={busy}
+                    disabled={busy || option.eliminated}
                     onClick={() => setSelectedId(option.id)}
-                    className={`flex flex-col items-center gap-2 rounded-panel border bg-card p-3 text-center ui-motion-base ${
-                      selected ? "border-primary ring-2 ring-primary" : "border-border hover:bg-muted/40"
+                    className={`relative flex flex-col items-center gap-2 rounded-panel border bg-card p-3 text-center ui-motion-base ${
+                      option.eliminated
+                        ? "cursor-not-allowed border-border opacity-50 grayscale"
+                        : selected
+                          ? "border-primary ring-2 ring-primary"
+                          : "border-border hover:bg-muted/40"
                     }`}
-                    style={selected ? ({ background: "color-mix(in srgb, var(--primary) 10%, var(--card))" } as CSSProperties) : undefined}
+                    style={selected && !option.eliminated ? ({ background: "color-mix(in srgb, var(--primary) 10%, var(--card))" } as CSSProperties) : undefined}
                   >
+                    {option.eliminated && (
+                      <span className="absolute right-1.5 top-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                        Eliminado
+                      </span>
+                    )}
                     <OptionAvatar option={option} />
                     <span className="w-full truncate text-sm font-bold text-foreground">{option.name}</span>
                     {option.caption && <span className="w-full truncate text-xs text-muted-foreground">{option.caption}</span>}
@@ -283,7 +306,7 @@ export function Ballot({
                       ? "Escolha um jogador"
                       : "Escolha um time"}
           </Button>
-          {allowChange && changing && (
+          {allowChange && changing && !mustRevote && (
             <Button type="button" variant="ghost" disabled={busy} onClick={() => setChangeRequestedAt(null)}>
               Manter meu voto
             </Button>

@@ -239,11 +239,11 @@ export async function FavoriteTeamVoteSection({
   headingLevel?: "h1" | "h2";
 }) {
   const [teams, eliminated, voterChoice] = await Promise.all([listTeams(), getEliminatedTeamIds(), getVoterFavoriteTeam(voterKey)]);
-  // Pedido explícito: só times ainda na disputa entram na cédula e no cálculo do percentual — um
-  // voto já registrado num time eliminado continua contando como "ainda ativo" até sair do mapa de
-  // eliminados (getEliminatedTeamIds só olha confrontos JÁ ENCERRADOS), então não precisa tratar
-  // esse caso aqui.
-  const activeTeams = teams.filter((team) => !eliminated.has(team.id));
+  // Pedido explícito: o percentual (getFavoriteTeamResults) só considera quem ainda está na
+  // disputa, mas a CÉDULA continua mostrando os eliminados (só não dá pra escolher neles) — senão
+  // "Seu voto: X" não teria como achar o nome de quem já foi eliminado, e quem votou num time
+  // eliminado ficaria sem saber em quem tinha votado. Eliminados vão pro fim da lista.
+  const sortedTeams = [...teams].sort((a, b) => Number(eliminated.has(a.id)) - Number(eliminated.has(b.id)));
   const results = await getFavoriteTeamResults(RESULTS_LIMIT, eliminated);
   const Heading = headingLevel;
 
@@ -251,7 +251,14 @@ export async function FavoriteTeamVoteSection({
     key: "teams",
     title: "Times",
     color: null,
-    options: activeTeams.map((team) => ({ id: team.id, name: team.name, imageUrl: team.crestUrl, caption: null, color: team.primaryColor })),
+    options: sortedTeams.map((team) => ({
+      id: team.id,
+      name: team.name,
+      imageUrl: team.crestUrl,
+      caption: null,
+      color: team.primaryColor,
+      eliminated: eliminated.has(team.id),
+    })),
   };
 
   return (
